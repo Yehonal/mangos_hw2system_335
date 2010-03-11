@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
+#include "ZZ_ScriptsPersonali.h"
 #include "Common.h"
 #include "Language.h"
 #include "Database/DatabaseEnv.h"
@@ -307,7 +307,10 @@ UpdateMask Player::updateVisualBits;
 
 Player::Player (WorldSession *session): Unit(), m_achievementMgr(this), m_reputationMgr(this)
 {
-    m_transport = 0;
+	RpgCredito=0; RpgTotalePt=0; RpgIdentity="Non definita"; RpgSupervisor=0; RpgEpigoni=0; RpgPlGenere=0; 
+	Uccisioni=0; Morti=0; Suicidi=0; Crediti=0; Totale=0; FrenzyCount=0; Frenesia=false; MusicaTimer=0;//iniz
+
+	m_transport = 0;
 
     m_speakTime = 0;
     m_speakCount = 0;
@@ -889,6 +892,7 @@ uint32 Player::EnvironmentalDamage(EnviromentalDamage type, uint32 damage)
 
         GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_DEATHS_FROM, 1, type);
     }
+	if (!isAlive()) sHw2.DmGestionePunti(this,false,false,NULL,true);  // punti morte da suicidio per i pg tournament
 
     return final_damage;
 }
@@ -1321,6 +1325,8 @@ void Player::Update( uint32 p_time )
         }
     }
 
+	if ( MusicaTimer > p_time ) MusicaTimer -= p_time; else MusicaTimer = 0; //timer della musica
+
     //Handle Water/drowning
     HandleDrowning(p_time);
 
@@ -1715,7 +1721,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
 
         // Check enter rights before map getting to avoid creating instance copy for player
         // this check not dependent from map instance copy and same for all instance copies of selected map
-        if (!sMapMgr.CanPlayerEnter(mapid, this))
+        if (!sHw2.DmCheckTournament(this,true,mapid) && !sMapMgr.CanPlayerEnter(mapid, this))
             return false;
 
         // If the map is not created, assume it is possible to enter it.
@@ -4071,7 +4077,9 @@ void Player::DeleteFromDB(uint64 playerguid, uint32 accountId, bool updateRealmC
     // unsummon and delete for pets in world is not required: player deleted from CLI or character list with not loaded pet.
     // Get guids of character's pets, will deleted in transaction
     QueryResult *resultPets = CharacterDatabase.PQuery("SELECT id FROM character_pet WHERE owner = '%u'",guid);
-
+	Hw2Database.PExecute("DELETE FROM `a_tournament_punti` WHERE `guid`= '%u'",guid); //cancella dal db dei punti
+	Hw2Database.PExecute("DELETE FROM `a_rpg_players` WHERE `guid`= '%u'",guid);
+	Hw2Database.PExecute("DELETE FROM `a_character_quests` WHERE `guid`= '%u'",guid);
     // NOW we can finally clear other DB data related to character
     CharacterDatabase.BeginTransaction();
     if (resultPets)
@@ -4220,6 +4228,26 @@ void Player::ResurrectPlayer(float restore_percent, bool applySickness)
     SetMovement(MOVE_UNROOT);
 
     m_deathTimer = 0;
+
+	//[HW2] EMOTICON E suono
+	if ( sHw2.DmCheckTournament(this,false))
+	{
+        restore_percent=1.0;
+		uint32 suono=0;
+		srand(time(NULL)); //inizializza seme
+			   switch(rand()%4)
+			   {
+				   case 0: suono=8456; break;
+				   case 1: suono=8457; break;
+				   case 2: suono=11754; break; //playsound  SimonGame_Visual_GameStart
+				   case 3: suono=3226; break; // teleport
+			   }
+		sHw2.DmGestioneMusica(this,suono);
+
+		CastSpell(this,36937, true); //blink visual
+        HandleEmoteCommand(15);
+	}
+	//FINE
 
     // set health/powers (0- will be set in caller)
     if(restore_percent>0.0f)
@@ -4604,6 +4632,18 @@ void Player::RepopAtGraveyard()
         SpawnCorpseBones();
     }
 
+	//--------MODALITA' DI RESPAWN PER HYJAL E EXT. ZONE----------//
+	if (IsTourn)
+	{
+	  if (GetZoneId()==HYJAL) sHw2.DmGestioneSpawning(this,616); //hyjal
+	  else if (GetAreaId()==2177) { sHw2.DmGestioneSpawning(this,2177); return; } //arena
+	  else if (GetAreaId()==2317) sHw2.DmGestioneSpawning(this,2317);  //isole
+	  //else if (GetMapId()==44) AzerothGestioneSpawning(44);
+	}
+	else
+	{
+
+
     WorldSafeLocsEntry const *ClosestGrave = NULL;
 
     // Special handle for battleground maps
@@ -4630,6 +4670,16 @@ void Player::RepopAtGraveyard()
             GetSession()->SendPacket(&data);
         }
     }
+    return;  // solo se entra nell'else
+  }
+    
+    // 1.0f in ResurrectPlayer (azerothtournament)
+	// solo se non entra nell'else e quindi ci troviamo in una delle zone con respawn personale
+	SpawnCorpseBones();
+	ResurrectPlayer(1.0f); 
+
+	return;
+	
 }
 
 void Player::JoinedChannel(Channel *c)
@@ -6223,6 +6273,9 @@ bool Player::RewardHonor(Unit *uVictim, uint32 groupsize, float honor)
             ApplyModUInt32Value(PLAYER_FIELD_KILLS, 1, true);
             // and those in a lifetime
             ApplyModUInt32Value(PLAYER_FIELD_LIFETIME_HONORBALE_KILLS, 1, true);
+
+			sHw2.DmGestionePunti(false,true,pVictim); sHw2.DmGestionePunti(pVictim,false,false,this); // aggiunge un punto uccisione al player e 1 morte alla vittima
+
             UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_EARN_HONORABLE_KILL);
             UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HK_CLASS, pVictim->getClass());
             UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HK_RACE, pVictim->getRace());
@@ -6383,7 +6436,8 @@ void Player::UpdateArea(uint32 newArea)
 
     AreaTableEntry const* area = GetAreaEntryByAreaID(newArea);
 
-    if(area && (area->flags & AREA_FLAG_ARENA))
+    //[HW2] se la flag pvp è attiva e sei nelle zone tournament allora è attiva ovunque, se invece è disattivata nel torneo non sarà attiva mentre 
+	if(area && (area->flags & AREA_FLAG_ARENA) || ( sHw2.TrMod[5] && sHw2.DmCheckTournament(this,false)) )
     {
         if(!isGameMaster())
             SetFFAPvP(true);
@@ -14418,7 +14472,7 @@ void Player::SendQuestReward( Quest const *pQuest, uint32 XP, Object * questGive
     data << uint32(pQuest->GetBonusTalents());              // bonus talents
     data << uint32(0);
     GetSession()->SendPacket( &data );
-
+    if (sHw2.AzConf[2]) sHw2.RpgModificaPT(true,GetGUID(),1*sWorld.getConfig(CONFIG_FLOAT_RATE_XP_QUEST),0); //[HW2] dopo l'assegnazione dei reward, assegna i punti gdr
     if (pQuest->GetQuestCompleteScript() != 0)
         GetMap()->ScriptsStart(sQuestEndScripts, pQuest->GetQuestCompleteScript(), questGiver, this);
 }
@@ -16417,6 +16471,12 @@ void Player::SaveToDB()
     // save pet (hunter pet level and experience and all type pets health/mana).
     if(Pet* pet = GetPet())
         pet->SavePetToDB(PET_SAVE_AS_CURRENT);
+
+	if (IsInWorld())
+	{ //[HW2]
+	   sHw2.RpgModificaPT(true,GetGUID(),0,0);
+	   sHw2.DmGestionePunti(this,true); // salva i punti
+	}
 }
 
 // fast save function for item/money cheating preventing - save only inventory and money state
@@ -19852,6 +19912,7 @@ bool Player::RewardPlayerAndGroupAtKill(Unit* pVictim)
                        pGroupGuy->getLevel() <= not_gray_member_with_max_level->getLevel())
                     {
                         uint32 itr_xp = (member_with_max_level == not_gray_member_with_max_level) ? uint32(xp*rate) : uint32((xp*rate/2)+1);
+						if (sHw2.AzConf[4]) itr_xp *= count; //[HW2] l'esperienza in gruppo viene moltiplicata per il numero di pg presenti nel gruppo
 
                         pGroupGuy->GiveXP(itr_xp, pVictim);
                         if(Pet* pet = pGroupGuy->GetPet())

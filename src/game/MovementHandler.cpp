@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
+#include "ZZ_ScriptsPersonali.h"
 #include "Common.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
@@ -31,6 +31,7 @@
 #include "WaypointMovementGenerator.h"
 #include "InstanceSaveMgr.h"
 #include "ObjectMgr.h"
+#include "World.h"
 
 void WorldSession::HandleMoveWorldportAckOpcode( WorldPacket & /*recv_data*/ )
 {
@@ -320,6 +321,15 @@ void WorldSession::HandleMovementOpcodes( WorldPacket & recv_data )
         if(plMover->isMovingOrTurning())
             plMover->RemoveSpellsCausingAura(SPELL_AURA_FEIGN_DEATH);
 
+        //[HW2] controlli per il tournament
+	    if (GetPlayer()->IsTourn)
+	    {
+		    if (!sHw2.DmCheckTournament(GetPlayer(),false) && !GetPlayer()->isGameMaster())
+                  sHw2.DmGestioneSpawning(GetPlayer(),HYJAL); // hyjal		
+		    if (!sHw2.TrMod[2] && GetPlayer()->GetGroup()!=NULL) //90 e' l'instance impostato id nel mapinstance.cpp
+			    GetPlayer()->GetGroup()->Disband();
+	    }
+
         if(movementInfo.GetPos()->z < -500.0f)
         {
             if(plMover->InBattleGround()
@@ -333,6 +343,8 @@ void WorldSession::HandleMovementOpcodes( WorldPacket & recv_data )
                 // NOTE: this is actually called many times while falling
                 // even after the player has been teleported away
                 // TODO: discard movement packets after the player is rooted
+
+			 if(!sHw2.DmCheckTournament(GetPlayer(),false)) // (HW2) se sei nel tournament salta al repop automatico
                 if(plMover->isAlive())
                 {
                     plMover->EnvironmentalDamage(DAMAGE_FALL_TO_VOID, GetPlayer()->GetMaxHealth());
@@ -350,7 +362,8 @@ void WorldSession::HandleMovementOpcodes( WorldPacket & recv_data )
                 plMover->RepopAtGraveyard();
             }
         }
-    }
+		if (GetPlayer()->GetPositionZ()< -500.0f) GetPlayer()->TeleportTo(GetPlayer()->m_homebindMapId, GetPlayer()->m_homebindX , GetPlayer()->m_homebindY, GetPlayer()->m_homebindZ, GetPlayer()->GetOrientation());   // da controllare
+		}
     else                                                    // creature charmed
     {
         if(mover->IsInWorld())

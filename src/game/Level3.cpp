@@ -5445,7 +5445,7 @@ bool ChatHandler::HandlePDumpLoadCommand(const char *args)
     if (!file)
         return false;
 
-    char * account = strtok(NULL, " ");
+    char * account = strtok(NULL, "");
     if (!account)
         return false;
 

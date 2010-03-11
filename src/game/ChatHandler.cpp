@@ -179,11 +179,20 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
                 break;
 
             if(type == CHAT_MSG_SAY)
+			{
                 GetPlayer()->Say(msg, lang);
+				if (lang != LANG_ADDON) sLog.outRALog("[ %s ] SAY: %s",GetPlayer()->GetName(),msg.c_str());  // HW2 CHAT LOGS
+			}
             else if(type == CHAT_MSG_EMOTE)
+			{
                 GetPlayer()->TextEmote(msg);
+				if (lang != LANG_ADDON) sLog.outRALog("[ %s ] EMOTE: %s",GetPlayer()->GetName(),msg.c_str()); // HW2 CHAT LOGS
+			}
             else if(type == CHAT_MSG_YELL)
+			{
                 GetPlayer()->Yell(msg, lang);
+			    if (lang != LANG_ADDON) sLog.outRALog("[ %s ] YELL: %s",GetPlayer()->GetName(),msg.c_str()); // HW2 CHAT LOGS
+			}
         } break;
 
         case CHAT_MSG_WHISPER:
@@ -197,6 +206,8 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
 
             if(msg.empty())
                 break;
+
+            if (lang != LANG_ADDON) sLog.outRALog("[ %s ] to [ %s ] WISPER: %s",GetPlayer()->GetName(),to.c_str(),msg.c_str()); // HW2 CHAT LOGS
 
             if(!normalizePlayerName(to))
             {
@@ -245,6 +256,8 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
             if(msg.empty())
                 break;
 
+	    if (lang != LANG_ADDON) sLog.outRALog("[ %s ] PARTY: %s",GetPlayer()->GetName(),msg.c_str()); // HW2 CHAT LOGS
+
             // if player is in battleground, he cannot say to battleground members by /p
             Group *group = GetPlayer()->GetOriginalGroup();
             if(!group)
@@ -280,8 +293,15 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
                 break;
 
             if (GetPlayer()->GetGuildId())
-                if (Guild *guild = sObjectMgr.GetGuildById(GetPlayer()->GetGuildId()))
+            {
+                Guild *guild = sObjectMgr.GetGuildById(GetPlayer()->GetGuildId());
+                if (guild)
+				{
                     guild->BroadcastToGuild(this, msg, lang == LANG_ADDON ? LANG_ADDON : LANG_UNIVERSAL);
+
+				    if (lang != LANG_ADDON) sLog.outRALog("[ %s ] in [ %s ] GUILD: %s",GetPlayer()->GetName(),guild->GetName().c_str(),msg.c_str()); // HW2 CHAT LOGS
+				}        
+			}
         } break;
 
         case CHAT_MSG_OFFICER:
@@ -302,8 +322,15 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
                 break;
 
             if (GetPlayer()->GetGuildId())
-                if (Guild *guild = sObjectMgr.GetGuildById(GetPlayer()->GetGuildId()))
+            {
+                Guild *guild = sObjectMgr.GetGuildById(GetPlayer()->GetGuildId());
+                if (guild)
+				{
                     guild->BroadcastToOfficers(this, msg, lang == LANG_ADDON ? LANG_ADDON : LANG_UNIVERSAL);
+					if (lang != LANG_ADDON) sLog.outRALog("[ %s ] officer in [ %s ] GUILD: %s",GetPlayer()->GetName(),guild->GetName().c_str(),msg.c_str()); // HW2 CHAT LOGS
+
+				}
+            }
         } break;
 
         case CHAT_MSG_RAID:
@@ -323,6 +350,8 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
             if(msg.empty())
                 break;
 
+            if (lang != LANG_ADDON) sLog.outRALog("[ %s ] RAID: %s",GetPlayer()->GetName(),msg.c_str()); // HW2 CHAT LOGS
+
             // if player is in battleground, he cannot say to battleground members by /ra
             Group *group = GetPlayer()->GetOriginalGroup();
             if(!group)
@@ -336,6 +365,7 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
             ChatHandler::FillMessageData(&data, this, CHAT_MSG_RAID, lang, "", 0, msg.c_str(), NULL);
             group->BroadcastPacket(&data, false);
         } break;
+
         case CHAT_MSG_RAID_LEADER:
         {
             std::string msg;
@@ -352,6 +382,8 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
 
             if(msg.empty())
                 break;
+
+	    if (lang != LANG_ADDON) sLog.outRALog("[ %s ] RAIDLEADER: %s",GetPlayer()->GetName(),msg.c_str()); // HW2 CHAT LOGS
 
             // if player is in battleground, he cannot say to battleground members by /ra
             Group *group = GetPlayer()->GetOriginalGroup();
@@ -378,6 +410,8 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
             if(msg.empty())
                 break;
 
+            if (lang != LANG_ADDON) sLog.outRALog("[ %s ] RAIDWARN: %s",GetPlayer()->GetName(),msg.c_str()); // HW2 CHAT LOGS
+
             Group *group = GetPlayer()->GetGroup();
             if(!group || !group->isRaidGroup() || !(group->IsLeader(GetPlayer()->GetGUID()) || group->IsAssistant(GetPlayer()->GetGUID())))
                 return;
@@ -398,6 +432,8 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
 
             if(msg.empty())
                 break;
+
+	    if (lang != LANG_ADDON) sLog.outRALog("[ %s ] BATTLEGROUND: %s",GetPlayer()->GetName(),msg.c_str()); // HW2 CHAT LOGS
 
             // battleground raid is always in Player->GetGroup(), never in GetOriginalGroup()
             Group *group = GetPlayer()->GetGroup();
@@ -420,6 +456,8 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
             if(msg.empty())
                 break;
 
+	        if (lang != LANG_ADDON) sLog.outRALog("[ %s ] BGLEADER: %s",GetPlayer()->GetName(),msg.c_str()); // HW2 CHAT LOGS
+
             // battleground raid is always in Player->GetGroup(), never in GetOriginalGroup()
             Group *group = GetPlayer()->GetGroup();
             if(!group || !group->isBGGroup() || !group->IsLeader(GetPlayer()->GetGUID()))
@@ -441,6 +479,8 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
 
             if(msg.empty())
                 break;
+
+            if (lang != LANG_ADDON) sLog.outRALog("[ %s ] in [ %s ] CHANNEL: %s",GetPlayer()->GetName(),channel.c_str(),msg.c_str()); // HW2 CHAT LOGS
 
             if(ChannelMgr* cMgr = channelMgr(_player->GetTeam()))
                 if(Channel *chn = cMgr->GetChannel(channel, _player))

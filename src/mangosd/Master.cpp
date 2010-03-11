@@ -509,6 +509,27 @@ bool Master::_StartDB()
         return false;
     }
 
+    //[hw2] database
+    dbstring = sConfig.GetStringDefault("Hw2DatabaseInfo", "");
+    if(dbstring.empty())
+    {
+        sLog.outError("Hw2 database not specified in configuration file");
+        WorldDatabase.HaltDelayThread();
+        CharacterDatabase.HaltDelayThread();
+        return false;
+    }
+
+    ///- Initialise the hw2 database
+    sLog.outString("Hw2 Database: %s", dbstring.c_str() );
+
+    if(!Hw2Database.Initialize(dbstring.c_str()))
+    {
+        sLog.outError("Cannot connect to hw2 database %s",dbstring.c_str());
+        WorldDatabase.HaltDelayThread();
+        CharacterDatabase.HaltDelayThread();
+        return false;
+    }
+
     ///- Get the realm Id from the configuration file
     realmID = sConfig.GetIntDefault("RealmID", 0);
     if(!realmID)
@@ -519,6 +540,7 @@ bool Master::_StartDB()
         WorldDatabase.HaltDelayThread();
         CharacterDatabase.HaltDelayThread();
         loginDatabase.HaltDelayThread();
+        Hw2Database.HaltDelayThread();
         return false;
     }
 
@@ -585,3 +607,4 @@ void Master::_UnhookSignals()
     signal(SIGBREAK, 0);
     #endif
 }
+ 

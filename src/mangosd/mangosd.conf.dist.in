@@ -47,11 +47,12 @@ ConfVersion=2010030401
 ###################################################################################################################
 
 RealmID = 1
-DataDir = "."
-LogsDir = ""
-LoginDatabaseInfo     = "127.0.0.1;3306;root;mangos;realmd"
-WorldDatabaseInfo     = "127.0.0.1;3306;root;mangos;mangos"
-CharacterDatabaseInfo = "127.0.0.1;3306;root;mangos;characters"
+DataDir = "D:\EMU-works\server_data\yehonal_mangos"
+LogsDir = "D:\EMU-works\server_logs\Mangos_hw2\"
+LoginDatabaseInfo     = "127.0.0.1;3306;root;root;realmd_mangos_hw2"
+WorldDatabaseInfo     = "127.0.0.1;3306;root;root;mangos_hw2"
+CharacterDatabaseInfo = "127.0.0.1;3306;root;root;characters_mangos_hw2"
+Hw2DatabaseInfo       = "127.0.0.1;3306;root;root;Hw2DB"
 MaxPingTime = 30
 WorldServerPort = 8085
 BindIP = "0.0.0.0"
@@ -163,18 +164,18 @@ BindIP = "0.0.0.0"
 
 UseProcessors = 0
 ProcessPriority = 1
-Compression = 1
+Compression = 6
 PlayerLimit = 100
 SaveRespawnTimeImmediately = 1
 MaxOverspeedPings = 2
-GridUnload = 1
+GridUnload = 0
 SocketSelectTime = 10000
 GridCleanUpDelay = 300000
 MapUpdateInterval = 100
 ChangeWeatherInterval = 600000
 PlayerSaveInterval = 900000
-vmap.enableLOS = 0
-vmap.enableHeight = 0
+vmap.enableLOS = 1
+vmap.enableHeight = 1
 vmap.ignoreMapIds = "369"
 vmap.ignoreSpellIds = "7720"
 DetectPosCollision = 1
@@ -235,11 +236,6 @@ AddonChannel = 1
 #        Packet logging file for the worldserver
 #        Default: "world.log"
 #
-#    WorldLogTimestamp
-#        Logfile with timestamp of server start in name
-#        Default: 0 - no timestamp in name
-#                 1 - add timestamp in name in form Logname_YYYY-MM-DD_HH-MM-SS.Ext for Logname.Ext
-#
 #    DBErrorLogFile
 #        Log file of DB errors detected at server run
 #        Default: "DBErrors.log"
@@ -293,7 +289,7 @@ AddonChannel = 1
 
 LogSQL = 1
 PidFile = ""
-LogLevel = 3
+LogLevel = 1
 LogTime = 0
 LogFile = "Server.log"
 LogTimestamp = 0
@@ -508,12 +504,6 @@ LogColors = ""
 #        Default: 1 (true)
 #                 0 (false)
 #
-#    MaxSpellCastsInChain
-#        Max amount triggered spell casts in chain by one caster, prevent stack overflow crash
-#        Too Low value will make some correct triggered casts fail
-#                 0 (no limit)
-#        Default: 10
-#
 #    Instance.IgnoreLevel
 #        Ignore level requirement to enter instance
 #        Default: 0 (false)
@@ -634,7 +624,7 @@ LogColors = ""
 #
 ###################################################################################################################
 
-GameType = 1
+GameType = 8
 RealmZone = 1
 Expansion = 2
 DBC.Locale = 255
@@ -661,13 +651,13 @@ MaxArenaPoints = 5000
 StartArenaPoints = 0
 InstantLogout = 1
 DisableWaterBreath = 4
-AllFlightPaths = 0
+AllFlightPaths = 1
 AlwaysMaxSkillForLevel = 0
 ActivateWeather = 1
 CastUnstuck = 1
 MaxSpellCastsInChain = 10
 Instance.IgnoreLevel = 0
-Instance.IgnoreRaid = 0
+Instance.IgnoreRaid = 1
 Instance.ResetTimeHour = 4
 Instance.UnloadDelay = 1800000
 Quests.LowLevelHideDiff = 4
@@ -690,7 +680,7 @@ OffhandCheckAtTalentsReset = 0
 ClientCacheVersion = 0
 Event.Announce = 0
 BeepAtStart = 1
-Motd = "Welcome to the Massive Network Game Object Server."
+Motd = "Benvenuti nel reame di Pepy & Lola"
 
 ###################################################################################################################
 # PLAYER INTERACTION
@@ -732,11 +722,11 @@ Motd = "Welcome to the Massive Network Game Object Server."
 AllowTwoSide.Accounts = 0
 AllowTwoSide.Interaction.Chat = 0
 AllowTwoSide.Interaction.Channel = 0
-AllowTwoSide.Interaction.Group = 0
-AllowTwoSide.Interaction.Guild = 0
-AllowTwoSide.Interaction.Auction = 0
-AllowTwoSide.Interaction.Mail = 0
-AllowTwoSide.WhoList = 0
+AllowTwoSide.Interaction.Group = 1
+AllowTwoSide.Interaction.Guild = 1
+AllowTwoSide.Interaction.Auction = 1
+AllowTwoSide.Interaction.Mail = 1
+AllowTwoSide.WhoList = 1
 AllowTwoSide.AddFriend = 0
 TalentsInspecting = 1
 
@@ -833,27 +823,27 @@ CreatureFamilyAssistanceRadius = 10
 CreatureFamilyAssistanceDelay = 1500
 CreatureFamilyFleeDelay = 7000
 WorldBossLevelDiff = 3
-Corpse.Decay.NORMAL = 60
+Corpse.Decay.NORMAL = 120
 Corpse.Decay.RARE = 300
 Corpse.Decay.ELITE = 300
 Corpse.Decay.RAREELITE = 300
 Corpse.Decay.WORLDBOSS = 3600
 Rate.Corpse.Decay.Looted = 0.1
-Rate.Creature.Normal.Damage = 1
-Rate.Creature.Elite.Elite.Damage = 1
-Rate.Creature.Elite.RAREELITE.Damage = 1
-Rate.Creature.Elite.WORLDBOSS.Damage = 1
-Rate.Creature.Elite.RARE.Damage = 1
-Rate.Creature.Normal.SpellDamage = 1
-Rate.Creature.Elite.Elite.SpellDamage = 1
-Rate.Creature.Elite.RAREELITE.SpellDamage = 1
-Rate.Creature.Elite.WORLDBOSS.SpellDamage = 1
-Rate.Creature.Elite.RARE.SpellDamage = 1
-Rate.Creature.Normal.HP = 1
-Rate.Creature.Elite.Elite.HP = 1
-Rate.Creature.Elite.RAREELITE.HP = 1
-Rate.Creature.Elite.WORLDBOSS.HP = 1
-Rate.Creature.Elite.RARE.HP = 1
+Rate.Creature.Normal.Damage = 0.5
+Rate.Creature.Elite.Elite.Damage = 0.4
+Rate.Creature.Elite.RAREELITE.Damage = 0.3
+Rate.Creature.Elite.WORLDBOSS.Damage = 0.2
+Rate.Creature.Elite.RARE.Damage = 0.4
+Rate.Creature.Normal.SpellDamage = 0.5
+Rate.Creature.Elite.Elite.SpellDamage = 0.3
+Rate.Creature.Elite.RAREELITE.SpellDamage = 0.2
+Rate.Creature.Elite.WORLDBOSS.SpellDamage = 0.1
+Rate.Creature.Elite.RARE.SpellDamage = 0.3
+Rate.Creature.Normal.HP = 0.5
+Rate.Creature.Elite.Elite.HP = 0.4
+Rate.Creature.Elite.RAREELITE.HP = 0.3
+Rate.Creature.Elite.WORLDBOSS.HP = 0.4
+Rate.Creature.Elite.RARE.HP = 0.4
 ListenRange.Say = 40
 ListenRange.TextEmote = 40
 ListenRange.Yell = 300
@@ -1038,8 +1028,8 @@ Visibility.GroupMode = 0
 Visibility.Distance.Continents    = 90
 Visibility.Distance.Instances     = 120
 Visibility.Distance.BGArenas      = 180
-Visibility.Distance.Object        = 100
-Visibility.Distance.InFlight      = 100
+Visibility.Distance.Object        = 132
+Visibility.Distance.InFlight      = 200
 Visibility.Distance.Grey.Unit   = 1
 Visibility.Distance.Grey.Object = 10
 
@@ -1175,49 +1165,49 @@ Visibility.Distance.Grey.Object = 10
 #
 ###################################################################################################################
 
-Rate.Health = 1
-Rate.Mana = 1
-Rate.Rage.Income = 1
+Rate.Health = 2
+Rate.Mana = 2
+Rate.Rage.Income = 2
 Rate.Rage.Loss = 1
-Rate.RunicPower.Income = 1
+Rate.RunicPower.Income = 2
 Rate.RunicPower.Loss = 1
-Rate.Focus = 1
-Rate.Skill.Discovery = 1
-Rate.Drop.Item.Poor = 1
-Rate.Drop.Item.Normal = 1
-Rate.Drop.Item.Uncommon = 1
-Rate.Drop.Item.Rare = 1
-Rate.Drop.Item.Epic = 1
-Rate.Drop.Item.Legendary = 1
-Rate.Drop.Item.Artifact = 1
-Rate.Drop.Item.Referenced = 1
-Rate.Drop.Money = 1
-Rate.XP.Kill    = 1
-Rate.XP.Quest   = 1
-Rate.XP.Explore = 1
-Rate.Rest.InGame = 1
-Rate.Rest.Offline.InTavernOrCity = 1
-Rate.Rest.Offline.InWilderness = 1
+Rate.Focus = 2
+Rate.Skill.Discovery = 2
+Rate.Drop.Item.Poor = 2
+Rate.Drop.Item.Normal = 2
+Rate.Drop.Item.Uncommon = 2
+Rate.Drop.Item.Rare = 2
+Rate.Drop.Item.Epic = 2
+Rate.Drop.Item.Legendary = 2
+Rate.Drop.Item.Artifact = 2
+Rate.Drop.Item.Referenced = 3
+Rate.Drop.Money = 5
+Rate.XP.Kill    = 4
+Rate.XP.Quest   = 6
+Rate.XP.Explore = 5
+Rate.Rest.InGame = 2
+Rate.Rest.Offline.InTavernOrCity = 2
+Rate.Rest.Offline.InWilderness = 2
 Rate.Damage.Fall = 1
 Rate.Auction.Time = 1
 Rate.Auction.Deposit = 1
 Rate.Auction.Cut = 1
-Rate.Honor = 1
+Rate.Honor = 2
 Rate.Mining.Amount = 1
 Rate.Mining.Next   = 1
-Rate.Talent = 1
-Rate.Reputation.Gain = 1
-Rate.Reputation.LowLevel.Kill    = 1
-Rate.Reputation.LowLevel.Quest   = 1
+Rate.Talent = 3
+Rate.Reputation.Gain = 4
+Rate.Reputation.LowLevel.Kill    = 2
+Rate.Reputation.LowLevel.Quest   = 2
 Rate.InstanceResetTime = 1
-SkillGain.Crafting = 1
+SkillGain.Crafting = 2
 SkillGain.Defense = 1
-SkillGain.Gathering = 1
+SkillGain.Gathering = 2
 SkillGain.Weapon = 1
 SkillChance.Orange = 100
 SkillChance.Yellow = 75
-SkillChance.Green  = 25
-SkillChance.Grey   = 0
+SkillChance.Green  = 50
+SkillChance.Grey   = 35
 SkillChance.MiningSteps   = 0
 SkillChance.SkinningSteps = 0
 DurabilityLossChance.Damage = 0.5

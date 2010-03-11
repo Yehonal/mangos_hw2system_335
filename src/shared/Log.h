@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -126,6 +127,7 @@ class Log : public MaNGOS::Singleton<Log, MaNGOS::ClassLevelLockable<Log, ACE_Th
         bool IsOutDebug() const { return m_logLevel > 2 || (m_logFileLevel > 2 && logfile); }
         bool IsOutCharDump() const { return m_charLog_Dump; }
         bool IsIncludeTime() const { return m_includeTime; }
+		void SetChatLog(bool sw) { sw ?  openLogFile("RaLogFile","RaLogTimestamp","a") :  raLogfile=NULL; }  //[HW2] personale 
     private:
         FILE* openLogFile(char const* configFileName,char const* configTimeStampFlag, char const* mode);
         FILE* openGmlogPerAccount(uint32 account);
@@ -172,3 +174,4 @@ void MANGOS_DLL_SPEC debug_log(const char * str, ...) ATTR_PRINTF(1,2);
 void MANGOS_DLL_SPEC error_log(const char * str, ...) ATTR_PRINTF(1,2);
 void MANGOS_DLL_SPEC error_db_log(const char * str, ...) ATTR_PRINTF(1,2);
 #endif
+ 

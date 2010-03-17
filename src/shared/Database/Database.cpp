@@ -231,4 +231,3 @@ bool Database::CheckRequiredField( char const* table_name, char const* required_
 
     return false;
 }
-}

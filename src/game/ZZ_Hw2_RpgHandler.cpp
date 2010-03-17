@@ -256,7 +256,7 @@ std::list<Unit *> Hw2Class::SelectNearbyTargets(Unit* unit,uint8 tipo,float dist
 	// tipo1: friendly tipo2: unfriendly
 	if (tipo==1)
 	{
-			MaNGOS::AnyFriendlyUnitInObjectRangeCheck u_check(unit, unit, distanza);
+			MaNGOS::AnyFriendlyUnitInObjectRangeCheck u_check(unit, distanza);
 			MaNGOS::UnitListSearcher<MaNGOS::AnyFriendlyUnitInObjectRangeCheck> searcher(unit, targets, u_check);
 
 			TypeContainerVisitor<MaNGOS::UnitListSearcher<MaNGOS::AnyFriendlyUnitInObjectRangeCheck>, WorldTypeMapContainer > world_unit_searcher(searcher);
@@ -266,7 +266,7 @@ std::list<Unit *> Hw2Class::SelectNearbyTargets(Unit* unit,uint8 tipo,float dist
 	        cell.Visit(p, grid_unit_searcher, *unit->GetMap(), *unit , distanza);
 	}else if (tipo==2)
 	{
-			MaNGOS::AnyFriendlyUnitInObjectRangeCheck u_check(unit, unit, distanza);
+			MaNGOS::AnyFriendlyUnitInObjectRangeCheck u_check(unit, distanza);
 			MaNGOS::UnitListSearcher<MaNGOS::AnyFriendlyUnitInObjectRangeCheck> searcher(unit, targets, u_check);
 
 			TypeContainerVisitor<MaNGOS::UnitListSearcher<MaNGOS::AnyFriendlyUnitInObjectRangeCheck>, WorldTypeMapContainer > world_unit_searcher(searcher);
@@ -303,15 +303,17 @@ void Creature::AzerothRpgFunctions(uint8 tipo,uint32 diff)
  Player *target = NULL;
  int parlato = 70; // un numero qualsiasi tranne che 0
 
+ target = sObjectMgr.GetPlayer(saved_target);
  if (walk_timer!=0)
 	if (walk_timer<diff)
 	{
 		walk_timer=0;
 	} else
 	{
-	  if (sObjectMgr.GetPlayer(saved_target) && GetDistance(sObjectMgr.GetPlayer(saved_target))<=1.5f)
+	  if (target && GetDistance(target)<=1.5f)
 	  {
 		   StopMoving();
+           target->TalkedToCreature(GetEntry(), GetGUID());
            target->PrepareGossipMenu(this);
            target->SendPreparedGossip(this);
 		   walk_timer=0;

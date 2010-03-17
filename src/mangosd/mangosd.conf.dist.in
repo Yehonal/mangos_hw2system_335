@@ -655,7 +655,7 @@ AllFlightPaths = 1
 AlwaysMaxSkillForLevel = 0
 ActivateWeather = 1
 CastUnstuck = 1
-MaxSpellCastsInChain = 10
+MaxSpellCastsInChain = 5
 Instance.IgnoreLevel = 0
 Instance.IgnoreRaid = 1
 Instance.ResetTimeHour = 4
@@ -680,7 +680,7 @@ OffhandCheckAtTalentsReset = 0
 ClientCacheVersion = 0
 Event.Announce = 0
 BeepAtStart = 1
-Motd = "Benvenuti nel reame di Pepy & Lola"
+Motd = "Benvenuti nel reame di Pepy & Lola, TI AMO PICCOLA!!!!"
 
 ###################################################################################################################
 # PLAYER INTERACTION
@@ -1182,7 +1182,7 @@ Rate.Drop.Item.Legendary = 2
 Rate.Drop.Item.Artifact = 2
 Rate.Drop.Item.Referenced = 3
 Rate.Drop.Money = 5
-Rate.XP.Kill    = 4
+Rate.XP.Kill    = 7
 Rate.XP.Quest   = 6
 Rate.XP.Explore = 5
 Rate.Rest.InGame = 2

@@ -19,7 +19,7 @@
 /** \file
     \ingroup world
 */
-
+#include "ZZ_ScriptsPersonali.h"
 #include "Common.h"
 #include "Database/DatabaseEnv.h"
 #include "Config/ConfigEnv.h"
@@ -106,6 +106,8 @@ World::World()
 
     for(int i = 0; i < CONFIG_BOOL_VALUE_COUNT; ++i)
         m_configBoolValues[i] = false;
+
+	sHw2.Hw2Config(true); //inizializza flag tournament
 }
 
 /// World destructor
@@ -1145,6 +1147,9 @@ void World::SetInitialWorldSettings()
 
     sLog.outString( "Loading GameObjects for quests..." );
     sObjectMgr.LoadGameObjectForQuests();
+
+	sLog.outString( "CARICAMENTO RPG ACTION..." );
+	sHw2.InitList();
 
     sLog.outString( "Loading BattleMasters..." );
     sBattleGroundMgr.LoadBattleMastersEntry();

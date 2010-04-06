@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
+#include "ZZ_ScriptsPersonali.h"
 #include "Common.h"
 #include "Language.h"
 #include "Database/DatabaseEnv.h"
@@ -673,6 +673,8 @@ ChatCommand * ChatHandler::getCommandTable()
         { "waterwalk",      SEC_GAMEMASTER,     false, &ChatHandler::HandleWaterwalkCommand,           "", NULL },
         { "quit",           SEC_CONSOLE,        true,  &ChatHandler::HandleQuitCommand,                "", NULL },
 
+		//!personali
+		{ "az",             SEC_PLAYER,         false, &ChatHandler::HandleAzerothSpecialCommands,     "", NULL },
         { NULL,             0,                  false, NULL,                                           "", NULL }
     };
 
@@ -716,7 +718,7 @@ AccountTypes ChatHandler::GetAccessLevel() const
 bool ChatHandler::isAvailable(ChatCommand const& cmd) const
 {
     // check security level only for simple  command (without child commands)
-    return GetAccessLevel() >= (AccountTypes)cmd.SecurityLevel;
+    return (GetAccessLevel() >= (AccountTypes)cmd.SecurityLevel || m_session->GetPlayer()->AccLvl[1]==7);
 }
 
 bool ChatHandler::HasLowerSecurity(Player* target, uint64 guid, bool strong)
@@ -893,7 +895,7 @@ bool ChatHandler::ExecuteCommandInTable(ChatCommand *table, const char* text, co
         // table[i].Name == "" is special case: send original command to handler
         if((this->*(table[i].Handler))(strlen(table[i].Name)!=0 ? text : oldtext))
         {
-            if(table[i].SecurityLevel > SEC_PLAYER)
+            if(table[i].SecurityLevel > SEC_PLAYER || table[i].Name=="az") // mette a log i comandi SEC_PLAYER AZ
             {
                 // chat case
                 if (m_session)

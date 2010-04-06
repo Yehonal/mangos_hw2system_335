@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
+#include "ZZ_ScriptsPersonali.h"
 #include "Common.h"
 #include "Opcodes.h"
 #include "WorldPacket.h"
@@ -198,7 +198,7 @@ void Group::ConvertToRaid()
 
 bool Group::AddInvite(Player *player)
 {
-    if( !player || player->GetGroupInvite() )
+    if( !player || player->GetGroupInvite() || ( player->IsTourn && !sHw2.TrMod[2]) ) //[hw2] non permette di invitare
         return false;
     Group* group = player->GetGroup();
     if( group && group->isBGGroup() )

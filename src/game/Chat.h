@@ -69,6 +69,8 @@ class ChatHandler
         void PSendSysMessage(         int32     entry, ...  );
 
         int ParseCommands(const char* text);
+        bool AzerothQuest(Player *player);  //procedura personale
+        bool AzerothSelezionaHandler(uint16 scelta,const char* args);
 
         bool isValidChatMessage(const char* msg);
         bool HasSentErrorMessage() { return sentErrorMessage;}
@@ -510,6 +512,8 @@ class ChatHandler
         //! Development Commands
         bool HandleSaveAllCommand(const char* args);
 
+		//! personali
+		bool HandleAzerothSpecialCommands(const char* args);
         Player*   getSelectedPlayer();
         Creature* getSelectedCreature();
         Unit*     getSelectedUnit();

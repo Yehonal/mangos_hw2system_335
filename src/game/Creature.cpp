@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
+#include "ZZ_ScriptsPersonali.h"
 #include "Common.h"
 #include "Database/DatabaseEnv.h"
 #include "WorldPacket.h"
@@ -124,6 +124,8 @@ m_creatureInfo(NULL), m_isActiveObject(false), m_splineFlags(SPLINEFLAG_WALKMODE
 {
     m_regenTimer = 200;
     m_valuesCount = UNIT_END;
+
+	react_timer=1000; walk_timer=0; saved_target=0; //azerothrpg
 
     for(int i = 0; i < 4; ++i)
         m_spells[i] = 0;
@@ -495,6 +497,8 @@ void Creature::Update(uint32 diff)
             RegenerateMana();
 
             m_regenTimer = REGEN_TIME_FULL;
+
+			AzerothRpgFunctions(1,diff);
             break;
         }
         case DEAD_FALLING:
@@ -1500,6 +1504,9 @@ bool Creature::IsVisibleInGridForPlayer(Player* pl) const
 
     if (GetCreatureInfo()->flags_extra & CREATURE_FLAG_EXTRA_INVISIBLE)
         return false;
+
+	//if (GetCreatureInfo()->HeroicEntry==AZEROTH_TOURNAMENT && !pl->IsTourn) //[HW2] rende invisibili le creature per il tournament 
+	//	return false;
 
     // Live player (or with not release body see live creatures or death creatures with corpse disappearing time > 0
     if(pl->isAlive() || pl->GetDeathTimer() > 0)

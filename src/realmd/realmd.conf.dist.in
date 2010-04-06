@@ -96,8 +96,8 @@ ConfVersion=2007062001
 #
 ###################################################################################################################
 
-LoginDatabaseInfo = "127.0.0.1;3306;root;mangos;realmd"
-LogsDir = ""
+LoginDatabaseInfo = "127.0.0.1;3306;root;root;realmd_mangos_hw2"
+LogsDir = "D:\EMU-works\server_logs\Mangos_hw2\"
 MaxPingTime = 30
 RealmServerPort = 3724
 BindIP = "0.0.0.0"

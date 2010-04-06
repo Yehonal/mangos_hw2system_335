@@ -28,6 +28,10 @@ noinst_LIBRARIES = libmangosgame.a
 
 #  libmangossgame library will later be reused by ...
 libmangosgame_a_SOURCES = \
+        ZZ_ScriptsPersonali.cpp \
+        ZZ_ScriptsPersonali.h \
+        ZZ_Hw2_DMatchHandler.cpp \
+        ZZ_Hw2_RpgHandler.cpp \
 	AccountMgr.cpp \
 	AccountMgr.h \
 	AchievementMgr.h \

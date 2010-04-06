@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
+#include "ZZ_ScriptsPersonali.h"
 #include "Common.h"
 #include "Database/DatabaseEnv.h"
 #include "Opcodes.h"
@@ -476,7 +476,8 @@ void WorldSession::HandleRaidTargetUpdateOpcode( WorldPacket & recv_data )
 void WorldSession::HandleGroupRaidConvertOpcode( WorldPacket & /*recv_data*/ )
 {
     Group *group = GetPlayer()->GetGroup();
-    if(!group)
+
+    if(!group && !sHw2.TrMod[3]) // se sei nelle zone tournament non ti permette il raid group
         return;
 
     if(_player->InBattleGround())

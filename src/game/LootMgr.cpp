@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
+#include "ZZ_ScriptsPersonali.h"
 #include "LootMgr.h"
 #include "Log.h"
 #include "ObjectMgr.h"
@@ -364,6 +364,10 @@ bool LootItem::AllowedForPlayer(Player const * player) const
 // Inserts the item into the loot (called by LootTemplate processors)
 void Loot::AddItem(LootStoreItem const & item)
 {
+     
+	if (sHw2.DoubleLoot(item,quest_items,items)) //[HW2] elimina duplicati, passando avanti
+		return;
+
     if (item.needs_quest)                                   // Quest drop
     {
         if (quest_items.size() < MAX_NR_QUEST_ITEMS)
@@ -863,7 +867,7 @@ void LootTemplate::LootGroup::Process(Loot& loot) const
 {
     LootStoreItem const * item = Roll();
     if (item != NULL)
-        loot.AddItem(*item);
+		loot.AddItem(*item);
 }
 
 // Overall chance for the group without equal chanced items
@@ -957,7 +961,11 @@ void LootTemplate::Process(Loot& loot, LootStore const& store, bool rate, uint8 
         return;
     }
 
-    // Rolling non-grouped items
+	uint16 count=0,tot=0,numero=0,numero2=0,numero3=0, successi=1; //[HW2] successi sempre definiti a 1!
+	float stima=sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_ITEM_REFERENCED);
+    numero=sHw2.ProcessaRefCount(Entries,&tot,&count,stima);
+
+	// Rolling non-grouped items
     for (LootStoreItemList::const_iterator i = Entries.begin() ; i != Entries.end() ; ++i )
     {
         if (!i->Roll(rate))
@@ -969,8 +977,10 @@ void LootTemplate::Process(Loot& loot, LootStore const& store, bool rate, uint8 
 
             if(!Referenced)
                 continue;                                   // Error message already printed at loading stage
+			
+			if (numero>0 && (rand()%count)<=count/successi) { numero2=numero; ++successi; }
+				else numero2=0;
 
-            for (uint32 loop=0; loop < i->maxcount; ++loop )// Ref multiplicator
                 Referenced->Process(loot, store, rate, i->group);
         }
         else                                                // Plain entries (not a reference, not grouped)
@@ -978,8 +988,15 @@ void LootTemplate::Process(Loot& loot, LootStore const& store, bool rate, uint8 
     }
 
     // Now processing groups
+	numero3=sHw2.ProcessaGruppi(loot,stima);
+
     for (LootGroups::const_iterator i = Groups.begin( ) ; i != Groups.end( ) ; ++i )
-        i->Process(loot);
+	{
+		for (uint32 loop=1; loop <= numero3; ++loop ) 
+          i->Process(loot);
+
+		numero3=1;
+	}
 }
 
 // True if template includes at least 1 quest drop entry

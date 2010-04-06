@@ -1010,6 +1010,22 @@
 				RelativePath="..\..\src\game\World.h"
 				>
 			</File>
+			<File
+				RelativePath="..\..\src\game\ZZ_Hw2_DMatchHandler.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\ZZ_Hw2_RpgHandler.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\ZZ_ScriptsPersonali.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\ZZ_ScriptsPersonali.h"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Motion generators"

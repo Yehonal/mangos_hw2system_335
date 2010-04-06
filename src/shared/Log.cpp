@@ -227,7 +227,7 @@ void Log::Initialize()
 
     charLogfile = openLogFile("CharLogFile","CharLogTimestamp","a");
     dberLogfile = openLogFile("DBErrorLogFile",NULL,"a");
-    raLogfile = openLogFile("RaLogFile",NULL,"a");
+    raLogfile = openLogFile("RaLogFile","RaLogTimestamp","a"); //[hw2]
     worldLogfile = openLogFile("WorldLogFile","WorldLogTimestamp","a");
 
     // Main log file settings
@@ -850,3 +850,5 @@ void error_db_log(const char * str, ...)
 
     sLog.outErrorDb("%s", buf);
 }
+
+ 

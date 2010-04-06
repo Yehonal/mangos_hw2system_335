@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
+#include "ZZ_ScriptsPersonali.h"
 #include "Common.h"
 #include "Database/DatabaseEnv.h"
 #include "WorldPacket.h"
@@ -574,7 +574,7 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder *holder)
     pCurrChar->GetMotionMaster()->Initialize();
 
     // "GetAccountId()==db stored account id" checked in LoadFromDB (prevent login not own character using cheating tools)
-    if(!pCurrChar->LoadFromDB(GUID_LOPART(playerGuid), holder))
+    if(!pCurrChar->LoadFromDB(GUID_LOPART(playerGuid), holder)) // || sHw2.DmIsTourn(pCurrChar)) (HW2) evita l'accesso a chi e' flaggato tournament - OUTOFDATE
     {
         KickPlayer();                                       // disconnect client, player no set to session and it will not deleted or saved at kick
         delete pCurrChar;                                   // delete it manually
@@ -684,7 +684,8 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder *holder)
     pCurrChar->SendInitialPacketsBeforeAddToMap();
 
     //Show cinematic at the first time that player login
-    if( !pCurrChar->getCinematic() )
+	pCurrChar->IsTourn = sHw2.DmIsTourn(pCurrChar);
+    if( !pCurrChar->getCinematic() && !pCurrChar->IsTourn)
     {
         pCurrChar->setCinematic(1);
 
@@ -788,6 +789,8 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder *holder)
 
     if(!pCurrChar->IsStandState() && !pCurrChar->hasUnitState(UNIT_STAT_STUNNED))
         pCurrChar->SetStandState(UNIT_STAND_STATE_STAND);
+
+	sHw2.ImpostaGiocatore(pCurrChar);  //[HW2] Imposta il giocatore , deve stare alla fine del login
 
     m_playerLoading = false;
     delete holder;

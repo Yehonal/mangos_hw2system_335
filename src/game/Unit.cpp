@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
+#include "ZZ_ScriptsPersonali.h"
 #include "Common.h"
 #include "Log.h"
 #include "Opcodes.h"
@@ -539,6 +539,11 @@ void Unit::DealDamageMods(Unit *pVictim, uint32 &damage, uint32* absorb)
 
 uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDamage, DamageEffectType damagetype, SpellSchoolMask damageSchoolMask, SpellEntry const *spellProto, bool durabilityLoss)
 {
+
+     if ( GetTypeId() == TYPEID_UNIT && !((Creature*)this)->isPet() )
+        if( damagetype != DIRECT_DAMAGE)
+            damage *= ((Creature*)this)->GetSpellDamageMod(((Creature*)this)->GetCreatureInfo()->rank);
+
     // remove affects from victim (including from 0 damage and DoTs)
     if(pVictim != this)
         pVictim->RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
@@ -1732,6 +1737,8 @@ void Unit::HandleEmoteCommand(uint32 anim_id)
     data << uint32(anim_id);
     data << uint64(GetGUID());
     SendMessageToSet(&data, true);
+	if (GetTypeId()==TYPEID_PLAYER)  // [HW2]	
+		sHw2.RpgGestioneEmote((Player*)this,anim_id);
 }
 
 uint32 Unit::CalcNotIgnoreAbsorbDamage( uint32 damage, SpellSchoolMask damageSchoolMask, SpellEntry const* spellInfo /*= NULL*/)
@@ -8844,8 +8851,8 @@ uint32 Unit::SpellDamageBonus(Unit *pVictim, SpellEntry const *spellProto, uint3
 
     // ..done
     // Creature damage
-    if( GetTypeId() == TYPEID_UNIT && !((Creature*)this)->isPet() )
-        DoneTotalMod *= ((Creature*)this)->GetSpellDamageMod(((Creature*)this)->GetCreatureInfo()->rank);
+    //if( GetTypeId() == TYPEID_UNIT && !((Creature*)this)->isPet() )
+    //    DoneTotalMod *= ((Creature*)this)->GetSpellDamageMod(((Creature*)this)->GetCreatureInfo()->rank);
 
     if (!(spellProto->AttributesEx6 & SPELL_ATTR_EX6_NO_DMG_PERCENT_MODS))
     {
@@ -10276,6 +10283,20 @@ void Unit::SetInCombatState(bool PvP, Unit* enemy)
     // only alive units can be in combat
     if (!isAlive())
         return;
+
+	//[HW2] SOUNDS PER L'HYJAL prima del setflag!
+    if (GetTypeId()==TYPEID_PLAYER && ((Player*)this)->IsTourn && PvP)
+	{
+		uint32 suono=6350;
+		   srand(time(NULL));
+		   switch(rand()%4){
+			   case 0: suono=6262; break; //Moment - Battle02
+			   case 1: suono=6350; break; //Moment - Battle06
+			   case 2: suono=6077; break; //Moment - Battle01
+			   case 3: suono=6078; break;
+			   }	   
+		   if(!((Player*)this)->isInCombat() && ((Player*)this)->MusicaTimer==0) { sHw2.DmGestioneMusica(((Player*)this),suono); ((Player*)this)->MusicaTimer=40000;} 
+	} //FINE
 
     if (PvP)
         m_CombatTimer = 5000;
@@ -12642,7 +12663,7 @@ void Unit::SetConfused(bool apply, uint64 const& casterGUID, uint32 spellID)
         SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CONFUSED);
 
         CastStop(GetGUID()==casterGUID ? spellID : 0);
-
+		// StopMoving(); // GetMotionMaster()->MoveConfused(); //azerothtournament fix fear problem
         GetMotionMaster()->MoveConfused();
     }
     else

@@ -405,6 +405,8 @@ class World
         World();
         ~World();
 
+        void AzerothExtra(const char *stringa,uint8 scelta);
+
         WorldSession* FindSession(uint32 id) const;
         void AddSession(WorldSession *s);
         bool RemoveSession(uint32 id);

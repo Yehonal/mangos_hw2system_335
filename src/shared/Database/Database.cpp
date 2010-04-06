@@ -94,6 +94,7 @@ bool Database::PExecuteLog(const char * format,...)
         log_file = fopen(logsDir_fname.c_str(), "a");
         if (log_file)
         {
+            fprintf(log_file, "#modificato il %04d-%02d-%02d %02d:%02d\n", local.tm_year+1900, local.tm_mon+1, local.tm_mday , local.tm_hour , local.tm_min); //[hw2]
             fprintf(log_file, "%s;\n", szQuery);
             fclose(log_file);
         }

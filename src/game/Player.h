@@ -1013,7 +1013,21 @@ class MANGOS_DLL_SPEC Player : public Unit
         void AddToWorld();
         void RemoveFromWorld();
 
-        bool TeleportTo(uint32 mapid, float x, float y, float z, float orientation, uint32 options = 0);
+        //personali
+		bool Frenesia,IsTourn;
+		uint8 FrenzyCount,AccLvl[2];
+	    uint32 Uccisioni,Morti,Suicidi,MusicaTimer;
+		int32 Crediti,Totale;
+		
+		// HW2 declaration
+		uint8 RpgPlGenere;
+		int32 RpgCredito,RpgTotalePt,RpgEpigoni;
+		uint64 RpgSupervisor;
+		std::string RpgIdentity;
+		bool Hw2ClassSelHandler(uint16 scelta,uint32 varia=0);
+		// HW2 declaration
+
+	    bool TeleportTo(uint32 mapid, float x, float y, float z, float orientation, uint32 options = 0);
 
         bool TeleportTo(WorldLocation const &loc, uint32 options = 0)
         {

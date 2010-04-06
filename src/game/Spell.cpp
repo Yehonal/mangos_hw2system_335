@@ -4995,9 +4995,9 @@ SpellCastResult Spell::CheckCast(bool strict)
                 // allow always ghost flight spells
                 if (m_caster->GetTypeId() == TYPEID_PLAYER && m_caster->isAlive())
                 {
-                    if (!((Player*)m_caster)->IsKnowHowFlyIn(m_caster->GetMapId(),zone))
+                    if (!((Player*)m_caster)->IsKnowHowFlyIn(m_caster->GetMapId(),zone) ) // [HW2] && ((Player*)m_caster)->GetMapId()!=0 && ((Player*)m_caster)->GetMapId()!=1
                         return m_IsTriggeredSpell ? SPELL_FAILED_DONT_REPORT : SPELL_FAILED_NOT_HERE;
-                }
+                } 
                 break;
             }
             case SPELL_AURA_PERIODIC_MANA_LEECH:

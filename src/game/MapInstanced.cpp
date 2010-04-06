@@ -140,6 +140,18 @@ Map* MapInstanced::CreateInstance(const uint32 mapId, Player * player)
 
         if(pSave)
         {
+			 /* if(GetId() == 44)
+			  {
+				 //sLog.outBasic("*** INSTANCE SENZA INSTANCEID (AzerothTournament) ***");
+				 NewInstanceId = 90;
+				 map = _FindMap(NewInstanceId);
+				 // it is possible that the save exists but the map doesn't
+				 if(!map)
+				 map = CreateInstance(NewInstanceId, NULL, pSave->GetDifficulty());
+				 return map;
+			 }
+			 else
+			 { */
             // solo/perm/group
             NewInstanceId = pSave->GetInstanceId();
             map = _FindMap(NewInstanceId);

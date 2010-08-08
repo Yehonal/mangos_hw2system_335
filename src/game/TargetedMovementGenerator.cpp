@@ -135,6 +135,9 @@ bool TargetedMovementGeneratorMedium<T,D>::Update(T &owner, const uint32 & time_
 
     Traveller<T> traveller(owner);
 
+    if (owner.hasUnitState(UNIT_STAT_FOLLOW))
+            owner.UpdateWalkMode(i_target.getTarget());  // aggiorna la camminata anche per i non-pet
+
     if (!i_destinationHolder.HasDestination())
         _setTargetLocation(owner);
     if (owner.IsStopped() && !i_destinationHolder.HasArrived())
@@ -232,7 +235,7 @@ void ChaseMovementGenerator<T>::Reset(T &owner)
 template<>
 void FollowMovementGenerator<Creature>::_updateWalkMode(Creature &u)
 {
-    if (i_target.isValid() && u.isPet())
+    if (i_target.isValid() /*&& u.isPet()*/) //[HW2] non solo per i pet
         u.UpdateWalkMode(i_target.getTarget());
 }
 
@@ -251,7 +254,7 @@ template<>
 void FollowMovementGenerator<Creature>::_updateSpeed(Creature &u)
 {
     // pet only sync speed with owner
-    if (!((Creature&)u).isPet() || !i_target.isValid() || i_target->GetGUID() != u.GetOwnerGUID())
+    if (/*!((Creature&)u).isPet()||*/  !i_target.isValid() /*|| i_target->GetGUID() != u.GetOwnerGUID()*/) //[HW2] non solo per i pet
         return;
 
     u.UpdateSpeed(MOVE_RUN,true);

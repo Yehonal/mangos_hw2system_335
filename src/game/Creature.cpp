@@ -125,7 +125,7 @@ m_creatureInfo(NULL), m_isActiveObject(false), m_splineFlags(SPLINEFLAG_WALKMODE
     m_regenTimer = 200;
     m_valuesCount = UNIT_END;
 
-	react_timer=1000; walk_timer=0; saved_target=0; //azerothrpg
+    react_timer=1000; walk_timer=0; saved_target=0, customScriptID = 0; //azerothrpg
 
     for(int i = 0; i < 4; ++i)
         m_spells[i] = 0;
@@ -960,6 +960,8 @@ void Creature::SelectLevel(const CreatureInfo *cinfo, float percentHealth, float
     uint32 minhealth = std::min(cinfo->maxhealth, cinfo->minhealth);
     uint32 maxhealth = std::max(cinfo->maxhealth, cinfo->minhealth);
     uint32 health = uint32(healthmod * (minhealth + uint32(rellevel*(maxhealth - minhealth))));
+
+    health = health < 1 ? 1 : health;
 
     SetCreateHealth(health);
     SetMaxHealth(health);
@@ -1956,7 +1958,7 @@ std::string Creature::GetScriptName() const
 
 uint32 Creature::GetScriptId() const
 {
-    return ObjectMgr::GetCreatureTemplate(GetEntry())->ScriptID;
+    return customScriptID ? customScriptID : ObjectMgr::GetCreatureTemplate(GetEntry())->ScriptID;
 }
 
 VendorItemData const* Creature::GetVendorItems() const

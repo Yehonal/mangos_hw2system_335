@@ -10720,12 +10720,12 @@ void Unit::UpdateWalkMode(Unit* source, bool self)
 
         if (on)
         {
-            if (((Creature*)this)->isPet() && hasUnitState(UNIT_STAT_FOLLOW))
+            if (/*((Creature*)this)->isPet() && */ hasUnitState(UNIT_STAT_FOLLOW)) //[HW2] non solo per i pet
                 ((Creature*)this)->AddSplineFlag(SPLINEFLAG_WALKMODE);
         }
         else
         {
-            if (((Creature*)this)->isPet())
+            /* if (((Creature*)this)->isPet()) */   //[HW2] non solo per i pet
                 ((Creature*)this)->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
         }
     }

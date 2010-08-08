@@ -1339,6 +1339,8 @@ void World::Update(uint32 diff)
     ///- Update the game time and check for shutdown time
     _UpdateGameTime();
 
+    sHw2.Update(diff);
+
     /// Handle daily quests reset time
     if(m_gameTime > m_NextDailyQuestReset)
     {

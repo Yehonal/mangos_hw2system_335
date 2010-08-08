@@ -396,7 +396,7 @@ class MANGOS_DLL_SPEC Creature : public Unit
         uint32 GetEquipmentId() const { return m_equipmentId; }
 
 		void AzerothRpgFunctions(uint8 tipo,uint32 diff=NULL);
-		uint32 react_timer,walk_timer,saved_target;
+		uint32 react_timer,walk_timer,saved_target , customScriptID;
 
         CreatureSubtype GetSubtype() const { return m_subtype; }
         bool isPet() const { return m_subtype == CREATURE_SUBTYPE_PET; }

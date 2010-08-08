@@ -90,14 +90,12 @@ void Hw2Class::DmCreaPet(Player *pl,Creature *creature)
     if(creatureTarget->isPet())
         return;
 
+    Pet* pet = new Pet(HUNTER_PET);
 
+    pet = pet->CreateTamedPetFrom(creatureTarget,13481);
 
-        Pet* pet = new Pet(HUNTER_PET);
-
-        pet = pet->CreateTamedPetFrom(creatureTarget,13481);
-
-	    if(!pet)                                                // in versy specific state like near world end/etc.
-         return;
+    if(!pet)                                                // in versy specific state like near world end/etc.
+     return;
 
     // kill original creature
     creatureTarget->setDeathState(JUST_DIED);
@@ -111,13 +109,13 @@ void Hw2Class::DmCreaPet(Player *pl,Creature *creature)
     pet->GetMap()->Add((Creature*)pet);
     pet->SetUInt32Value(UNIT_FIELD_LEVEL, level);
         
-        if(pl->GetTypeId() == TYPEID_PLAYER)
-        {
-			pet->SetFreeTalentPoints(16); // 350 nella 2.4.3 - 16 nella 3.0 
-            pl->SetPet(pet);
-            pet->SavePetToDB(PET_SAVE_AS_CURRENT);
-            pl->PetSpellInitialize();
-        }
+    if(pl->GetTypeId() == TYPEID_PLAYER)
+    {
+		pet->SetFreeTalentPoints(16); // 350 nella 2.4.3 - 16 nella 3.0 
+        pl->SetPet(pet);
+        pet->SavePetToDB(PET_SAVE_AS_CURRENT);
+        pl->PetSpellInitialize();
+    }
 
 }
 

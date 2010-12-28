@@ -16,8 +16,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if !defined(FIELD_H)
+#ifndef FIELD_H
 #define FIELD_H
+
+#include "Common.h"
 
 class Field
 {
@@ -39,6 +41,7 @@ class Field
         ~Field();
 
         enum DataTypes GetType() const { return mType; }
+        bool IsNULL() const { return mValue == NULL; }
 
         const char *GetString() const { return mValue; }
         std::string GetCppString() const

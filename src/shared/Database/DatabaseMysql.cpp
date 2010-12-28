@@ -50,6 +50,7 @@ DatabaseMysql::DatabaseMysql() : Database(), mMysql(0)
         if (!mysql_thread_safe())
         {
             sLog.outError("FATAL ERROR: Used MySQL library isn't thread-safe.");
+            Log::WaitBeforeContinueIfNeed();
             exit(1);
         }
     }
@@ -141,7 +142,7 @@ bool DatabaseMysql::Initialize(const char *infoString)
 
     if (mMysql)
     {
-        sLog.outDetail( "Connected to MySQL database at %s",
+        DETAIL_LOG( "Connected to MySQL database at %s",
             host.c_str());
         sLog.outString( "MySQL client library: %s", mysql_get_client_info());
         sLog.outString( "MySQL server ver: %s ", mysql_get_server_info( mMysql));
@@ -155,9 +156,9 @@ bool DatabaseMysql::Initialize(const char *infoString)
         // autocommit is turned of during it.
         // Setting it to on makes atomic updates work
         if (!mysql_autocommit(mMysql, 1))
-            sLog.outDetail("AUTOCOMMIT SUCCESSFULLY SET TO 1");
+            DETAIL_LOG("AUTOCOMMIT SUCCESSFULLY SET TO 1");
         else
-            sLog.outDetail("AUTOCOMMIT NOT SET TO 1");
+            DETAIL_LOG("AUTOCOMMIT NOT SET TO 1");
         /*-------------------------------------*/
 
         // set connection properties to UTF8 to properly handle locales for different
@@ -184,9 +185,9 @@ bool DatabaseMysql::_Query(const char *sql, MYSQL_RES **pResult, MYSQL_FIELD **p
     {
         // guarded block for thread-safe mySQL request
         ACE_Guard<ACE_Thread_Mutex> query_connection_guard(mMutex);
-        #ifdef MANGOS_DEBUG
-        uint32 _s = getMSTime();
-        #endif
+
+        uint32 _s = WorldTimer::getMSTime();
+
         if(mysql_query(mMysql, sql))
         {
             sLog.outErrorDb( "SQL: %s", sql );
@@ -195,9 +196,7 @@ bool DatabaseMysql::_Query(const char *sql, MYSQL_RES **pResult, MYSQL_FIELD **p
         }
         else
         {
-            #ifdef MANGOS_DEBUG
-            sLog.outDebug("[%u ms] SQL: %s", getMSTimeDiff(_s,getMSTime()), sql );
-            #endif
+            DEBUG_FILTER_LOG(LOG_FILTER_SQL_TEXT, "[%u ms] SQL: %s", WorldTimer::getMSTimeDiff(_s,WorldTimer::getMSTime()), sql );
         }
 
         *pResult = mysql_store_result(mMysql);
@@ -265,6 +264,8 @@ bool DatabaseMysql::Execute(const char *sql)
     // don't use queued execution if it has not been initialized
     if (!m_threadBody) return DirectExecute(sql);
 
+    ACE_Guard<ACE_Thread_Mutex> _lock(nMutex);
+
     tranThread = ACE_Based::Thread::current();              // owner of this transaction
     TransactionQueues::iterator i = m_tranQueues.find(tranThread);
     if (i != m_tranQueues.end() && i->second != NULL)
@@ -289,9 +290,8 @@ bool DatabaseMysql::DirectExecute(const char* sql)
         // guarded block for thread-safe mySQL request
         ACE_Guard<ACE_Thread_Mutex> query_connection_guard(mMutex);
 
-        #ifdef MANGOS_DEBUG
-        uint32 _s = getMSTime();
-        #endif
+        uint32 _s = WorldTimer::getMSTime();
+
         if(mysql_query(mMysql, sql))
         {
             sLog.outErrorDb("SQL: %s", sql);
@@ -300,9 +300,7 @@ bool DatabaseMysql::DirectExecute(const char* sql)
         }
         else
         {
-            #ifdef MANGOS_DEBUG
-            sLog.outDebug("[%u ms] SQL: %s", getMSTimeDiff(_s,getMSTime()), sql );
-            #endif
+            DEBUG_FILTER_LOG(LOG_FILTER_SQL_TEXT, "[%u ms] SQL: %s", WorldTimer::getMSTimeDiff(_s,WorldTimer::getMSTime()), sql );
         }
         // end guarded block
     }
@@ -320,7 +318,7 @@ bool DatabaseMysql::_TransactionCmd(const char *sql)
     }
     else
     {
-        DEBUG_LOG("SQL: %s", sql);
+        DEBUG_FILTER_LOG(LOG_FILTER_SQL_TEXT, "SQL: %s", sql);
     }
     return true;
 }
@@ -344,6 +342,8 @@ bool DatabaseMysql::BeginTransaction()
         }
         return true;                                        // transaction started
     }
+
+    ACE_Guard<ACE_Thread_Mutex> _lock(nMutex);
 
     tranThread = ACE_Based::Thread::current();              // owner of this transaction
     TransactionQueues::iterator i = m_tranQueues.find(tranThread);
@@ -373,16 +373,18 @@ bool DatabaseMysql::CommitTransaction()
         return _res;
     }
 
+    ACE_Guard<ACE_Thread_Mutex> _lock(nMutex);
+
     tranThread = ACE_Based::Thread::current();
     TransactionQueues::iterator i = m_tranQueues.find(tranThread);
     if (i != m_tranQueues.end() && i->second != NULL)
     {
         m_threadBody->Delay(i->second);
-        i->second = NULL;
+        m_tranQueues.erase(i);
         return true;
     }
-    else
-        return false;
+
+    return false;
 }
 
 bool DatabaseMysql::RollbackTransaction()
@@ -401,13 +403,16 @@ bool DatabaseMysql::RollbackTransaction()
         return _res;
     }
 
+    ACE_Guard<ACE_Thread_Mutex> _lock(nMutex);
+
     tranThread = ACE_Based::Thread::current();
     TransactionQueues::iterator i = m_tranQueues.find(tranThread);
     if (i != m_tranQueues.end() && i->second != NULL)
     {
         delete i->second;
-        i->second = NULL;
+        m_tranQueues.erase(i);
     }
+
     return true;
 }
 

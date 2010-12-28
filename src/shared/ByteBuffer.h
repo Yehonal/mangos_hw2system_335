@@ -20,7 +20,6 @@
 #define _BYTEBUFFER_H
 
 #include "Common.h"
-#include "Errors.h"
 #include "Log.h"
 #include "Utilities/ByteConverter.h"
 
@@ -35,7 +34,7 @@ class ByteBufferException
 
         void PrintPosError() const
         {
-            sLog.outError("ERROR: Attempted to %s in ByteBuffer (pos: " SIZEFMTD " size: "SIZEFMTD") value with size: " SIZEFMTD,
+            sLog.outError("Attempted to %s in ByteBuffer (pos: " SIZEFMTD " size: "SIZEFMTD") value with size: " SIZEFMTD,
                 (add ? "put" : "get"), pos, size, esize);
         }
     private:
@@ -297,7 +296,7 @@ class ByteBuffer
         void read(uint8 *dest, size_t len)
         {
             if(_rpos  + len > size())
-               throw ByteBufferException(false, _rpos, len, size());
+                throw ByteBufferException(false, _rpos, len, size());
             memcpy(dest, &_storage[_rpos], len);
             _rpos += len;
         }
@@ -359,7 +358,7 @@ class ByteBuffer
             if (!cnt)
                 return;
 
-            ASSERT(size() < 10000000);
+            MANGOS_ASSERT(size() < 10000000);
 
             if (_storage.size() < _wpos + cnt)
                 _storage.resize(_wpos + cnt);
@@ -385,33 +384,34 @@ class ByteBuffer
 
         void appendPackGUID(uint64 guid)
         {
-            if (_storage.size() < _wpos + sizeof(guid) + 1)
-                _storage.resize(_wpos + sizeof(guid) + 1);
-
-            size_t mask_position = wpos();
-            *this << uint8(0);
-            for(uint8 i = 0; i < 8; ++i)
+            uint8 packGUID[8+1];
+            packGUID[0] = 0;
+            size_t size = 1;
+            for (uint8 i = 0; guid != 0; ++i)
             {
-                if(guid & 0xFF)
+                if (guid & 0xFF)
                 {
-                    _storage[mask_position] |= uint8(1 << i);
-                    *this << uint8(guid & 0xFF);
+                    packGUID[0] |= uint8(1 << i);
+                    packGUID[size] =  uint8(guid & 0xFF);
+                    ++size;
                 }
 
                 guid >>= 8;
             }
+
+            append(packGUID, size);
         }
 
         void put(size_t pos, const uint8 *src, size_t cnt)
         {
             if(pos + cnt > size())
-               throw ByteBufferException(true, pos, cnt, size());
+                throw ByteBufferException(true, pos, cnt, size());
             memcpy(&_storage[pos], src, cnt);
         }
 
         void print_storage() const
         {
-            if(!sLog.IsOutDebug())                          // optimize disabled debug output
+            if (!sLog.HasLogLevelOrHigher(LOG_LVL_DEBUG))   // optimize disabled debug output
                 return;
 
             sLog.outDebug("STORAGE_SIZE: %lu", (unsigned long)size() );
@@ -422,7 +422,7 @@ class ByteBuffer
 
         void textlike() const
         {
-            if(!sLog.IsOutDebug())                          // optimize disabled debug output
+            if (!sLog.HasLogLevelOrHigher(LOG_LVL_DEBUG))   // optimize disabled debug output
                 return;
 
             sLog.outDebug("STORAGE_SIZE: %lu", (unsigned long)size() );
@@ -433,61 +433,36 @@ class ByteBuffer
 
         void hexlike() const
         {
-            if(!sLog.IsOutDebug())                          // optimize disabled debug output
+            if (!sLog.HasLogLevelOrHigher(LOG_LVL_DEBUG))   // optimize disabled debug output
                 return;
 
             uint32 j = 1, k = 1;
             sLog.outDebug("STORAGE_SIZE: %lu", (unsigned long)size() );
 
-            if(sLog.IsIncludeTime())
+            if (sLog.IsIncludeTime())
                 sLog.outDebugInLine("         ");
 
             for(uint32 i = 0; i < size(); ++i)
             {
                 if ((i == (j * 8)) && ((i != (k * 16))))
                 {
-                    if (read<uint8>(i) < 0x10)
-                    {
-                        sLog.outDebugInLine("| 0%X ", read<uint8>(i) );
-                    }
-                    else
-                    {
-                        sLog.outDebugInLine("| %X ", read<uint8>(i) );
-                    }
+                    sLog.outDebugInLine("| %02X ", read<uint8>(i));
                     ++j;
                 }
                 else if (i == (k * 16))
                 {
-                    if (read<uint8>(i) < 0x10)
-                    {
-                        sLog.outDebugInLine("\n");
-                        if(sLog.IsIncludeTime())
-                            sLog.outDebugInLine("         ");
+                    sLog.outDebugInLine("\n");
+                    if(sLog.IsIncludeTime())
+                        sLog.outDebugInLine("         ");
 
-                        sLog.outDebugInLine("0%X ", read<uint8>(i) );
-                    }
-                    else
-                    {
-                        sLog.outDebugInLine("\n");
-                        if(sLog.IsIncludeTime())
-                            sLog.outDebugInLine("         ");
-
-                        sLog.outDebugInLine("%X ", read<uint8>(i) );
-                    }
+                    sLog.outDebugInLine("%02X ", read<uint8>(i));
 
                     ++k;
                     ++j;
                 }
                 else
                 {
-                    if (read<uint8>(i) < 0x10)
-                    {
-                        sLog.outDebugInLine("0%X ", read<uint8>(i) );
-                    }
-                    else
-                    {
-                        sLog.outDebugInLine("%X ", read<uint8>(i) );
-                    }
+                    sLog.outDebugInLine("%02X ", read<uint8>(i));
                 }
             }
             sLog.outDebugInLine("\n");

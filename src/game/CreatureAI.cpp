@@ -19,6 +19,7 @@
 #include "CreatureAI.h"
 #include "Creature.h"
 #include "DBCStores.h"
+#include "Spell.h"
 
 CreatureAI::~CreatureAI()
 {
@@ -36,7 +37,7 @@ CanCastResult CreatureAI::CanCastSpell(Unit* pTarget, const SpellEntry *pSpell, 
     if (!isTriggered)
     {
         // State does not allow
-        if (m_creature->hasUnitState(UNIT_STAT_CAN_NOT_REACT))
+        if (m_creature->hasUnitState(UNIT_STAT_CAN_NOT_REACT_OR_LOST_CONTROL))
             return CAST_FAIL_STATE;
 
         if (pSpell->PreventionType == SPELL_PREVENTION_TYPE_SILENCE && m_creature->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SILENCED))
@@ -46,7 +47,7 @@ CanCastResult CreatureAI::CanCastSpell(Unit* pTarget, const SpellEntry *pSpell, 
             return CAST_FAIL_STATE;
 
         // Check for power (also done by Spell::CheckCast())
-        if (m_creature->GetPower((Powers)pSpell->powerType) < pSpell->manaCost)
+        if (m_creature->GetPower((Powers)pSpell->powerType) < Spell::CalculatePowerCost(pSpell, m_creature))
             return CAST_FAIL_POWER;
     }
 

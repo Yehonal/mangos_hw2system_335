@@ -53,7 +53,7 @@ struct GameObjectInfo
         {
             uint32 startOpen;                               //0 used client side to determine GO_ACTIVATED means open/closed
             uint32 lockId;                                  //1 -> Lock.dbc
-            uint32 autoCloseTime;                           //2 secs till autoclose = autoCloseTime / IN_MILISECONDS (previous was 0x10000)
+            uint32 autoCloseTime;                           //2 secs till autoclose = autoCloseTime / IN_MILLISECONDS (previous was 0x10000)
             uint32 noDamageImmune;                          //3 break opening whenever you recieve damage?
             uint32 openTextID;                              //4 can be used to replace castBarCaption?
             uint32 closeTextID;                             //5
@@ -64,7 +64,7 @@ struct GameObjectInfo
         {
             uint32 startOpen;                               //0
             uint32 lockId;                                  //1 -> Lock.dbc
-            uint32 autoCloseTime;                           //2 secs till autoclose = autoCloseTime / IN_MILISECONDS (previous was 0x10000)
+            uint32 autoCloseTime;                           //2 secs till autoclose = autoCloseTime / IN_MILLISECONDS (previous was 0x10000)
             uint32 linkedTrapId;                            //3
             uint32 noDamageImmune;                          //4 isBattlegroundObject
             uint32 large;                                   //5
@@ -127,7 +127,7 @@ struct GameObjectInfo
             uint32 spellId;                                 //3
             uint32 charges;                                 //4 need respawn (if > 0)
             uint32 cooldown;                                //5 time in secs
-            uint32 autoCloseTime;                           //6 secs till autoclose = autoCloseTime / IN_MILISECONDS (previous was 0x10000)
+            uint32 autoCloseTime;                           //6 secs till autoclose = autoCloseTime / IN_MILLISECONDS (previous was 0x10000)
             uint32 startDelay;                              //7
             uint32 serverOnly;                              //8
             uint32 stealthed;                               //9
@@ -170,7 +170,7 @@ struct GameObjectInfo
             uint32 lockId;                                  //0 -> Lock.dbc
             uint32 questId;                                 //1
             uint32 eventId;                                 //2
-            uint32 autoCloseTime;                           //3 secs till autoclose = autoCloseTime / IN_MILISECONDS (previous was 0x10000)
+            uint32 autoCloseTime;                           //3 secs till autoclose = autoCloseTime / IN_MILLISECONDS (previous was 0x10000)
             uint32 customAnim;                              //4
             uint32 consumable;                              //5
             uint32 cooldown;                                //6
@@ -194,7 +194,7 @@ struct GameObjectInfo
         {
             uint32 pause;                                   //0
             uint32 startOpen;                               //1
-            uint32 autoCloseTime;                           //2 secs till autoclose = autoCloseTime / IN_MILISECONDS (previous was 0x10000)
+            uint32 autoCloseTime;                           //2 secs till autoclose = autoCloseTime / IN_MILLISECONDS (previous was 0x10000)
             uint32 pause1EventID;                           //3
             uint32 pause2EventID;                           //4
         } transport;
@@ -206,7 +206,7 @@ struct GameObjectInfo
             uint32 damageMin;                               //2
             uint32 damageMax;                               //3
             uint32 damageSchool;                            //4
-            uint32 autoCloseTime;                           //5 secs till autoclose = autoCloseTime / IN_MILISECONDS (previous was 0x10000)
+            uint32 autoCloseTime;                           //5 secs till autoclose = autoCloseTime / IN_MILLISECONDS (previous was 0x10000)
             uint32 openTextID;                              //6
             uint32 closeTextID;                             //7
         } areadamage;
@@ -281,7 +281,7 @@ struct GameObjectInfo
             uint32 openTextID;                              //6
             uint32 losOK;                                   //7
         } flagstand;
-        //25 GAMEOBJECT_TYPE_FISHINGHOLE                    // not implemented yet
+        //25 GAMEOBJECT_TYPE_FISHINGHOLE
         struct
         {
             uint32 radius;                                  //0 how close bobber must land for sending loot
@@ -396,6 +396,9 @@ struct GameObjectInfo
             uint32 data[24];
         } raw;
     };
+
+    uint32 MinMoneyLoot;
+    uint32 MaxMoneyLoot;
     uint32 ScriptId;
 
     // helpers
@@ -478,7 +481,7 @@ struct GameObjectInfo
             case GAMEOBJECT_TYPE_AREADAMAGE:    autoCloseTime = areadamage.autoCloseTime; break;
             default: break;
         }
-        return autoCloseTime / IN_MILISECONDS;              // prior to 3.0.3, conversion was / 0x10000;
+        return autoCloseTime / IN_MILLISECONDS;              // prior to 3.0.3, conversion was / 0x10000;
     }
 
     uint32 GetLootId() const
@@ -497,6 +500,17 @@ struct GameObjectInfo
         {
             case GAMEOBJECT_TYPE_QUESTGIVER:    return questgiver.gossipID;
             case GAMEOBJECT_TYPE_GOOBER:        return goober.gossipID;
+            default: return 0;
+        }
+    }
+
+    uint32 GetEventScriptId() const
+    {
+        switch(type)
+        {
+            case GAMEOBJECT_TYPE_GOOBER:        return goober.eventId;
+            case GAMEOBJECT_TYPE_CHEST:         return chest.eventId;
+            case GAMEOBJECT_TYPE_CAMERA:        return camera.eventID;
             default: return 0;
         }
     }
@@ -562,6 +576,8 @@ class Unit;
 // 5 sec for bobber catch
 #define FISHING_BOBBER_READY_TIME 5
 
+#define GO_ANIMPROGRESS_DEFAULT 0xFF
+
 class MANGOS_DLL_SPEC GameObject : public WorldObject
 {
     public:
@@ -571,8 +587,8 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         void AddToWorld();
         void RemoveFromWorld();
 
-        bool Create(uint32 guidlow, uint32 name_id, Map *map, uint32 phaseMask, float x, float y, float z, float ang, float rotation0, float rotation1, float rotation2, float rotation3, uint32 animprogress, GOState go_state);
-        void Update(uint32 p_time);
+        bool Create(uint32 guidlow, uint32 name_id, Map *map, uint32 phaseMask, float x, float y, float z, float ang, float rotation0, float rotation1, float rotation2, float rotation3, uint8 animprogress, GOState go_state);
+        void Update(uint32 update_diff, uint32 p_time);
         GameObjectInfo const* GetGOInfo() const;
 
         bool IsTransport() const;
@@ -580,12 +596,6 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         uint32 GetDBTableGUIDLow() const { return m_DBTableGuid; }
 
         void UpdateRotationFields(float rotation2 = 0.0f, float rotation3 = 0.0f);
-
-        void Say(int32 textId, uint32 language, uint64 TargetGuid) { MonsterSay(textId,language,TargetGuid); }
-        void Yell(int32 textId, uint32 language, uint64 TargetGuid) { MonsterYell(textId,language,TargetGuid); }
-        void TextEmote(int32 textId, uint64 TargetGuid) { MonsterTextEmote(textId,TargetGuid); }
-        void Whisper(int32 textId, uint64 receiver) { MonsterWhisper(textId,receiver); }
-        void YellToZone(int32 textId, uint32 language, uint64 TargetGuid) { MonsterYellToZone(textId,language,TargetGuid); }
 
         // overwrite WorldObject function for proper name localization
         const char* GetNameForLocaleIdx(int32 locale_idx) const;
@@ -595,12 +605,12 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         bool LoadFromDB(uint32 guid, Map *map);
         void DeleteFromDB();
 
-        void SetOwnerGUID(uint64 owner)
+        void SetOwnerGuid(ObjectGuid ownerGuid)
         {
             m_spawnedByDefault = false;                     // all object with owner is despawned after delay
-            SetUInt64Value(OBJECT_FIELD_CREATED_BY, owner);
+            SetGuidValue(OBJECT_FIELD_CREATED_BY, ownerGuid);
         }
-        uint64 GetOwnerGUID() const { return GetUInt64Value(OBJECT_FIELD_CREATED_BY); }
+        ObjectGuid const& GetOwnerGuid() const { return GetGuidValue(OBJECT_FIELD_CREATED_BY); }
         Unit* GetOwner() const;
 
         void SetSpellId(uint32 id)
@@ -646,32 +656,36 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         uint8 GetGoAnimProgress() const { return GetByteValue(GAMEOBJECT_BYTES_1, 3); }
         void SetGoAnimProgress(uint8 animprogress) { SetByteValue(GAMEOBJECT_BYTES_1, 3, animprogress); }
 
+        float GetObjectBoundingRadius() const;              // overwrite WorldObject version
+
         void Use(Unit* user);
 
         LootState getLootState() const { return m_lootState; }
         void SetLootState(LootState s) { m_lootState = s; }
 
-        void AddToSkillupList(uint32 PlayerGuidLow) { m_SkillupList.push_back(PlayerGuidLow); }
-        bool IsInSkillupList(uint32 PlayerGuidLow) const
+        void AddToSkillupList(Player* player);
+        bool IsInSkillupList(Player* player) const;
+        void ClearSkillupList() { m_SkillupSet.clear(); }
+        void ClearAllUsesData()
         {
-            for (std::list<uint32>::const_iterator i = m_SkillupList.begin(); i != m_SkillupList.end(); ++i)
-                if (*i == PlayerGuidLow) return true;
-            return false;
+            ClearSkillupList();
+            m_useTimes = 0;
+            m_firstUser.Clear();
+            m_UniqueUsers.clear();
         }
-        void ClearSkillupList() { m_SkillupList.clear(); }
 
         void AddUniqueUse(Player* player);
-        void AddUse() { ++m_usetimes; }
+        void AddUse() { ++m_useTimes; }
 
-        uint32 GetUseCount() const { return m_usetimes; }
-        uint32 GetUniqueUseCount() const { return m_unique_users.size(); }
+        uint32 GetUseCount() const { return m_useTimes; }
+        uint32 GetUniqueUseCount() const { return m_UniqueUsers.size(); }
 
         void SaveRespawnTime();
 
         Loot        loot;
 
-        bool hasQuest(uint32 quest_id) const;
-        bool hasInvolvedQuest(uint32 quest_id) const;
+        bool HasQuest(uint32 quest_id) const;
+        bool HasInvolvedQuest(uint32 quest_id) const;
         bool ActivateToQuest(Player *pTarget) const;
         void UseDoorOrButton(uint32 time_to_restore = 0, bool alternative = false);
                                                             // 0 = use `gameobject`.`spawntimesecs`
@@ -681,7 +695,7 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         bool IsFriendlyTo(Unit const* unit) const;
 
         void SummonLinkedTrapIfAny();
-        void TriggeringLinkedGameObject( uint32 trapEntry, Unit* target);
+        void TriggerLinkedGameObject(Unit* target);
 
         bool isVisibleForInState(Player const* u, WorldObject const* viewPoint, bool inVisibleList) const;
 
@@ -689,7 +703,6 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
 
         GridReference<GameObject> &GetGridRef() { return m_gridRef; }
 
-        bool isActiveObject() const { return false; }
         uint64 GetRotation() const { return m_rotation; }
     protected:
         uint32      m_spellId;
@@ -699,10 +712,16 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         bool        m_spawnedByDefault;
         time_t      m_cooldownTime;                         // used as internal reaction delay time store (not state change reaction).
                                                             // For traps this: spell casting cooldown, for doors/buttons: reset time.
-        std::list<uint32> m_SkillupList;
 
-        std::set<uint32> m_unique_users;
-        uint32 m_usetimes;
+        typedef std::set<ObjectGuid> GuidsSet;
+
+        GuidsSet m_SkillupSet;                              // players that already have skill-up at GO use
+
+        uint32 m_useTimes;                                  // amount uses/charges triggered
+
+        // collected only for GAMEOBJECT_TYPE_SUMMONING_RITUAL
+        ObjectGuid m_firstUser;                             // first GO user, in most used cases owner, but in some cases no, for example non-summoned multi-use GAMEOBJECT_TYPE_SUMMONING_RITUAL
+        GuidsSet m_UniqueUsers;                             // all players who use item, some items activated after specific amount unique uses
 
         uint32 m_DBTableGuid;                               ///< For new or temporary gameobjects is 0 for saved it is lowguid
         GameObjectInfo const* m_goInfo;

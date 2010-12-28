@@ -65,7 +65,7 @@
 // must be the first thing to include for it to work
 #include "MemoryLeaks.h"
 
-#include "Utilities/UnorderedMap.h"
+#include "Utilities/UnorderedMapSet.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -87,6 +87,7 @@
 #include <sstream>
 #include <algorithm>
 
+#include "Errors.h"
 #include "LockedQueue.h"
 #include "Threading.h"
 
@@ -94,9 +95,19 @@
 #include <ace/Guard_T.h>
 #include <ace/RW_Thread_Mutex.h>
 #include <ace/Thread_Mutex.h>
+#include <ace/OS_NS_arpa_inet.h>
+
+// Old ACE versions (pre-ACE-5.5.4) not have this type (add for allow use at Unix side external old ACE versions)
+#if PLATFORM != PLATFORM_WINDOWS
+#  ifndef ACE_OFF_T
+typedef off_t ACE_OFF_T;
+#  endif
+#endif
 
 #if PLATFORM == PLATFORM_WINDOWS
-#  define FD_SETSIZE 4096
+#  if !defined (FD_SETSIZE)
+#    define FD_SETSIZE 4096
+#  endif
 #  include <ace/config-all.h>
 // XP winver - needed to compile with standard leak check in MemoryLeaks.h
 // uncomment later if needed
@@ -164,9 +175,10 @@ enum TimeConstants
     MINUTE = 60,
     HOUR   = MINUTE*60,
     DAY    = HOUR*24,
+    WEEK   = DAY*7,
     MONTH  = DAY*30,
     YEAR   = MONTH*12,
-    IN_MILISECONDS = 1000
+    IN_MILLISECONDS = 1000
 };
 
 enum AccountTypes
@@ -176,6 +188,20 @@ enum AccountTypes
     SEC_GAMEMASTER     = 2,
     SEC_ADMINISTRATOR  = 3,
     SEC_CONSOLE        = 4                                  // must be always last in list, accounts must have less security level always also
+};
+
+// Used in mangosd/realmd
+enum RealmFlags
+{
+    REALM_FLAG_NONE         = 0x00,
+    REALM_FLAG_INVALID      = 0x01,
+    REALM_FLAG_OFFLINE      = 0x02,
+    REALM_FLAG_SPECIFYBUILD = 0x04,                         // client will show realm version in RealmList screen in form "RealmName (major.minor.revision.build)"
+    REALM_FLAG_UNK1         = 0x08,
+    REALM_FLAG_UNK2         = 0x10,
+    REALM_FLAG_NEW_PLAYERS  = 0x20,
+    REALM_FLAG_RECOMMENDED  = 0x40,
+    REALM_FLAG_FULL         = 0x80
 };
 
 enum LocaleConstant
@@ -204,7 +230,7 @@ struct LocaleNameStr
 };
 
 // used for iterate all names including alternative
-extern LocaleNameStr fullLocaleNameList[];
+extern LocaleNameStr const fullLocaleNameList[];
 
 //operator new[] based version of strdup() function! Release memory by using operator delete[] !
 inline char * mangos_strdup(const char * source)

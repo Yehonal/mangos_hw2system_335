@@ -11,9 +11,6 @@
 #
 
 *.bsc
-*.ncb
 *.pdb
-*.suo
 Debug
 Release
-*.user

@@ -103,13 +103,13 @@ void Player::ApplySpellPowerBonus(int32 amount, bool apply)
 
 void Player::UpdateSpellDamageAndHealingBonus()
 {
-    // Magic damage modifiers implemented in Unit::SpellDamageBonus
+    // Magic damage modifiers implemented in Unit::SpellDamageBonusDone
     // This information for client side use only
     // Get healing bonus for all schools
-    SetStatInt32Value(PLAYER_FIELD_MOD_HEALING_DONE_POS, SpellBaseHealingBonus(SPELL_SCHOOL_MASK_ALL));
+    SetStatInt32Value(PLAYER_FIELD_MOD_HEALING_DONE_POS, SpellBaseHealingBonusDone(SPELL_SCHOOL_MASK_ALL));
     // Get damage bonus for all schools
     for(int i = SPELL_SCHOOL_HOLY; i < MAX_SPELL_SCHOOL; ++i)
-        SetStatInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_POS+i, SpellBaseDamageBonus(SpellSchoolMask(1 << i)));
+        SetStatInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_POS+i, SpellBaseDamageBonusDone(SpellSchoolMask(1 << i)));
 }
 
 bool Player::UpdateAllStats()
@@ -267,7 +267,7 @@ void Player::UpdateAttackPowerAndDamage(bool ranged )
             case CLASS_ROGUE:  val2 = level        + GetStat(STAT_AGILITY) - 10.0f;    break;
             case CLASS_WARRIOR:val2 = level        + GetStat(STAT_AGILITY) - 10.0f;    break;
             case CLASS_DRUID:
-                switch(m_form)
+                switch(GetShapeshiftForm())
                 {
                     case FORM_CAT:
                     case FORM_BEAR:
@@ -292,9 +292,11 @@ void Player::UpdateAttackPowerAndDamage(bool ranged )
             case CLASS_SHAMAN:       val2 = level*2.0f + GetStat(STAT_STRENGTH) + GetStat(STAT_AGILITY) - 20.0f; break;
             case CLASS_DRUID:
             {
+                ShapeshiftForm form = GetShapeshiftForm();
                 //Check if Predatory Strikes is skilled
-                float mLevelMult = 0.0;
-                switch(m_form)
+                float mLevelBonus = 0.0f;
+                float mBonusWeaponAtt = 0.0f;
+                switch(form)
                 {
                     case FORM_CAT:
                     case FORM_BEAR:
@@ -304,27 +306,33 @@ void Player::UpdateAttackPowerAndDamage(bool ranged )
                         Unit::AuraList const& mDummy = GetAurasByType(SPELL_AURA_DUMMY);
                         for(Unit::AuraList::const_iterator itr = mDummy.begin(); itr != mDummy.end(); ++itr)
                         {
+                            if((*itr)->GetSpellProto()->SpellIconID != 1563)
+                                continue;
+
                             // Predatory Strikes (effect 0)
-                            if ((*itr)->GetEffIndex() == EFFECT_INDEX_0 && (*itr)->GetSpellProto()->SpellIconID == 1563)
-                            {
-                                mLevelMult = (*itr)->GetModifier()->m_amount / 100.0f;
+                            if ((*itr)->GetEffIndex() == EFFECT_INDEX_0 && IsInFeralForm())
+                                mLevelBonus = getLevel() * (*itr)->GetModifier()->m_amount / 100.0f;
+                            // Predatory Strikes (effect 1)
+                            else if ((*itr)->GetEffIndex() == EFFECT_INDEX_1)
+                                mBonusWeaponAtt = (*itr)->GetModifier()->m_amount * m_baseFeralAP / 100.0f;
+
+                            if (mLevelBonus != 0.0f && mBonusWeaponAtt != 0.0f)
                                 break;
-                            }
                         }
                         break;
                     }
                     default: break;
                 }
 
-                switch(m_form)
+                switch(form)
                 {
                     case FORM_CAT:
-                        val2 = getLevel()*(mLevelMult+2.0f) + GetStat(STAT_STRENGTH)*2.0f + GetStat(STAT_AGILITY) - 20.0f + m_baseFeralAP; break;
+                        val2 = GetStat(STAT_STRENGTH)*2.0f + GetStat(STAT_AGILITY) - 20.0f + mLevelBonus + m_baseFeralAP + mBonusWeaponAtt; break;
                     case FORM_BEAR:
                     case FORM_DIREBEAR:
-                        val2 = getLevel()*(mLevelMult+3.0f) + GetStat(STAT_STRENGTH)*2.0f - 20.0f + m_baseFeralAP; break;
+                        val2 = GetStat(STAT_STRENGTH)*2.0f - 20.0f + mLevelBonus + m_baseFeralAP + mBonusWeaponAtt; break;
                     case FORM_MOONKIN:
-                        val2 = getLevel()*(mLevelMult+1.5f) + GetStat(STAT_STRENGTH)*2.0f - 20.0f + m_baseFeralAP; break;
+                        val2 = GetStat(STAT_STRENGTH)*2.0f - 20.0f + m_baseFeralAP + mBonusWeaponAtt; break;
                     default:
                         val2 = GetStat(STAT_STRENGTH)*2.0f - 20.0f; break;
                 }
@@ -431,7 +439,7 @@ void Player::CalculateMinMaxDamage(WeaponAttackType attType, bool normalized, fl
         weapon_mindamage = lvl*0.85f*att_speed;
         weapon_maxdamage = lvl*1.25f*att_speed;
     }
-    else if(!IsUseEquipedWeapon(attType==BASE_ATTACK))      //check if player not in form but still can't use weapon (broken/etc)
+    else if (!IsUseEquippedWeapon(attType==BASE_ATTACK))    //check if player not in form but still can't use weapon (broken/etc)
     {
         weapon_mindamage = BASE_MINDAMAGE;
         weapon_maxdamage = BASE_MAXDAMAGE;

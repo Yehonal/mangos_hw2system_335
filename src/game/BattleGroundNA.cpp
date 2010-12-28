@@ -67,13 +67,13 @@ void BattleGroundNA::AddPlayer(Player *plr)
     //create score and add it to map, default values are set in constructor
     BattleGroundNAScore* sc = new BattleGroundNAScore;
 
-    m_PlayerScores[plr->GetGUID()] = sc;
+    m_PlayerScores[plr->GetObjectGuid()] = sc;
 
     UpdateWorldState(0xa0f, GetAlivePlayersCountByTeam(ALLIANCE));
     UpdateWorldState(0xa10, GetAlivePlayersCountByTeam(HORDE));
 }
 
-void BattleGroundNA::RemovePlayer(Player* /*plr*/, uint64 /*guid*/)
+void BattleGroundNA::RemovePlayer(Player* /*plr*/, ObjectGuid /*guid*/)
 {
     if (GetStatus() == STATUS_WAIT_LEAVE)
         return;
@@ -131,11 +131,11 @@ void BattleGroundNA::HandleAreaTrigger(Player *Source, uint32 Trigger)
     //    HandleTriggerBuff(buff_guid,Source);
 }
 
-void BattleGroundNA::FillInitialWorldStates(WorldPacket &data)
+void BattleGroundNA::FillInitialWorldStates(WorldPacket &data, uint32& count)
 {
-    data << uint32(0xa0f) << uint32(GetAlivePlayersCountByTeam(ALLIANCE));           // 7
-    data << uint32(0xa10) << uint32(GetAlivePlayersCountByTeam(HORDE));           // 8
-    data << uint32(0xa11) << uint32(1);           // 9
+    FillInitialWorldState(data, count, 0xa0f, GetAlivePlayersCountByTeam(ALLIANCE));
+    FillInitialWorldState(data, count, 0xa10, GetAlivePlayersCountByTeam(HORDE));
+    FillInitialWorldState(data, count, 0xa11, 1);
 }
 
 void BattleGroundNA::Reset()

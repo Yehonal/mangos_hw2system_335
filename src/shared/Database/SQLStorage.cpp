@@ -19,35 +19,26 @@
 #include "SQLStorage.h"
 #include "SQLStorageImpl.h"
 
-#ifdef DO_POSTGRESQL
-extern DatabasePostgre  WorldDatabase;
-#else
-extern DatabaseMysql  WorldDatabase;
-#endif
+void SQLStorage::EraseEntry(uint32 id)
+{
+    uint32 offset=0;
+    for(uint32 x=0;x<iNumFields;x++)
+        if (dst_format[x]==FT_STRING)
+        {
+            if(pIndex[id])
+                delete [] *(char**)((char*)(pIndex[id])+offset);
 
-const char CreatureInfosrcfmt[]="iiiiiiiiiisssiiiiiiiiiiifffiffiifiiiiiiiiiiffiiiiiiiiiiiiiiiiiiisiiffliiiiiiiliiis";
-const char CreatureInfodstfmt[]="iiiiiiiiiisssiiiiiiiiiiifffiffiifiiiiiiiiiiffiiiiiiiiiiiiiiiiiiisiiffliiiiiiiliiii";
-const char CreatureDataAddonInfofmt[]="iiiiiis";
-const char CreatureModelfmt[]="iffbi";
-const char CreatureInfoAddonInfofmt[]="iiiiiis";
-const char EquipmentInfofmt[]="iiii";
-const char GameObjectInfosrcfmt[]="iiissssiifiiiiiiiiiiiiiiiiiiiiiiiiiiiiiis";
-const char GameObjectInfodstfmt[]="iiissssiifiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii";
-const char ItemPrototypesrcfmt[]="iiiisiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiffiffiiiiiiiiiifiiifiiiiiifiiiiiifiiiiiifiiiiiifiiiisiiiiiiiiiiiiiiiiiiiiiiiiifiiisiiiii";
-const char ItemPrototypedstfmt[]="iiiisiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiffiffiiiiiiiiiifiiifiiiiiifiiiiiifiiiiiifiiiiiifiiiisiiiiiiiiiiiiiiiiiiiiiiiiifiiiiiiiii";
-const char PageTextfmt[]="isi";
-const char InstanceTemplatesrcfmt[]="iiiiffffs";
-const char InstanceTemplatedstfmt[]="iiiiffffi";
+            offset += sizeof(char*);
+        }
+        else if (dst_format[x]==FT_LOGIC)
+            offset += sizeof(bool);
+        else if (dst_format[x]==FT_BYTE)
+            offset += sizeof(char);
+        else
+            offset += 4;
 
-SQLStorage sCreatureStorage(CreatureInfosrcfmt, CreatureInfodstfmt, "entry","creature_template");
-SQLStorage sCreatureDataAddonStorage(CreatureDataAddonInfofmt,"guid","creature_addon");
-SQLStorage sCreatureModelStorage(CreatureModelfmt,"modelid","creature_model_info");
-SQLStorage sCreatureInfoAddonStorage(CreatureInfoAddonInfofmt,"entry","creature_template_addon");
-SQLStorage sEquipmentStorage(EquipmentInfofmt,"entry","creature_equip_template");
-SQLStorage sGOStorage(GameObjectInfosrcfmt, GameObjectInfodstfmt, "entry","gameobject_template");
-SQLStorage sItemStorage(ItemPrototypesrcfmt, ItemPrototypedstfmt, "entry","item_template");
-SQLStorage sPageTextStore(PageTextfmt,"entry","page_text");
-SQLStorage sInstanceTemplate(InstanceTemplatesrcfmt, InstanceTemplatedstfmt, "map","instance_template");
+    pIndex[id] = NULL;
+}
 
 void SQLStorage::Free ()
 {

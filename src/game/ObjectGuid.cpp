@@ -19,6 +19,7 @@
 #include "ObjectGuid.h"
 
 #include "World.h"
+#include "ObjectMgr.h"
 
 #include <sstream>
 
@@ -36,6 +37,7 @@ char const* ObjectGuid::GetTypeName(HighGuid high)
         case HIGHGUID_DYNAMICOBJECT:return "DynObject";
         case HIGHGUID_CORPSE:       return "Corpse";
         case HIGHGUID_MO_TRANSPORT: return "MoTransport";
+        case HIGHGUID_INSTANCE:     return "InstanceID";
         default:
             return "<unknown>";
     }
@@ -44,9 +46,18 @@ char const* ObjectGuid::GetTypeName(HighGuid high)
 std::string ObjectGuid::GetString() const
 {
     std::ostringstream str;
-    str << GetTypeName() << " (";
+    str << GetTypeName();
+    
+    if (IsPlayer())
+    {
+        std::string name;
+        if (sObjectMgr.GetPlayerNameByGUID(m_guid, name))
+            str << " " << name;
+    }
+
+    str << " (";
     if (HasEntry())
-        str << "Entry: " << GetEntry() << " ";
+        str << (IsPet() ? "Petnumber: " : "Entry: ") << GetEntry() << " ";
     str << "Guid: " << GetCounter() << ")";
     return str.str();
 }
@@ -95,3 +106,4 @@ template uint32 ObjectGuidGenerator<HIGHGUID_PET>::Generate();
 template uint32 ObjectGuidGenerator<HIGHGUID_VEHICLE>::Generate();
 template uint32 ObjectGuidGenerator<HIGHGUID_DYNAMICOBJECT>::Generate();
 template uint32 ObjectGuidGenerator<HIGHGUID_CORPSE>::Generate();
+template uint32 ObjectGuidGenerator<HIGHGUID_INSTANCE>::Generate();

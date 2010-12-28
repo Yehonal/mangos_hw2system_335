@@ -19,11 +19,11 @@
 #ifndef MANGOS_MOVEMENTGENERATOR_H
 #define MANGOS_MOVEMENTGENERATOR_H
 
+#include "Common.h"
 #include "Platform/Define.h"
 #include "Policies/Singleton.h"
 #include "Dynamic/ObjectRegistry.h"
 #include "Dynamic/FactoryHolder.h"
-#include "Common.h"
 #include "MotionMaster.h"
 
 class Unit;
@@ -125,4 +125,3 @@ typedef FactoryHolder<MovementGenerator,MovementGeneratorType>::FactoryHolderReg
 typedef FactoryHolder<MovementGenerator,MovementGeneratorType>::FactoryHolderRepository MovementGeneratorRepository;
 
 #endif
-

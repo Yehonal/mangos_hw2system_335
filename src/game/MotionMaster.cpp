@@ -37,18 +37,21 @@ inline bool isStatic(MovementGenerator *mv)
     return (mv == &si_idleMovement);
 }
 
-void
-MotionMaster::Initialize()
+void MotionMaster::Initialize()
 {
+    // stop current move
+    if (!m_owner->IsStopped())
+        m_owner->StopMoving();
+
     // clear ALL movement generators (including default)
     Clear(false,true);
 
     // set new default movement generator
-    if (i_owner->GetTypeId() == TYPEID_UNIT)
+    if (m_owner->GetTypeId() == TYPEID_UNIT && !m_owner->hasUnitState(UNIT_STAT_CONTROLLED))
     {
-        MovementGenerator* movement = FactorySelector::selectMovementGenerator((Creature*)i_owner);
+        MovementGenerator* movement = FactorySelector::selectMovementGenerator((Creature*)m_owner);
         push(movement == NULL ? &si_idleMovement : movement);
-        top()->Initialize(*i_owner);
+        top()->Initialize(*m_owner);
     }
     else
         push(&si_idleMovement);
@@ -60,14 +63,15 @@ MotionMaster::~MotionMaster()
     DirectClean(false,true);
 }
 
-void
-MotionMaster::UpdateMotion(uint32 diff)
+void MotionMaster::UpdateMotion(uint32 diff)
 {
-    if( i_owner->hasUnitState(UNIT_STAT_CAN_NOT_MOVE) )
+    if (m_owner->hasUnitState(UNIT_STAT_CAN_NOT_MOVE))
         return;
-    assert( !empty() );
+
+    MANGOS_ASSERT( !empty() );
     m_cleanFlag |= MMCF_UPDATE;
-    if (!top()->Update(*i_owner, diff))
+
+    if (!top()->Update(*m_owner, diff))
     {
         m_cleanFlag &= ~MMCF_UPDATE;
         MovementExpired();
@@ -92,40 +96,39 @@ MotionMaster::UpdateMotion(uint32 diff)
 
         if (m_cleanFlag & MMCF_RESET)
         {
-            top()->Reset(*i_owner);
+            top()->Reset(*m_owner);
             m_cleanFlag &= ~MMCF_RESET;
         }
     }
 }
 
-void
-MotionMaster::DirectClean(bool reset, bool all)
+void MotionMaster::DirectClean(bool reset, bool all)
 {
     while( all ? !empty() : size() > 1 )
     {
         MovementGenerator *curr = top();
         pop();
-        curr->Finalize(*i_owner);
-        if (!isStatic( curr ))
+        curr->Finalize(*m_owner);
+
+        if (!isStatic(curr))
             delete curr;
     }
 
     if (!all && reset)
     {
-        assert( !empty() );
-        top()->Reset(*i_owner);
+        MANGOS_ASSERT( !empty() );
+        top()->Reset(*m_owner);
     }
 }
 
-void
-MotionMaster::DelayedClean(bool reset, bool all)
+void MotionMaster::DelayedClean(bool reset, bool all)
 {
-    if(reset)
+    if (reset)
         m_cleanFlag |= MMCF_RESET;
     else
         m_cleanFlag &= ~MMCF_RESET;
 
-    if (empty() || !all && size() == 1)
+    if (empty() || (!all && size() == 1))
         return;
 
     if (!m_expList)
@@ -135,14 +138,14 @@ MotionMaster::DelayedClean(bool reset, bool all)
     {
         MovementGenerator *curr = top();
         pop();
-        curr->Finalize(*i_owner);
-        if (!isStatic( curr ))
+        curr->Finalize(*m_owner);
+
+        if (!isStatic(curr))
             m_expList->push_back(curr);
     }
 }
 
-void
-MotionMaster::DirectExpire(bool reset)
+void MotionMaster::DirectExpire(bool reset)
 {
     if (empty() || size() == 1)
         return;
@@ -155,12 +158,12 @@ MotionMaster::DirectExpire(bool reset)
     {
         MovementGenerator *temp = top();
         pop();
-        temp ->Finalize(*i_owner);
+        temp->Finalize(*m_owner);
         delete temp;
     }
 
     // it can add another motions instead
-    curr->Finalize(*i_owner);
+    curr->Finalize(*m_owner);
 
     if (!isStatic(curr))
         delete curr;
@@ -169,11 +172,10 @@ MotionMaster::DirectExpire(bool reset)
         Initialize();
 
     if (reset)
-        top()->Reset(*i_owner);
+        top()->Reset(*m_owner);
 }
 
-void
-MotionMaster::DelayedExpire(bool reset)
+void MotionMaster::DelayedExpire(bool reset)
 {
     if (reset)
         m_cleanFlag |= MMCF_RESET;
@@ -194,11 +196,11 @@ MotionMaster::DelayedExpire(bool reset)
     {
         MovementGenerator *temp = top();
         pop();
-        temp ->Finalize(*i_owner);
+        temp ->Finalize(*m_owner);
         m_expList->push_back(temp );
     }
 
-    curr->Finalize(*i_owner);
+    curr->Finalize(*m_owner);
 
     if (!isStatic(curr))
         m_expList->push_back(curr);
@@ -212,182 +214,137 @@ void MotionMaster::MoveIdle()
 
 void MotionMaster::MoveRandom()
 {
-    if (i_owner->GetTypeId() == TYPEID_PLAYER)
+    if (m_owner->GetTypeId() == TYPEID_PLAYER)
     {
-        sLog.outError("Player (GUID: %u) attempt to move random.", i_owner->GetGUIDLow());
+        sLog.outError("%s attempt to move random.", m_owner->GetGuidStr().c_str());
     }
     else
     {
-        DEBUG_LOG("Creature (Entry: %u GUID: %u) move random.", i_owner->GetEntry(), i_owner->GetGUIDLow());
-        Mutate(new RandomMovementGenerator<Creature>(*i_owner));
+        DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s move random.", m_owner->GetGuidStr().c_str());
+        Mutate(new RandomMovementGenerator<Creature>(*m_owner));
     }
 }
 
-void
-MotionMaster::MoveTargetedHome()
+void MotionMaster::MoveTargetedHome()
 {
-    if(i_owner->hasUnitState(UNIT_STAT_FLEEING))
+    if (m_owner->hasUnitState(UNIT_STAT_LOST_CONTROL))
         return;
 
     Clear(false);
 
-    if(i_owner->GetTypeId()==TYPEID_UNIT && !((Creature*)i_owner)->GetCharmerOrOwnerGUID())
+    if (m_owner->GetTypeId() == TYPEID_UNIT && ((Creature*)m_owner)->GetCharmerOrOwnerGuid().IsEmpty())
     {
-        DEBUG_LOG("Creature (Entry: %u GUID: %u) targeted home", i_owner->GetEntry(), i_owner->GetGUIDLow());
+        DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s targeted home", m_owner->GetGuidStr().c_str());
         Mutate(new HomeMovementGenerator<Creature>());
     }
-    else if(i_owner->GetTypeId()==TYPEID_UNIT && ((Creature*)i_owner)->GetCharmerOrOwnerGUID())
+    else if (m_owner->GetTypeId() == TYPEID_UNIT && !((Creature*)m_owner)->GetCharmerOrOwnerGuid().IsEmpty())
     {
-        DEBUG_LOG("Pet or controlled creature (Entry: %u GUID: %u) targeting home",
-            i_owner->GetEntry(), i_owner->GetGUIDLow() );
-        Unit *target = ((Creature*)i_owner)->GetCharmerOrOwner();
-        if(target)
+        if (Unit *target = ((Creature*)m_owner)->GetCharmerOrOwner())
         {
-            DEBUG_LOG("Following %s (GUID: %u)",
-                target->GetTypeId()==TYPEID_PLAYER ? "player" : "creature",
-                target->GetTypeId()==TYPEID_PLAYER ? target->GetGUIDLow() : ((Creature*)target)->GetDBTableGUIDLow() );
+            DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s follow to %s", m_owner->GetGuidStr().c_str(), target->GetGuidStr().c_str());
             Mutate(new FollowMovementGenerator<Creature>(*target,PET_FOLLOW_DIST,PET_FOLLOW_ANGLE));
+        }
+        else
+        {
+            DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s attempt but fail to follow owner", m_owner->GetGuidStr().c_str());
         }
     }
     else
-    {
-        sLog.outError("Player (GUID: %u) attempt targeted home", i_owner->GetGUIDLow() );
-    }
+        sLog.outError("%s attempt targeted home", m_owner->GetGuidStr().c_str());
 }
 
-void
-MotionMaster::MoveConfused()
+void MotionMaster::MoveConfused()
 {
-    if(i_owner->GetTypeId()==TYPEID_PLAYER)
-    {
-        DEBUG_LOG("Player (GUID: %u) move confused", i_owner->GetGUIDLow() );
+    DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s move confused", m_owner->GetGuidStr().c_str());
+
+    if (m_owner->GetTypeId() == TYPEID_PLAYER)
         Mutate(new ConfusedMovementGenerator<Player>());
-    }
     else
-    {
-        DEBUG_LOG("Creature (Entry: %u GUID: %u) move confused",
-            i_owner->GetEntry(), i_owner->GetGUIDLow() );
         Mutate(new ConfusedMovementGenerator<Creature>());
-    }
 }
 
-void
-MotionMaster::MoveChase(Unit* target, float dist, float angle)
+void MotionMaster::MoveChase(Unit* target, float dist, float angle)
 {
     // ignore movement request if target not exist
-    if(!target)
+    if (!target)
         return;
 
-    if(i_owner->GetTypeId()==TYPEID_PLAYER)
-    {
-        DEBUG_LOG("Player (GUID: %u) chase to %s (GUID: %u)",
-            i_owner->GetGUIDLow(),
-            target->GetTypeId()==TYPEID_PLAYER ? "player" : "creature",
-            target->GetTypeId()==TYPEID_PLAYER ? i_owner->GetGUIDLow() : ((Creature*)i_owner)->GetDBTableGUIDLow() );
+    DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s chase to %s", m_owner->GetGuidStr().c_str(), target->GetGuidStr().c_str());
+
+    if (m_owner->GetTypeId() == TYPEID_PLAYER)
         Mutate(new ChaseMovementGenerator<Player>(*target,dist,angle));
-    }
     else
-    {
-        DEBUG_LOG("Creature (Entry: %u GUID: %u) chase to %s (GUID: %u)",
-            i_owner->GetEntry(), i_owner->GetGUIDLow(),
-            target->GetTypeId()==TYPEID_PLAYER ? "player" : "creature",
-            target->GetTypeId()==TYPEID_PLAYER ? target->GetGUIDLow() : ((Creature*)target)->GetDBTableGUIDLow() );
         Mutate(new ChaseMovementGenerator<Creature>(*target,dist,angle));
-    }
 }
 
-void
-MotionMaster::MoveFollow(Unit* target, float dist, float angle)
+void MotionMaster::MoveFollow(Unit* target, float dist, float angle)
 {
+    if (m_owner->hasUnitState(UNIT_STAT_LOST_CONTROL))
+        return;
+
     Clear();
 
     // ignore movement request if target not exist
-    if(!target)
+    if (!target)
         return;
 
-    if(i_owner->GetTypeId()==TYPEID_PLAYER)
-    {
-        DEBUG_LOG("Player (GUID: %u) follow to %s (GUID: %u)", i_owner->GetGUIDLow(),
-            target->GetTypeId()==TYPEID_PLAYER ? "player" : "creature",
-            target->GetTypeId()==TYPEID_PLAYER ? i_owner->GetGUIDLow() : ((Creature*)i_owner)->GetDBTableGUIDLow() );
+    DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s follow to %s", m_owner->GetGuidStr().c_str(), target->GetGuidStr().c_str());
+
+    if (m_owner->GetTypeId() == TYPEID_PLAYER)
         Mutate(new FollowMovementGenerator<Player>(*target,dist,angle));
-    }
     else
-    {
-        DEBUG_LOG("Creature (Entry: %u GUID: %u) follow to %s (GUID: %u)",
-            i_owner->GetEntry(), i_owner->GetGUIDLow(),
-            target->GetTypeId()==TYPEID_PLAYER ? "player" : "creature",
-            target->GetTypeId()==TYPEID_PLAYER ? target->GetGUIDLow() : ((Creature*)target)->GetDBTableGUIDLow() );
         Mutate(new FollowMovementGenerator<Creature>(*target,dist,angle));
-    }
 }
 
-void
-MotionMaster::MovePoint(uint32 id, float x, float y, float z)
+void MotionMaster::MovePoint(uint32 id, float x, float y, float z)
 {
-    if(i_owner->GetTypeId()==TYPEID_PLAYER)
-    {
-        DEBUG_LOG("Player (GUID: %u) targeted point (Id: %u X: %f Y: %f Z: %f)", i_owner->GetGUIDLow(), id, x, y, z );
+    DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s targeted point (Id: %u X: %f Y: %f Z: %f)", m_owner->GetGuidStr().c_str(), id, x, y, z );
+
+    if (m_owner->GetTypeId() == TYPEID_PLAYER)
         Mutate(new PointMovementGenerator<Player>(id,x,y,z));
-    }
     else
-    {
-        DEBUG_LOG("Creature (Entry: %u GUID: %u) targeted point (ID: %u X: %f Y: %f Z: %f)",
-            i_owner->GetEntry(), i_owner->GetGUIDLow(), id, x, y, z );
         Mutate(new PointMovementGenerator<Creature>(id,x,y,z));
-    }
 }
 
-void
-MotionMaster::MoveSeekAssistance(float x, float y, float z)
+void MotionMaster::MoveSeekAssistance(float x, float y, float z)
 {
-    if(i_owner->GetTypeId()==TYPEID_PLAYER)
+    if (m_owner->GetTypeId() == TYPEID_PLAYER)
     {
-        sLog.outError("Player (GUID: %u) attempt to seek assistance",i_owner->GetGUIDLow());
+        sLog.outError("%s attempt to seek assistance", m_owner->GetGuidStr().c_str());
     }
     else
     {
-        DEBUG_LOG("Creature (Entry: %u GUID: %u) seek assistance (X: %f Y: %f Z: %f)",
-            i_owner->GetEntry(), i_owner->GetGUIDLow(), x, y, z );
+        DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s seek assistance (X: %f Y: %f Z: %f)",
+            m_owner->GetGuidStr().c_str(), x, y, z );
         Mutate(new AssistanceMovementGenerator(x,y,z));
     }
 }
 
-void
-MotionMaster::MoveSeekAssistanceDistract(uint32 time)
+void MotionMaster::MoveSeekAssistanceDistract(uint32 time)
 {
-    if(i_owner->GetTypeId()==TYPEID_PLAYER)
+    if (m_owner->GetTypeId() == TYPEID_PLAYER)
     {
-        sLog.outError("Player (GUID: %u) attempt to call distract after assistance",i_owner->GetGUIDLow());
+        sLog.outError("%s attempt to call distract after assistance", m_owner->GetGuidStr().c_str());
     }
     else
     {
-        DEBUG_LOG("Creature (Entry: %u GUID: %u) is distracted after assistance call (Time: %u)",
-            i_owner->GetEntry(), i_owner->GetGUIDLow(), time );
+        DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s is distracted after assistance call (Time: %u)",
+            m_owner->GetGuidStr().c_str(), time );
         Mutate(new AssistanceDistractMovementGenerator(time));
     }
 }
 
-void
-MotionMaster::MoveFleeing(Unit* enemy, uint32 time)
+void MotionMaster::MoveFleeing(Unit* enemy, uint32 time)
 {
-    if(!enemy)
+    if (!enemy)
         return;
 
-    if(i_owner->GetTypeId()==TYPEID_PLAYER)
-    {
-        DEBUG_LOG("Player (GUID: %u) flee from %s (GUID: %u)", i_owner->GetGUIDLow(),
-            enemy->GetTypeId()==TYPEID_PLAYER ? "player" : "creature",
-            enemy->GetTypeId()==TYPEID_PLAYER ? enemy->GetGUIDLow() : ((Creature*)enemy)->GetDBTableGUIDLow() );
+    DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s flee from %s", m_owner->GetGuidStr().c_str(), enemy->GetGuidStr().c_str());
+
+    if (m_owner->GetTypeId() == TYPEID_PLAYER)
         Mutate(new FleeingMovementGenerator<Player>(enemy->GetGUID()));
-    }
     else
     {
-        DEBUG_LOG("Creature (Entry: %u GUID: %u) flee from %s (GUID: %u)%s",
-            i_owner->GetEntry(), i_owner->GetGUIDLow(),
-            enemy->GetTypeId()==TYPEID_PLAYER ? "player" : "creature",
-            enemy->GetTypeId()==TYPEID_PLAYER ? enemy->GetGUIDLow() : ((Creature*)enemy)->GetDBTableGUIDLow(),
-            time ? " for a limited time" : "");
         if (time)
             Mutate(new TimedFleeingMovementGenerator(enemy->GetGUID(), time));
         else
@@ -395,35 +352,53 @@ MotionMaster::MoveFleeing(Unit* enemy, uint32 time)
     }
 }
 
-void
-MotionMaster::MoveTaxiFlight(uint32 path, uint32 pathnode)
+void MotionMaster::MoveWaypoint()
 {
-    if(i_owner->GetTypeId()==TYPEID_PLAYER)
+    if (m_owner->GetTypeId() == TYPEID_UNIT)
     {
-        DEBUG_LOG("Player (GUID: %u) taxi to (Path %u node %u)", i_owner->GetGUIDLow(), path, pathnode);
-        FlightPathMovementGenerator* mgen = new FlightPathMovementGenerator(path,pathnode);
-        Mutate(mgen);
+        if (GetCurrentMovementGeneratorType() == WAYPOINT_MOTION_TYPE)
+        {
+            sLog.outError("Creature %s (Entry %u) attempt to MoveWaypoint() but creature is already using waypoint", m_owner->GetGuidStr().c_str(), m_owner->GetEntry());
+            return;
+        }
+
+        Creature* creature = (Creature*)m_owner;
+
+        DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "Creature %s (Entry %u) start MoveWaypoint()", m_owner->GetGuidStr().c_str(), m_owner->GetEntry());
+        Mutate(new WaypointMovementGenerator<Creature>(*creature));
     }
     else
     {
-        sLog.outError("Creature (Entry: %u GUID: %u) attempt taxi to (Path %u node %u)",
-            i_owner->GetEntry(), i_owner->GetGUIDLow(), path, pathnode );
+        sLog.outError("Non-creature %s attempt to MoveWaypoint()", m_owner->GetGuidStr().c_str());
     }
 }
 
-void
-MotionMaster::MoveDistract(uint32 timer)
+void MotionMaster::MoveTaxiFlight(uint32 path, uint32 pathnode)
 {
-    if(i_owner->GetTypeId()==TYPEID_PLAYER)
+    if (m_owner->GetTypeId() == TYPEID_PLAYER)
     {
-        DEBUG_LOG("Player (GUID: %u) distracted (timer: %u)", i_owner->GetGUIDLow(), timer);
+        if (path < sTaxiPathNodesByPath.size())
+        {
+            DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s taxi to (Path %u node %u)", m_owner->GetGuidStr().c_str(), path, pathnode);
+            FlightPathMovementGenerator* mgen = new FlightPathMovementGenerator(sTaxiPathNodesByPath[path],pathnode);
+            Mutate(mgen);
+        }
+        else
+        {
+            sLog.outError("%s attempt taxi to (nonexistent Path %u node %u)",
+                m_owner->GetGuidStr().c_str(), path, pathnode);
+        }
     }
     else
     {
-        DEBUG_LOG("Creature (Entry: %u GUID: %u) (timer: %u)",
-            i_owner->GetEntry(), i_owner->GetGUIDLow(), timer);
+        sLog.outError("%s attempt taxi to (Path %u node %u)",
+            m_owner->GetGuidStr().c_str(), path, pathnode);
     }
+}
 
+void MotionMaster::MoveDistract(uint32 timer)
+{
+    DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s distracted (timer: %u)", m_owner->GetGuidStr().c_str(), timer);
     DistractMovementGenerator* mgen = new DistractMovementGenerator(timer);
     Mutate(mgen);
 }
@@ -444,9 +419,10 @@ void MotionMaster::Mutate(MovementGenerator *m)
         }
 
         if (!empty())
-            top()->Interrupt(*i_owner);
+            top()->Interrupt(*m_owner);
     }
-    m->Initialize(*i_owner);
+
+    m->Initialize(*m_owner);
     push(m);
 }
 
@@ -461,18 +437,18 @@ void MotionMaster::propagateSpeedChange()
 
 MovementGeneratorType MotionMaster::GetCurrentMovementGeneratorType() const
 {
-   if(empty())
-       return IDLE_MOTION_TYPE;
+    if (empty())
+        return IDLE_MOTION_TYPE;
 
-   return top()->GetMovementGeneratorType();
+    return top()->GetMovementGeneratorType();
 }
 
 bool MotionMaster::GetDestination(float &x, float &y, float &z)
 {
-   if(empty())
-       return false;
+    if (empty())
+        return false;
 
-   return top()->GetDestination(x,y,z);
+    return top()->GetDestination(x,y,z);
 }
 
 void MotionMaster::UpdateFinalDistanceToTarget(float fDistance)

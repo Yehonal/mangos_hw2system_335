@@ -107,6 +107,30 @@ void SpawnedPoolData::RemoveSpawn<Pool>(uint32 sub_pool_id, uint32 pool_id)
 }
 
 ////////////////////////////////////////////////////////////
+// Methods of class PoolObject
+template<>
+void PoolObject::CheckEventLinkAndReport<Creature>(uint32 poolId, int16 event_id, std::map<uint32, int16> const& creature2event, std::map<uint32, int16> const& /*go2event*/) const
+{
+    std::map<uint32, int16>::const_iterator itr = creature2event.find(guid);
+    if (itr == creature2event.end() || itr->second != event_id)
+        sLog.outErrorDb("Creature (GUID: %u) expected to be listed in `game_event_creature` for event %u as part pool %u", guid, event_id, poolId);
+}
+
+template<>
+void PoolObject::CheckEventLinkAndReport<GameObject>(uint32 poolId, int16 event_id, std::map<uint32, int16> const& /*creature2event*/, std::map<uint32, int16> const& go2event) const
+{
+    std::map<uint32, int16>::const_iterator itr = go2event.find(guid);
+    if (itr == go2event.end() || itr->second != event_id)
+        sLog.outErrorDb("Gameobject (GUID: %u) expected to be listed in `game_event_gameobject` for event %u as part pool %u", guid, event_id, poolId);
+}
+
+template<>
+void PoolObject::CheckEventLinkAndReport<Pool>(uint32 poolId, int16 event_id, std::map<uint32, int16> const& creature2event, std::map<uint32, int16> const& go2event) const
+{
+    sPoolMgr.CheckEventLinkAndReport(guid, event_id, creature2event, go2event);
+}
+
+////////////////////////////////////////////////////////////
 // Methods of template class PoolGroup
 
 // Method to add a gameobject/creature guid to the proper list depending on pool type and chance value
@@ -134,6 +158,40 @@ bool PoolGroup<T>::CheckPool() const
     return true;
 }
 
+// Method to check event linking 
+template <class T>
+void PoolGroup<T>::CheckEventLinkAndReport(int16 event_id, std::map<uint32, int16> const& creature2event, std::map<uint32, int16> const& go2event) const
+{
+    for (uint32 i=0; i < EqualChanced.size(); ++i)
+        EqualChanced[i].CheckEventLinkAndReport<T>(poolId, event_id, creature2event, go2event);
+
+    for (uint32 i=0; i<ExplicitlyChanced.size(); ++i)
+        ExplicitlyChanced[i].CheckEventLinkAndReport<T>(poolId, event_id, creature2event, go2event);
+}
+
+template <class T>
+void PoolGroup<T>::SetExcludeObject(uint32 guid, bool state)
+{
+    for (uint32 i=0; i < EqualChanced.size(); ++i)
+    {
+        if (EqualChanced[i].guid == guid)
+        {
+            EqualChanced[i].exclude = state;
+            return;
+        }
+    }
+
+    for (uint32 i=0; i<ExplicitlyChanced.size(); ++i)
+    {
+        if (ExplicitlyChanced[i].guid == guid)
+        {
+            ExplicitlyChanced[i].exclude = state;
+            return;
+        }
+    }
+}
+
+
 template <class T>
 PoolObject* PoolGroup<T>::RollOne(SpawnedPoolData& spawns, uint32 triggerFrom)
 {
@@ -146,7 +204,7 @@ PoolObject* PoolGroup<T>::RollOne(SpawnedPoolData& spawns, uint32 triggerFrom)
             roll -= ExplicitlyChanced[i].chance;
             // Triggering object is marked as spawned at this time and can be also rolled (respawn case)
             // so this need explicit check for this case
-            if (roll < 0 && (ExplicitlyChanced[i].guid == triggerFrom || !spawns.IsSpawnedObject<T>(ExplicitlyChanced[i].guid)))
+            if (roll < 0 && !ExplicitlyChanced[i].exclude && (ExplicitlyChanced[i].guid == triggerFrom || !spawns.IsSpawnedObject<T>(ExplicitlyChanced[i].guid)))
                 return &ExplicitlyChanced[i];
         }
     }
@@ -156,7 +214,7 @@ PoolObject* PoolGroup<T>::RollOne(SpawnedPoolData& spawns, uint32 triggerFrom)
         int32 index = irand(0, EqualChanced.size()-1);
         // Triggering object is marked as spawned at this time and can be also rolled (respawn case)
         // so this need explicit check for this case
-        if (EqualChanced[index].guid == triggerFrom || !spawns.IsSpawnedObject<T>(EqualChanced[index].guid))
+        if (!EqualChanced[index].exclude && (EqualChanced[index].guid == triggerFrom || !spawns.IsSpawnedObject<T>(EqualChanced[index].guid)))
             return &EqualChanced[index];
     }
 
@@ -263,7 +321,12 @@ void PoolGroup<T>::SpawnObject(SpawnedPoolData& spawns, uint32 limit, uint32 tri
     // and also counted into m_SpawnedPoolAmount so we need increase count to be
     // spawned by 1
     if (triggerFrom)
-        ++count;
+    {
+        if (spawns.IsSpawnedObject<T>(triggerFrom))
+            ++count;
+        else
+            triggerFrom = 0;
+    }
 
     // This will try to spawn the rest of pool, not guaranteed
     for (int i = 0; i < count; ++i)
@@ -276,8 +339,8 @@ void PoolGroup<T>::SpawnObject(SpawnedPoolData& spawns, uint32 limit, uint32 tri
 
         if (obj->guid == triggerFrom)
         {
-            assert(spawns.IsSpawnedObject<T>(obj->guid));
-            assert(spawns.GetSpawnedObjects(poolId) > 0);
+            MANGOS_ASSERT(spawns.IsSpawnedObject<T>(obj->guid));
+            MANGOS_ASSERT(spawns.GetSpawnedObjects(poolId) > 0);
             ReSpawn1Object(obj);
             triggerFrom = 0;
             continue;
@@ -304,34 +367,41 @@ void PoolGroup<Creature>::Spawn1Object(PoolObject* obj, bool instantly)
     {
         sObjectMgr.AddCreatureToGrid(obj->guid, data);
 
-        // Spawn if necessary (loaded grids only)
-        Map* map = const_cast<Map*>(sMapMgr.CreateBaseMap(data->mapid));
-        // We use spawn coords to spawn (avoid work for instances until implemented support)
-        if (!map->Instanceable() && map->IsLoaded(data->posX, data->posY))
+        MapEntry const* mapEntry = sMapStore.LookupEntry(data->mapid);
+
+        // temporary limit pool system full power work to continents
+        if (mapEntry && !mapEntry->Instanceable())
         {
-            Creature* pCreature = new Creature;
-            //sLog.outDebug("Spawning creature %u",obj->guid);
-            if (!pCreature->LoadFromDB(obj->guid, map))
+            // Spawn if necessary (loaded grids only)
+            Map* map = const_cast<Map*>(sMapMgr.FindMap(data->mapid));
+
+            // We use spawn coords to spawn
+            if (map && map->IsLoaded(data->posX, data->posY))
             {
-                delete pCreature;
-                return;
-            }
-            else
-            {
-                // if new spawn replaces a just despawned creature, not instantly spawn but set respawn timer
-                if(!instantly)
+                Creature* pCreature = new Creature;
+                //DEBUG_LOG("Spawning creature %u",obj->guid);
+                if (!pCreature->LoadFromDB(obj->guid, map))
                 {
-                    pCreature->SetRespawnTime( pCreature->GetRespawnDelay() );
-                    if (sWorld.getConfig(CONFIG_BOOL_SAVE_RESPAWN_TIME_IMMEDIATLY) || pCreature->isWorldBoss())
-                        pCreature->SaveRespawnTime();
+                    delete pCreature;
+                    return;
                 }
-                map->Add(pCreature);
+                else
+                {
+                    // if new spawn replaces a just despawned creature, not instantly spawn but set respawn timer
+                    if(!instantly)
+                    {
+                        pCreature->SetRespawnTime( pCreature->GetRespawnDelay() );
+                        if (sWorld.getConfig(CONFIG_BOOL_SAVE_RESPAWN_TIME_IMMEDIATLY) || pCreature->IsWorldBoss())
+                            pCreature->SaveRespawnTime();
+                    }
+                    map->Add(pCreature);
+                }
             }
-        }
-        // for not loaded grid just update respawn time (avoid work for instances until implemented support)
-        else if(!map->Instanceable() && !instantly)
-        {
-            sObjectMgr.SaveCreatureRespawnTime(obj->guid,map->GetInstanceId(),time(NULL) + data->spawntimesecs);
+            // for not loaded grid just update respawn time (avoid work for instances until implemented support)
+            else if(!instantly)
+            {
+                sObjectMgr.SaveCreatureRespawnTime(obj->guid, 0 /*map->GetInstanceId()*/, time(NULL) + data->spawntimesecs);
+            }
         }
     }
 }
@@ -343,41 +413,47 @@ void PoolGroup<GameObject>::Spawn1Object(PoolObject* obj, bool instantly)
     if (GameObjectData const* data = sObjectMgr.GetGOData(obj->guid))
     {
         sObjectMgr.AddGameobjectToGrid(obj->guid, data);
-        // Spawn if necessary (loaded grids only)
-        // this base map checked as non-instanced and then only existed
-        Map* map = const_cast<Map*>(sMapMgr.CreateBaseMap(data->mapid));
-        // We use current coords to unspawn, not spawn coords since creature can have changed grid
-        // (avoid work for instances until implemented support)
-        if (!map->Instanceable() && map->IsLoaded(data->posX, data->posY))
+
+        MapEntry const* mapEntry = sMapStore.LookupEntry(data->mapid);
+
+        // temporary limit pool system full power work to continents
+        if (mapEntry && !mapEntry->Instanceable())
         {
-            GameObject* pGameobject = new GameObject;
-            //sLog.outDebug("Spawning gameobject %u", obj->guid);
-            if (!pGameobject->LoadFromDB(obj->guid, map))
+            // Spawn if necessary (loaded grids only)
+            Map* map = const_cast<Map*>(sMapMgr.FindMap(data->mapid));
+
+            // We use spawn coords to spawn
+            if (map && map->IsLoaded(data->posX, data->posY))
             {
-                delete pGameobject;
-                return;
-            }
-            else
-            {
-                if (pGameobject->isSpawnedByDefault())
+                GameObject* pGameobject = new GameObject;
+                //DEBUG_LOG("Spawning gameobject %u", obj->guid);
+                if (!pGameobject->LoadFromDB(obj->guid, map))
                 {
-                    // if new spawn replaces a just despawned object, not instantly spawn but set respawn timer
-                    if(!instantly)
+                    delete pGameobject;
+                    return;
+                }
+                else
+                {
+                    if (pGameobject->isSpawnedByDefault())
                     {
-                        pGameobject->SetRespawnTime( pGameobject->GetRespawnDelay() );
-                        if (sWorld.getConfig(CONFIG_BOOL_SAVE_RESPAWN_TIME_IMMEDIATLY))
-                            pGameobject->SaveRespawnTime();
+                        // if new spawn replaces a just despawned object, not instantly spawn but set respawn timer
+                        if(!instantly)
+                        {
+                            pGameobject->SetRespawnTime( pGameobject->GetRespawnDelay() );
+                            if (sWorld.getConfig(CONFIG_BOOL_SAVE_RESPAWN_TIME_IMMEDIATLY))
+                                pGameobject->SaveRespawnTime();
+                        }
+                        map->Add(pGameobject);
                     }
-                    map->Add(pGameobject);
                 }
             }
-        }
-        // for not loaded grid just update respawn time (avoid work for instances until implemented support)
-        else if(!map->Instanceable() && !instantly)
-        {
-            // for spawned by default object only
-            if (data->spawntimesecs >= 0)
-                sObjectMgr.SaveGORespawnTime(obj->guid,map->GetInstanceId(),time(NULL) + data->spawntimesecs);
+            // for not loaded grid just update respawn time (avoid work for instances until implemented support)
+            else if(!instantly)
+            {
+                // for spawned by default object only
+                if (data->spawntimesecs >= 0)
+                    sObjectMgr.SaveGORespawnTime(obj->guid, 0 /*map->GetInstanceId()*/, time(NULL) + data->spawntimesecs);
+            }
         }
     }
 }
@@ -394,7 +470,7 @@ template <>
 void PoolGroup<Creature>::ReSpawn1Object(PoolObject* obj)
 {
     if (CreatureData const* data = sObjectMgr.GetCreatureData(obj->guid))
-        if (Creature* pCreature = ObjectAccessor::GetCreatureInWorld(MAKE_NEW_GUID(obj->guid, data->id, HIGHGUID_UNIT)))
+        if (Creature* pCreature = ObjectAccessor::GetCreatureInWorld(ObjectGuid(HIGHGUID_UNIT, data->id, obj->guid)))
             pCreature->GetMap()->Add(pCreature);
 }
 
@@ -462,6 +538,7 @@ void PoolManager::LoadFromDB()
 
         PoolTemplateData& pPoolTemplate = mPoolTemplate[pool_id];
         pPoolTemplate.MaxLimit  = fields[1].GetUInt32();
+        pPoolTemplate.AutoSpawn = true;          // will update and later data loading
 
     } while (result->NextRow());
 
@@ -661,6 +738,9 @@ void PoolManager::LoadFromDB()
             SearchPair p(child_pool_id, mother_pool_id);
             mPoolSearchMap.insert(p);
 
+            // update top independent pool flag
+            mPoolTemplate[child_pool_id].AutoSpawn = false;
+
         } while( result->NextRow() );
 
         // Now check for circular reference
@@ -692,17 +772,15 @@ void PoolManager::LoadFromDB()
     }
 }
 
-// The initialize method will spawn all pools not in an event and not in another pool, this is why there is 2 left joins with 2 null checks
+// The initialize method will spawn all pools not in an event and not in another pool
 void PoolManager::Initialize()
 {
-    QueryResult *result = WorldDatabase.Query("SELECT DISTINCT pool_template.entry FROM pool_template LEFT JOIN game_event_pool ON pool_template.entry=game_event_pool.pool_entry LEFT JOIN pool_pool ON pool_template.entry=pool_pool.pool_id WHERE game_event_pool.pool_entry IS NULL AND pool_pool.pool_id IS NULL");
-    uint32 count=0;
-    if (result)
+    uint32 count = 0;
+
+    for(uint16 pool_entry = 0; pool_entry < mPoolTemplate.size(); ++pool_entry)
     {
-        do
+        if (mPoolTemplate[pool_entry].AutoSpawn)
         {
-            Field *fields = result->Fetch();
-            uint16 pool_entry = fields[0].GetUInt16();
             if (!CheckPool(pool_entry))
             {
                 sLog.outErrorDb("Pool Id (%u) has all creatures or gameobjects with explicit chance sum <>100 and no equal chance defined. The pool system cannot pick one to spawn.", pool_entry);
@@ -710,11 +788,10 @@ void PoolManager::Initialize()
             }
             SpawnPool(pool_entry, true);
             count++;
-        } while (result->NextRow());
-        delete result;
+        }
     }
 
-    sLog.outBasic("Pool handling system initialized, %u pools spawned.", count);
+    BASIC_LOG("Pool handling system initialized, %u pools spawned.", count);
 }
 
 // Call to spawn a pool, if cache if true the method will spawn only if cached entry is different
@@ -773,6 +850,27 @@ bool PoolManager::CheckPool(uint16 pool_id) const
         mPoolGameobjectGroups[pool_id].CheckPool() &&
         mPoolCreatureGroups[pool_id].CheckPool() &&
         mPoolPoolGroups[pool_id].CheckPool();
+}
+
+// Method that check linking all elements to event
+void PoolManager::CheckEventLinkAndReport(uint16 pool_id, int16 event_id, std::map<uint32, int16> const& creature2event, std::map<uint32, int16> const& go2event) const
+{
+    mPoolGameobjectGroups[pool_id].CheckEventLinkAndReport(event_id, creature2event, go2event);
+    mPoolCreatureGroups[pool_id].CheckEventLinkAndReport(event_id, creature2event, go2event);
+    mPoolPoolGroups[pool_id].CheckEventLinkAndReport(event_id, creature2event, go2event);
+}
+
+// Method that exclude some elements from next spawn
+template<>
+void PoolManager::SetExcludeObject<Creature>(uint16 pool_id, uint32 db_guid_or_pool_id, bool state)
+{
+    mPoolCreatureGroups[pool_id].SetExcludeObject(db_guid_or_pool_id, state);
+}
+
+template<>
+void PoolManager::SetExcludeObject<GameObject>(uint16 pool_id, uint32 db_guid_or_pool_id, bool state)
+{
+    mPoolGameobjectGroups[pool_id].SetExcludeObject(db_guid_or_pool_id, state);
 }
 
 // Call to update the pool when a gameobject/creature part of pool [pool_id] is ready to respawn

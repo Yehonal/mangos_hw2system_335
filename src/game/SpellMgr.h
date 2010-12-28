@@ -22,18 +22,20 @@
 // For static or at-server-startup loaded spell data
 // For more high level function for sSpellStore data
 
+#include "Common.h"
 #include "SharedDefines.h"
 #include "SpellAuraDefines.h"
 #include "DBCStructure.h"
 #include "DBCStores.h"
-#include "Database/SQLStorage.h"
+#include "SQLStorages.h"
 
-#include "Utilities/UnorderedMap.h"
+#include "Utilities/UnorderedMapSet.h"
 
 #include <map>
 
 class Player;
 class Spell;
+struct CreatureInfo;
 struct SpellModifier;
 
 // only used in code
@@ -42,28 +44,6 @@ enum SpellCategories
     SPELLCATEGORY_HEALTH_MANA_POTIONS = 4,
     SPELLCATEGORY_DEVOUR_MAGIC        = 12,
     SPELLCATEGORY_JUDGEMENT           = 1210,               // Judgement (seal trigger)
-};
-
-enum SpellFamilyNames
-{
-    SPELLFAMILY_GENERIC     = 0,
-    SPELLFAMILY_UNK1        = 1,                            // events, holidays
-    // 2 - unused
-    SPELLFAMILY_MAGE        = 3,
-    SPELLFAMILY_WARRIOR     = 4,
-    SPELLFAMILY_WARLOCK     = 5,
-    SPELLFAMILY_PRIEST      = 6,
-    SPELLFAMILY_DRUID       = 7,
-    SPELLFAMILY_ROGUE       = 8,
-    SPELLFAMILY_HUNTER      = 9,
-    SPELLFAMILY_PALADIN     = 10,
-    SPELLFAMILY_SHAMAN      = 11,
-    SPELLFAMILY_UNK2        = 12,                           // 2 spells (silence resistance)
-    SPELLFAMILY_POTION      = 13,
-    // 14 - unused
-    SPELLFAMILY_DEATHKNIGHT = 15,
-    // 16 - unused
-    SPELLFAMILY_PET         = 17
 };
 
 //Some SpellFamilyFlags
@@ -103,6 +83,7 @@ enum SpellSpecific
     SPELL_FOOD              = 20,
     SPELL_DRINK             = 21,
     SPELL_FOOD_AND_DRINK    = 22,
+    SPELL_UA_IMMOLATE       = 23,                           // Unstable Affliction and Immolate
 };
 
 SpellSpecific GetSpellSpecific(uint32 spellId);
@@ -110,6 +91,8 @@ SpellSpecific GetSpellSpecific(uint32 spellId);
 // Different spell properties
 inline float GetSpellRadius(SpellRadiusEntry const *radius) { return (radius ? radius->Radius : 0); }
 uint32 GetSpellCastTime(SpellEntry const* spellInfo, Spell const* spell = NULL);
+uint32 GetSpellCastTimeForBonus( SpellEntry const *spellProto, DamageEffectType damagetype );
+float CalculateDefaultCoefficient(SpellEntry const *spellProto, DamageEffectType const damagetype);
 inline float GetSpellMinRange(SpellRangeEntry const *range, bool friendly = false)
 {
     if(!range)
@@ -136,6 +119,43 @@ inline bool IsSpellHaveEffect(SpellEntry const *spellInfo, SpellEffects effect)
     return false;
 }
 
+inline bool IsSpellAppliesAura(SpellEntry const *spellInfo, uint32 effectMask)
+{
+    for(int i = 0; i < MAX_EFFECT_INDEX; ++i)
+    {
+        if (effectMask & (1 << i))
+        {
+            switch (spellInfo->Effect[i])
+            {
+                case SPELL_EFFECT_APPLY_AURA:
+                case SPELL_EFFECT_APPLY_AREA_AURA_PARTY:
+                case SPELL_EFFECT_APPLY_AREA_AURA_RAID:
+                case SPELL_EFFECT_APPLY_AREA_AURA_PET:
+                case SPELL_EFFECT_APPLY_AREA_AURA_FRIEND:
+                case SPELL_EFFECT_APPLY_AREA_AURA_ENEMY:
+                case SPELL_EFFECT_APPLY_AREA_AURA_OWNER:
+                    return true;
+            }
+        }
+    }
+    return false;
+}
+
+inline bool IsEffectHandledOnDelayedSpellLaunch(SpellEntry const *spellInfo, SpellEffectIndex effecIdx)
+{
+    switch (spellInfo->Effect[effecIdx])
+    {
+        case SPELL_EFFECT_SCHOOL_DAMAGE:
+        case SPELL_EFFECT_WEAPON_DAMAGE_NOSCHOOL:
+        case SPELL_EFFECT_WEAPON_PERCENT_DAMAGE:
+        case SPELL_EFFECT_WEAPON_DAMAGE:
+        case SPELL_EFFECT_NORMALIZED_WEAPON_DMG:
+            return true;
+        default:
+            return false;
+    }
+}
+
 inline bool IsSpellHaveAura(SpellEntry const *spellInfo, AuraType aura)
 {
     for(int i = 0; i < MAX_EFFECT_INDEX; ++i)
@@ -152,7 +172,7 @@ inline bool IsSpellLastAuraEffect(SpellEntry const *spellInfo, SpellEffectIndex 
     return true;
 }
 
-bool IsNoStackAuraDueToAura(uint32 spellId_1, SpellEffectIndex effIndex_1, uint32 spellId_2, SpellEffectIndex effIndex_2);
+bool IsNoStackAuraDueToAura(uint32 spellId_1, uint32 spellId_2);
 
 inline bool IsSealSpell(SpellEntry const *spellInfo)
 {
@@ -171,7 +191,8 @@ inline bool IsElementalShield(SpellEntry const *spellInfo)
 
 inline bool IsExplicitDiscoverySpell(SpellEntry const *spellInfo)
 {
-    return ((spellInfo->Effect[EFFECT_INDEX_0] == SPELL_EFFECT_CREATE_RANDOM_ITEM
+    return (((spellInfo->Effect[EFFECT_INDEX_0] == SPELL_EFFECT_CREATE_RANDOM_ITEM
+        || spellInfo->Effect[EFFECT_INDEX_0] == SPELL_EFFECT_CREATE_ITEM_2)
         && spellInfo->Effect[EFFECT_INDEX_1] == SPELL_EFFECT_SCRIPT_EFFECT)
         || spellInfo->Id == 64323);                         // Book of Glyph Mastery (Effect0==SPELL_EFFECT_SCRIPT_EFFECT without any other data)
 }
@@ -179,12 +200,12 @@ inline bool IsExplicitDiscoverySpell(SpellEntry const *spellInfo)
 inline bool IsLootCraftingSpell(SpellEntry const *spellInfo)
 {
     return (spellInfo->Effect[EFFECT_INDEX_0] == SPELL_EFFECT_CREATE_RANDOM_ITEM ||
-        // different random cards from Inscription (121==Virtuoso Inking Set category)
-        // also Abyssal Shatter (63), any !=0 infact
-        (spellInfo->Effect[EFFECT_INDEX_0] == SPELL_EFFECT_CREATE_ITEM_2 && spellInfo->TotemCategory[0] != 0));
+        // different random cards from Inscription (121==Virtuoso Inking Set category) r without explicit item
+        (spellInfo->Effect[EFFECT_INDEX_0] == SPELL_EFFECT_CREATE_ITEM_2 &&
+        (spellInfo->TotemCategory[0] != 0 || spellInfo->EffectItemType[0]==0)));
 }
 
-int32 CompareAuraRanks(uint32 spellId_1, SpellEffectIndex effIndex_1, uint32 spellId_2, SpellEffectIndex effIndex_2);
+int32 CompareAuraRanks(uint32 spellId_1, uint32 spellId_2);
 
 // order from less to more strict
 bool IsSingleFromSpellSpecificPerTargetPerCaster(SpellSpecific spellSpec1,SpellSpecific spellSpec2);
@@ -192,10 +213,11 @@ bool IsSingleFromSpellSpecificSpellRanksPerTarget(SpellSpecific spellSpec1,Spell
 bool IsSingleFromSpellSpecificPerTarget(SpellSpecific spellSpec1,SpellSpecific spellSpec2);
 
 bool IsPassiveSpell(uint32 spellId);
+bool IsPassiveSpell(SpellEntry const* spellProto);
 
 inline bool IsPassiveSpellStackableWithRanks(SpellEntry const* spellProto)
 {
-    if(!IsPassiveSpell(spellProto->Id))
+    if(!IsPassiveSpell(spellProto))
         return false;
 
     return !IsSpellHaveEffect(spellProto,SPELL_EFFECT_APPLY_AURA);
@@ -244,7 +266,7 @@ inline bool IsCasterSourceTarget(uint32 target)
         case TARGET_TOTEM_WATER:
         case TARGET_TOTEM_AIR:
         case TARGET_TOTEM_FIRE:
-        case TARGET_AREAEFFECT_CUSTOM_2:
+        case TARGET_AREAEFFECT_GO_AROUND_DEST:
         case TARGET_ALL_RAID_AROUND_CASTER:
         case TARGET_SELF2:
         case TARGET_DIRECTLY_FORWARD:
@@ -301,6 +323,25 @@ inline bool IsPointEffectTarget( Targets target )
     return false;
 }
 
+inline bool IsAreaEffectPossitiveTarget( Targets target )
+{
+    switch (target )
+    {
+        case TARGET_ALL_PARTY_AROUND_CASTER:
+        case TARGET_ALL_FRIENDLY_UNITS_AROUND_CASTER:
+        case TARGET_ALL_FRIENDLY_UNITS_IN_AREA:
+        case TARGET_ALL_PARTY:
+        case TARGET_ALL_PARTY_AROUND_CASTER_2:
+        case TARGET_AREAEFFECT_PARTY:
+        case TARGET_ALL_RAID_AROUND_CASTER:
+        case TARGET_AREAEFFECT_PARTY_AND_CLASS:
+            return true;
+        default:
+            break;
+    }
+    return false;
+}
+
 inline bool IsAreaEffectTarget( Targets target )
 {
     switch (target )
@@ -317,7 +358,7 @@ inline bool IsAreaEffectTarget( Targets target )
         case TARGET_ALL_PARTY:
         case TARGET_ALL_PARTY_AROUND_CASTER_2:
         case TARGET_AREAEFFECT_PARTY:
-        case TARGET_AREAEFFECT_CUSTOM_2:
+        case TARGET_AREAEFFECT_GO_AROUND_DEST:
         case TARGET_ALL_RAID_AROUND_CASTER:
         case TARGET_AREAEFFECT_PARTY_AND_CLASS:
         case TARGET_IN_FRONT_OF_CASTER_30:
@@ -351,14 +392,35 @@ inline bool IsAreaAuraEffect(uint32 effect)
     return false;
 }
 
-inline bool IsDispelSpell(SpellEntry const *spellInfo)
+inline bool HasAreaAuraEffect(SpellEntry const *spellInfo)
 {
-    if (spellInfo->Effect[EFFECT_INDEX_0] == SPELL_EFFECT_DISPEL ||
-        spellInfo->Effect[EFFECT_INDEX_1] == SPELL_EFFECT_DISPEL ||
-        spellInfo->Effect[EFFECT_INDEX_2] == SPELL_EFFECT_DISPEL )
-        return true;
+    for (int32 i = 0; i < MAX_EFFECT_INDEX; ++i)
+        if (IsAreaAuraEffect(spellInfo->Effect[i]))
+            return true;
     return false;
 }
+
+inline bool HasAuraWithTriggerEffect(SpellEntry const *spellInfo)
+{
+    for (int32 i = 0; i < MAX_EFFECT_INDEX; ++i)
+    {
+        switch(spellInfo->Effect[i])
+        {
+            case SPELL_AURA_PERIODIC_TRIGGER_SPELL:
+            case SPELL_AURA_PROC_TRIGGER_SPELL:
+            case SPELL_AURA_PROC_TRIGGER_DAMAGE:
+            case SPELL_AURA_PROC_TRIGGER_SPELL_WITH_VALUE:
+                return true;
+        }
+    }
+    return false;
+}
+
+inline bool IsDispelSpell(SpellEntry const *spellInfo)
+{
+    return IsSpellHaveEffect(spellInfo, SPELL_EFFECT_DISPEL);
+}
+
 inline bool isSpellBreakStealth(SpellEntry const* spellInfo)
 {
     return !(spellInfo->AttributesEx & SPELL_ATTR_EX_NOT_BREAK_STEALTH);
@@ -367,6 +429,11 @@ inline bool isSpellBreakStealth(SpellEntry const* spellInfo)
 inline bool IsAutoRepeatRangedSpell(SpellEntry const* spellInfo)
 {
     return (spellInfo->Attributes & SPELL_ATTR_RANGED) && (spellInfo->AttributesEx2 & SPELL_ATTR_EX2_AUTOREPEAT_FLAG);
+}
+
+inline bool IsSpellRequiresRangedAP(SpellEntry const* spellInfo)
+{
+    return (spellInfo->SpellFamilyName == SPELLFAMILY_HUNTER && spellInfo->DmgClass != SPELL_DAMAGE_CLASS_MELEE);
 }
 
 SpellCastResult GetErrorAtShapeshiftedCast (SpellEntry const *spellInfo, uint32 form);
@@ -378,7 +445,7 @@ inline bool IsChanneledSpell(SpellEntry const* spellInfo)
 
 inline bool NeedsComboPoints(SpellEntry const* spellInfo)
 {
-    return (spellInfo->AttributesEx & (SPELL_ATTR_EX_REQ_COMBO_POINTS1 | SPELL_ATTR_EX_REQ_COMBO_POINTS2));
+    return (spellInfo->AttributesEx & (SPELL_ATTR_EX_REQ_TARGET_COMBO_POINTS | SPELL_ATTR_EX_REQ_COMBO_POINTS));
 }
 
 inline SpellSchoolMask GetSpellSchoolMask(SpellEntry const* spellInfo)
@@ -431,46 +498,48 @@ bool IsDiminishingReturnsGroupDurationLimited(DiminishingGroup group);
 DiminishingReturnsType GetDiminishingReturnsGroupType(DiminishingGroup group);
 int32 GetDiminishingReturnsLimitDuration(DiminishingGroup group, SpellEntry const* spellproto);
 
+SpellEntry const* GetSpellEntryByDifficulty(uint32 id, Difficulty difficulty);
+
 // Spell proc event related declarations (accessed using SpellMgr functions)
 enum ProcFlags
 {
-   PROC_FLAG_NONE                          = 0x00000000,
+    PROC_FLAG_NONE                          = 0x00000000,
 
-   PROC_FLAG_KILLED                        = 0x00000001,    // 00 Killed by agressor
-   PROC_FLAG_KILL                          = 0x00000002,    // 01 Kill target (in most cases need XP/Honor reward)
+    PROC_FLAG_KILLED                        = 0x00000001,   // 00 Killed by aggressor
+    PROC_FLAG_KILL                          = 0x00000002,   // 01 Kill target (in most cases need XP/Honor reward, see Unit::IsTriggeredAtSpellProcEvent for additinoal check)
 
-   PROC_FLAG_SUCCESSFUL_MELEE_HIT          = 0x00000004,    // 02 Successful melee auto attack
-   PROC_FLAG_TAKEN_MELEE_HIT               = 0x00000008,    // 03 Taken damage from melee auto attack hit
+    PROC_FLAG_SUCCESSFUL_MELEE_HIT          = 0x00000004,   // 02 Successful melee auto attack
+    PROC_FLAG_TAKEN_MELEE_HIT               = 0x00000008,   // 03 Taken damage from melee auto attack hit
 
-   PROC_FLAG_SUCCESSFUL_MELEE_SPELL_HIT    = 0x00000010,    // 04 Successful attack by Spell that use melee weapon
-   PROC_FLAG_TAKEN_MELEE_SPELL_HIT         = 0x00000020,    // 05 Taken damage by Spell that use melee weapon
+    PROC_FLAG_SUCCESSFUL_MELEE_SPELL_HIT    = 0x00000010,   // 04 Successful attack by Spell that use melee weapon
+    PROC_FLAG_TAKEN_MELEE_SPELL_HIT         = 0x00000020,   // 05 Taken damage by Spell that use melee weapon
 
-   PROC_FLAG_SUCCESSFUL_RANGED_HIT         = 0x00000040,    // 06 Successful Ranged auto attack
-   PROC_FLAG_TAKEN_RANGED_HIT              = 0x00000080,    // 07 Taken damage from ranged auto attack
+    PROC_FLAG_SUCCESSFUL_RANGED_HIT         = 0x00000040,   // 06 Successful Ranged auto attack
+    PROC_FLAG_TAKEN_RANGED_HIT              = 0x00000080,   // 07 Taken damage from ranged auto attack
 
-   PROC_FLAG_SUCCESSFUL_RANGED_SPELL_HIT   = 0x00000100,    // 08 Successful Ranged attack by Spell that use ranged weapon
-   PROC_FLAG_TAKEN_RANGED_SPELL_HIT        = 0x00000200,    // 09 Taken damage by Spell that use ranged weapon
+    PROC_FLAG_SUCCESSFUL_RANGED_SPELL_HIT   = 0x00000100,   // 08 Successful Ranged attack by Spell that use ranged weapon
+    PROC_FLAG_TAKEN_RANGED_SPELL_HIT        = 0x00000200,   // 09 Taken damage by Spell that use ranged weapon
 
-   PROC_FLAG_SUCCESSFUL_POSITIVE_AOE_HIT   = 0x00000400,    // 10 Successful AoE (not 100% shure unused)
-   PROC_FLAG_TAKEN_POSITIVE_AOE            = 0x00000800,    // 11 Taken AoE      (not 100% shure unused)
+    PROC_FLAG_SUCCESSFUL_POSITIVE_AOE_HIT   = 0x00000400,   // 10 Successful AoE (not 100% shure unused)
+    PROC_FLAG_TAKEN_POSITIVE_AOE            = 0x00000800,   // 11 Taken AoE      (not 100% shure unused)
 
-   PROC_FLAG_SUCCESSFUL_AOE_SPELL_HIT      = 0x00001000,    // 12 Successful AoE damage spell hit (not 100% shure unused)
-   PROC_FLAG_TAKEN_AOE_SPELL_HIT           = 0x00002000,    // 13 Taken AoE damage spell hit      (not 100% shure unused)
+    PROC_FLAG_SUCCESSFUL_AOE_SPELL_HIT      = 0x00001000,   // 12 Successful AoE damage spell hit (not 100% shure unused)
+    PROC_FLAG_TAKEN_AOE_SPELL_HIT           = 0x00002000,   // 13 Taken AoE damage spell hit      (not 100% shure unused)
 
-   PROC_FLAG_SUCCESSFUL_POSITIVE_SPELL     = 0x00004000,    // 14 Successful cast positive spell (by default only on healing)
-   PROC_FLAG_TAKEN_POSITIVE_SPELL          = 0x00008000,    // 15 Taken positive spell hit (by default only on healing)
+    PROC_FLAG_SUCCESSFUL_POSITIVE_SPELL     = 0x00004000,   // 14 Successful cast positive spell (by default only on healing)
+    PROC_FLAG_TAKEN_POSITIVE_SPELL          = 0x00008000,   // 15 Taken positive spell hit (by default only on healing)
 
-   PROC_FLAG_SUCCESSFUL_NEGATIVE_SPELL_HIT = 0x00010000,    // 16 Successful negative spell cast (by default only on damage)
-   PROC_FLAG_TAKEN_NEGATIVE_SPELL_HIT      = 0x00020000,    // 17 Taken negative spell (by default only on damage)
+    PROC_FLAG_SUCCESSFUL_NEGATIVE_SPELL_HIT = 0x00010000,   // 16 Successful negative spell cast (by default only on damage)
+    PROC_FLAG_TAKEN_NEGATIVE_SPELL_HIT      = 0x00020000,   // 17 Taken negative spell (by default only on damage)
 
-   PROC_FLAG_ON_DO_PERIODIC                = 0x00040000,    // 18 Successful do periodic (damage / healing, determined from 14-17 flags)
-   PROC_FLAG_ON_TAKE_PERIODIC              = 0x00080000,    // 19 Taken spell periodic (damage / healing, determined from 14-17 flags)
+    PROC_FLAG_ON_DO_PERIODIC                = 0x00040000,   // 18 Successful do periodic (damage / healing, determined by PROC_EX_PERIODIC_POSITIVE or negative if no procEx)
+    PROC_FLAG_ON_TAKE_PERIODIC              = 0x00080000,   // 19 Taken spell periodic (damage / healing, determined by PROC_EX_PERIODIC_POSITIVE or negative if no procEx)
 
-   PROC_FLAG_TAKEN_ANY_DAMAGE              = 0x00100000,    // 20 Taken any damage
-   PROC_FLAG_ON_TRAP_ACTIVATION            = 0x00200000,    // 21 On trap activation
+    PROC_FLAG_TAKEN_ANY_DAMAGE              = 0x00100000,   // 20 Taken any damage
+    PROC_FLAG_ON_TRAP_ACTIVATION            = 0x00200000,   // 21 On trap activation
 
-   PROC_FLAG_TAKEN_OFFHAND_HIT             = 0x00400000,    // 22 Taken off-hand melee attacks(not used)
-   PROC_FLAG_SUCCESSFUL_OFFHAND_HIT        = 0x00800000     // 23 Successful off-hand melee attacks
+    PROC_FLAG_TAKEN_OFFHAND_HIT             = 0x00400000,   // 22 Taken off-hand melee attacks(not used)
+    PROC_FLAG_SUCCESSFUL_OFFHAND_HIT        = 0x00800000    // 23 Successful off-hand melee attacks
 };
 
 #define MELEE_BASED_TRIGGER_MASK (PROC_FLAG_SUCCESSFUL_MELEE_HIT        | \
@@ -482,35 +551,42 @@ enum ProcFlags
                                   PROC_FLAG_SUCCESSFUL_RANGED_SPELL_HIT | \
                                   PROC_FLAG_TAKEN_RANGED_SPELL_HIT)
 
+#define NEGATIVE_TRIGGER_MASK (MELEE_BASED_TRIGGER_MASK                | \
+                               PROC_FLAG_SUCCESSFUL_AOE_SPELL_HIT      | \
+                               PROC_FLAG_TAKEN_AOE_SPELL_HIT           | \
+                               PROC_FLAG_SUCCESSFUL_NEGATIVE_SPELL_HIT | \
+                               PROC_FLAG_TAKEN_NEGATIVE_SPELL_HIT)
+
 enum ProcFlagsEx
 {
-   PROC_EX_NONE                = 0x0000000,                 // If none can tigger on Hit/Crit only (passive spells MUST defined by SpellFamily flag)
-   PROC_EX_NORMAL_HIT          = 0x0000001,                 // If set only from normal hit (only damage spells)
-   PROC_EX_CRITICAL_HIT        = 0x0000002,
-   PROC_EX_MISS                = 0x0000004,
-   PROC_EX_RESIST              = 0x0000008,
-   PROC_EX_DODGE               = 0x0000010,
-   PROC_EX_PARRY               = 0x0000020,
-   PROC_EX_BLOCK               = 0x0000040,
-   PROC_EX_EVADE               = 0x0000080,
-   PROC_EX_IMMUNE              = 0x0000100,
-   PROC_EX_DEFLECT             = 0x0000200,
-   PROC_EX_ABSORB              = 0x0000400,
-   PROC_EX_REFLECT             = 0x0000800,
-   PROC_EX_INTERRUPT           = 0x0001000,                 // Melee hit result can be Interrupt (not used)
-   PROC_EX_FULL_BLOCK          = 0x0002000,                 // block al attack damage
-   PROC_EX_RESERVED2           = 0x0004000,
-   PROC_EX_RESERVED3           = 0x0008000,
-   PROC_EX_EX_TRIGGER_ALWAYS   = 0x0010000,                 // If set trigger always ( no matter another flags) used for drop charges
-   PROC_EX_EX_ONE_TIME_TRIGGER = 0x0020000                  // If set trigger always but only one time (not used)
+    PROC_EX_NONE                = 0x0000000,                // If none can tigger on Hit/Crit only (passive spells MUST defined by SpellFamily flag)
+    PROC_EX_NORMAL_HIT          = 0x0000001,                // If set only from normal hit (only damage spells)
+    PROC_EX_CRITICAL_HIT        = 0x0000002,
+    PROC_EX_MISS                = 0x0000004,
+    PROC_EX_RESIST              = 0x0000008,
+    PROC_EX_DODGE               = 0x0000010,
+    PROC_EX_PARRY               = 0x0000020,
+    PROC_EX_BLOCK               = 0x0000040,
+    PROC_EX_EVADE               = 0x0000080,
+    PROC_EX_IMMUNE              = 0x0000100,
+    PROC_EX_DEFLECT             = 0x0000200,
+    PROC_EX_ABSORB              = 0x0000400,
+    PROC_EX_REFLECT             = 0x0000800,
+    PROC_EX_INTERRUPT           = 0x0001000,                // Melee hit result can be Interrupt (not used)
+    PROC_EX_FULL_BLOCK          = 0x0002000,                // block al attack damage
+    PROC_EX_RESERVED2           = 0x0004000,
+    PROC_EX_RESERVED3           = 0x0008000,
+    PROC_EX_EX_TRIGGER_ALWAYS   = 0x0010000,                // If set trigger always ( no matter another flags) used for drop charges
+    PROC_EX_EX_ONE_TIME_TRIGGER = 0x0020000,                // If set trigger always but only one time (not used)
+    PROC_EX_PERIODIC_POSITIVE   = 0x0040000                 // For periodic heal
 };
 
 struct SpellProcEventEntry
 {
     uint32      schoolMask;                                 // if nonzero - bit mask for matching proc condition based on spell candidate's school: Fire=2, Mask=1<<(2-1)=2
     uint32      spellFamilyName;                            // if nonzero - for matching proc condition based on candidate spell's SpellFamilyNamer value
-    uint64      spellFamilyMask;                            // if nonzero - for matching proc condition based on candidate spell's SpellFamilyFlags  (like auras 107 and 108 do)
-    uint32      spellFamilyMask2;                           // if nonzero - for matching proc condition based on candidate spell's SpellFamilyFlags2 (like auras 107 and 108 do)
+    uint64      spellFamilyMask[MAX_EFFECT_INDEX];          // if nonzero - for matching proc condition based on candidate spell's SpellFamilyFlags  (like auras 107 and 108 do)
+    uint32      spellFamilyMask2[MAX_EFFECT_INDEX];         // if nonzero - for matching proc condition based on candidate spell's SpellFamilyFlags2 (like auras 107 and 108 do)
     uint32      procFlags;                                  // bitmask for matching proc event
     uint32      procEx;                                     // proc Extend info (see ProcFlagsEx)
     float       ppmRate;                                    // for melee (ranged?) damage spells - proc rate per minute. if zero, falls back to flat chance from Spell.dbc
@@ -523,6 +599,7 @@ struct SpellBonusEntry
     float  direct_damage;
     float  dot_damage;
     float  ap_bonus;
+    float  ap_dot_bonus;
 };
 
 typedef UNORDERED_MAP<uint32, SpellProcEventEntry> SpellProcEventMap;
@@ -664,9 +741,10 @@ typedef std::multimap<uint32, uint32> SpellChainMapNext;
 // Spell learning properties (accessed using SpellMgr functions)
 struct SpellLearnSkillNode
 {
-    uint32 skill;
-    uint32 value;                                           // 0  - max skill value for player level
-    uint32 maxvalue;                                        // 0  - max skill value for player level
+    uint16 skill;
+    uint16 step;
+    uint16 value;                                           // 0  - max skill value for player level
+    uint16 maxvalue;                                        // 0  - max skill value for player level
 };
 
 typedef std::map<uint32, SpellLearnSkillNode> SpellLearnSkillMap;
@@ -720,7 +798,7 @@ inline bool IsProfessionOrRidingSkill(uint32 skill)
 
 class SpellMgr
 {
-    friend struct DoSpellBonusess;
+    friend struct DoSpellBonuses;
     friend struct DoSpellProcEvent;
     friend struct DoSpellProcItemEnchant;
 
@@ -786,7 +864,7 @@ class SpellMgr
             return itr->second;
         }
 
-        static bool IsSpellProcEventCanTriggeredBy( SpellProcEventEntry const * spellProcEvent, uint32 EventProcFlag, SpellEntry const * procSpell, uint32 procFlags, uint32 procExtra, bool active);
+        static bool IsSpellProcEventCanTriggeredBy( SpellProcEventEntry const * spellProcEvent, uint32 EventProcFlag, SpellEntry const * procSpell, uint32 procFlags, uint32 procExtra);
 
         // Spell bonus data
         SpellBonusEntry const* GetSpellBonusData(uint32 spellId) const
@@ -876,10 +954,14 @@ class SpellMgr
         }
 
         bool IsRankSpellDueToSpell(SpellEntry const *spellInfo_1,uint32 spellId_2) const;
-        static bool canStackSpellRanks(SpellEntry const *spellInfo);
         bool IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) const;
+        bool canStackSpellRanksInSpellBook(SpellEntry const *spellInfo) const;
+        bool IsRankedSpellNonStackableInSpellBook(SpellEntry const *spellInfo) const
+        {
+            return !canStackSpellRanksInSpellBook(spellInfo) && GetSpellRank(spellInfo->Id) != 0;
+        }
 
-        SpellEntry const* SelectAuraRankForPlayerLevel(SpellEntry const* spellInfo, uint32 playerLevel) const;
+        SpellEntry const* SelectAuraRankForLevel(SpellEntry const* spellInfo, uint32 Level) const;
 
         // Spell learning
         SpellLearnSkillNode const* GetSpellLearnSkill(uint32 spell_id) const
@@ -898,7 +980,7 @@ class SpellMgr
 
         SpellLearnSpellMapBounds GetSpellLearnSpellMapBounds(uint32 spell_id) const
         {
-            return SpellLearnSpellMapBounds(mSpellLearnSpells.lower_bound(spell_id),mSpellLearnSpells.upper_bound(spell_id));
+            return mSpellLearnSpells.equal_range(spell_id);
         }
 
         bool IsSpellLearnToSpell(uint32 spell_id1,uint32 spell_id2) const
@@ -921,15 +1003,15 @@ class SpellMgr
         // Spell script targets
         SpellScriptTargetBounds GetSpellScriptTargetBounds(uint32 spell_id) const
         {
-            return SpellScriptTargetBounds(mSpellScriptTarget.lower_bound(spell_id),mSpellScriptTarget.upper_bound(spell_id));
+            return mSpellScriptTarget.equal_range(spell_id);
         }
 
-        // Spell correctess for client using
+        // Spell correctness for client using
         static bool IsSpellValid(SpellEntry const * spellInfo, Player* pl = NULL, bool msg = true);
 
         SkillLineAbilityMapBounds GetSkillLineAbilityMapBounds(uint32 spell_id) const
         {
-            return SkillLineAbilityMapBounds(mSkillLineAbilityMap.lower_bound(spell_id),mSkillLineAbilityMap.upper_bound(spell_id));
+            return mSkillLineAbilityMap.equal_range(spell_id);
         }
 
         PetAura const* GetPetAura(uint32 spell_id, SpellEffectIndex eff)
@@ -963,30 +1045,30 @@ class SpellMgr
 
         SpellAreaMapBounds GetSpellAreaMapBounds(uint32 spell_id) const
         {
-            return SpellAreaMapBounds(mSpellAreaMap.lower_bound(spell_id),mSpellAreaMap.upper_bound(spell_id));
+            return mSpellAreaMap.equal_range(spell_id);
         }
 
         SpellAreaForQuestMapBounds GetSpellAreaForQuestMapBounds(uint32 quest_id, bool active) const
         {
-            if(active)
-                return SpellAreaForQuestMapBounds(mSpellAreaForActiveQuestMap.lower_bound(quest_id),mSpellAreaForActiveQuestMap.upper_bound(quest_id));
+            if (active)
+                return mSpellAreaForActiveQuestMap.equal_range(quest_id);
             else
-                return SpellAreaForQuestMapBounds(mSpellAreaForQuestMap.lower_bound(quest_id),mSpellAreaForQuestMap.upper_bound(quest_id));
+                return mSpellAreaForQuestMap.equal_range(quest_id);
         }
 
         SpellAreaForQuestMapBounds GetSpellAreaForQuestEndMapBounds(uint32 quest_id) const
         {
-            return SpellAreaForQuestMapBounds(mSpellAreaForQuestEndMap.lower_bound(quest_id),mSpellAreaForQuestEndMap.upper_bound(quest_id));
+            return mSpellAreaForQuestEndMap.equal_range(quest_id);
         }
 
         SpellAreaForAuraMapBounds GetSpellAreaForAuraMapBounds(uint32 spell_id) const
         {
-            return SpellAreaForAuraMapBounds(mSpellAreaForAuraMap.lower_bound(spell_id),mSpellAreaForAuraMap.upper_bound(spell_id));
+            return mSpellAreaForAuraMap.equal_range(spell_id);
         }
 
         SpellAreaForAreaMapBounds GetSpellAreaForAreaMapBounds(uint32 area_id) const
         {
-            return SpellAreaForAreaMapBounds(mSpellAreaForAreaMap.lower_bound(area_id),mSpellAreaForAreaMap.upper_bound(area_id));
+            return mSpellAreaForAreaMap.equal_range(area_id);
         }
 
     // Modifiers
@@ -1003,7 +1085,7 @@ class SpellMgr
         void LoadSpellElixirs();
         void LoadSpellProcEvents();
         void LoadSpellProcItemEnchant();
-        void LoadSpellBonusess();
+        void LoadSpellBonuses();
         void LoadSpellTargetPositions();
         void LoadSpellThreats();
         void LoadSkillLineAbilityMap();
@@ -1013,6 +1095,8 @@ class SpellMgr
         void LoadSpellAreas();
 
     private:
+        bool LoadPetDefaultSpells_helper(CreatureInfo const* cInfo, PetDefaultSpellsEntry& petDefSpells);
+
         SpellScriptTarget  mSpellScriptTarget;
         SpellChainMap      mSpellChains;
         SpellChainMapNext  mSpellChainsNext;

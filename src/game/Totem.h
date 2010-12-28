@@ -33,7 +33,7 @@ class Totem : public Creature
     public:
         explicit Totem();
         virtual ~Totem(){};
-        void Update( uint32 time );
+        void Update(uint32 update_diff,  uint32 time );
         void Summon(Unit* owner);
         void UnSummon();
         uint32 GetSpell() const { return m_spells[0]; }
@@ -42,7 +42,7 @@ class Totem : public Creature
         TotemType GetTotemType() const { return m_type; }
         void SetTypeBySummonSpell(SpellEntry const * spellProto);
         void SetDuration(uint32 dur) { m_duration = dur; }
-        void SetOwner(uint64 guid);
+        void SetOwner(Unit* owner);
 
         bool UpdateStats(Stats /*stat*/) { return true; }
         bool UpdateAllStats() { return true; }
@@ -53,7 +53,7 @@ class Totem : public Creature
         void UpdateAttackPowerAndDamage(bool /*ranged*/ ) {}
         void UpdateDamagePhysical(WeaponAttackType /*attType*/) {}
 
-        bool IsImmunedToSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex index) const;
+        bool IsImmuneToSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex index) const;
 
     protected:
         TotemType m_type;

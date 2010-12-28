@@ -37,12 +37,17 @@ void TargetedMovementGeneratorMedium<T,D>::_setTargetLocation(T &owner)
     if (owner.hasUnitState(UNIT_STAT_NOT_MOVE))
         return;
 
+    float x, y, z;
+
     // prevent redundant micro-movement for pets, other followers.
     if (i_offset && i_target->IsWithinDistInMap(&owner,2*i_offset))
-        return;
+    {
+        if (i_destinationHolder.HasDestination())
+            return;
 
-    float x, y, z;
-    if (!i_offset)
+        owner.GetPosition(x, y, z);
+    }
+    else if (!i_offset)
     {
         // to nearest contact position
         i_target->GetContactPoint( &owner, x, y, z );
@@ -50,7 +55,7 @@ void TargetedMovementGeneratorMedium<T,D>::_setTargetLocation(T &owner)
     else
     {
         // to at i_offset distance from target and i_angle from target facing
-        i_target->GetClosePoint(x,y,z,owner.GetObjectSize(),i_offset,i_angle);
+        i_target->GetClosePoint(x, y, z, owner.GetObjectBoundingRadius(), i_offset, i_angle, &owner);
     }
 
     /*
@@ -65,15 +70,16 @@ void TargetedMovementGeneratorMedium<T,D>::_setTargetLocation(T &owner)
         ralf
 
         //We don't update Mob Movement, if the difference between New destination and last destination is < BothObjectSize
-        float  bothObjectSize = i_target->GetObjectSize() + owner.GetObjectSize() + CONTACT_DISTANCE;
+        float  bothObjectSize = i_target->GetObjectBoundingRadius() + owner.GetObjectBoundingRadius() + CONTACT_DISTANCE;
         if( i_destinationHolder.HasDestination() && i_destinationHolder.GetDestinationDiff(x,y,z) < bothObjectSize )
             return;
     */
+
     Traveller<T> traveller(owner);
     i_destinationHolder.SetDestination(traveller, x, y, z);
 
     D::_addUnitStateMove(owner);
-    if (owner.GetTypeId() == TYPEID_UNIT && ((Creature*)&owner)->canFly())
+    if (owner.GetTypeId() == TYPEID_UNIT && ((Creature*)&owner)->CanFly())
         ((Creature&)owner).AddSplineFlag(SPLINEFLAG_UNKNOWN7);
 }
 
@@ -143,7 +149,7 @@ bool TargetedMovementGeneratorMedium<T,D>::Update(T &owner, const uint32 & time_
     if (owner.IsStopped() && !i_destinationHolder.HasArrived())
     {
         D::_addUnitStateMove(owner);
-        if (owner.GetTypeId() == TYPEID_UNIT && ((Creature*)&owner)->canFly())
+        if (owner.GetTypeId() == TYPEID_UNIT && ((Creature*)&owner)->CanFly())
             ((Creature&)owner).AddSplineFlag(SPLINEFLAG_UNKNOWN7);
 
         i_destinationHolder.StartTravel(traveller);
@@ -156,10 +162,10 @@ bool TargetedMovementGeneratorMedium<T,D>::Update(T &owner, const uint32 & time_
             return true;                                    // not expire now, but already lost
 
         // put targeted movement generators on a higher priority
-        if (owner.GetObjectSize())
+        if (owner.GetObjectBoundingRadius())
             i_destinationHolder.ResetUpdate(50);
 
-        float dist = i_target->GetObjectSize() + owner.GetObjectSize() + sWorld.getConfig(CONFIG_FLOAT_RATE_TARGET_POS_RECALCULATION_RANGE);
+        float dist = i_target->GetObjectBoundingRadius() + owner.GetObjectBoundingRadius() + sWorld.getConfig(CONFIG_FLOAT_RATE_TARGET_POS_RECALCULATION_RANGE);
 
         //More distance let have better performance, less distance let have more sensitive reaction at target move.
 
@@ -207,7 +213,7 @@ void ChaseMovementGenerator<Creature>::Initialize(Creature &owner)
     owner.addUnitState(UNIT_STAT_CHASE|UNIT_STAT_CHASE_MOVE);
     owner.RemoveSplineFlag(SPLINEFLAG_WALKMODE);
 
-    if (((Creature*)&owner)->canFly())
+    if (((Creature*)&owner)->CanFly())
         owner.AddSplineFlag(SPLINEFLAG_UNKNOWN7);
 
     _setTargetLocation(owner);
@@ -235,7 +241,7 @@ void ChaseMovementGenerator<T>::Reset(T &owner)
 template<>
 void FollowMovementGenerator<Creature>::_updateWalkMode(Creature &u)
 {
-    if (i_target.isValid() /*&& u.isPet()*/) //[HW2] non solo per i pet
+    if (i_target.isValid() /*&& u.IsPet()*/) //[HW2] non solo per i pet
         u.UpdateWalkMode(i_target.getTarget());
 }
 
@@ -254,7 +260,7 @@ template<>
 void FollowMovementGenerator<Creature>::_updateSpeed(Creature &u)
 {
     // pet only sync speed with owner
-    if (/*!((Creature&)u).isPet()||*/  !i_target.isValid() /*|| i_target->GetGUID() != u.GetOwnerGUID()*/) //[HW2] non solo per i pet
+    if (/*!((Creature&)u).IsPet() || */ !i_target.isValid() /*|| i_target->GetObjectGuid() != u.GetOwnerGuid()*/) // [HW2] non solo per i pet
         return;
 
     u.UpdateSpeed(MOVE_RUN,true);
@@ -278,7 +284,7 @@ void FollowMovementGenerator<Creature>::Initialize(Creature &owner)
     _updateWalkMode(owner);
     _updateSpeed(owner);
 
-    if (((Creature*)&owner)->canFly())
+    if (((Creature*)&owner)->CanFly())
         owner.AddSplineFlag(SPLINEFLAG_UNKNOWN7);
 
     _setTargetLocation(owner);

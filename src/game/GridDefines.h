@@ -31,6 +31,7 @@ class DynamicObject;
 class GameObject;
 class Pet;
 class Player;
+class Camera;
 
 #define MAX_NUMBER_OF_GRIDS      64
 
@@ -39,7 +40,7 @@ class Player;
 
 #define CENTER_GRID_OFFSET      (SIZE_OF_GRIDS/2)
 
-#define MIN_GRID_DELAY          (MINUTE*IN_MILISECONDS)
+#define MIN_GRID_DELAY          (MINUTE*IN_MILLISECONDS)
 #define MIN_MAP_UPDATE_DELAY    50
 
 #define MAX_NUMBER_OF_CELLS     8
@@ -56,10 +57,12 @@ class Player;
 #define MAP_HALFSIZE            (MAP_SIZE/2)
 
 // Creature used instead pet to simplify *::Visit templates (not required duplicate code for Creature->Pet case)
-typedef TYPELIST_3(Player, Creature/*pets*/, Corpse/*resurrectable*/)                   AllWorldObjectTypes;
+// Cameras in world list just because linked with Player objects
+typedef TYPELIST_4(Player, Creature/*pets*/, Corpse/*resurrectable*/, Camera)           AllWorldObjectTypes;
 typedef TYPELIST_4(GameObject, Creature/*except pets*/, DynamicObject, Corpse/*Bones*/) AllGridObjectTypes;
 typedef TYPELIST_5(Creature, Pet, Vehicle, GameObject, DynamicObject)                   AllMapStoredObjectTypes;
 
+typedef GridRefManager<Camera>          CameraMapType;
 typedef GridRefManager<Corpse>          CorpseMapType;
 typedef GridRefManager<Creature>        CreatureMapType;
 typedef GridRefManager<DynamicObject>   DynamicObjectMapType;
@@ -116,6 +119,13 @@ struct MANGOS_DLL_DECL CoordPair
             y_coord += val;
         else
             y_coord = LIMIT - 1;
+    }
+
+    CoordPair& normalize()
+    {
+        x_coord = std::min(x_coord, LIMIT-1);
+        y_coord = std::min(y_coord, LIMIT-1);
+        return *this;
     }
 
     uint32 x_coord;

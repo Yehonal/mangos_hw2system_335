@@ -18,7 +18,8 @@
 #ifndef __BATTLEGROUNDAB_H
 #define __BATTLEGROUNDAB_H
 
-class BattleGround;
+#include "Common.h"
+#include "BattleGround.h"
 
 enum BG_AB_WorldStates
 {
@@ -183,24 +184,24 @@ class BattleGroundAB : public BattleGround
         void AddPlayer(Player *plr);
         virtual void StartingEventCloseDoors();
         virtual void StartingEventOpenDoors();
-        void RemovePlayer(Player *plr,uint64 guid);
+        void RemovePlayer(Player *plr, ObjectGuid guid);
         void HandleAreaTrigger(Player *Source, uint32 Trigger);
         virtual bool SetupBattleGround();
         virtual void Reset();
-        void EndBattleGround(uint32 winner);
+        void EndBattleGround(Team winner);
         virtual WorldSafeLocsEntry const* GetClosestGraveYard(Player* player);
 
         /* Scorekeeping */
         virtual void UpdatePlayerScore(Player *Source, uint32 type, uint32 value);
 
-        virtual void FillInitialWorldStates(WorldPacket& data);
+        virtual void FillInitialWorldStates(WorldPacket& data, uint32& count);
 
         /* Nodes occupying */
         virtual void EventPlayerClickedOnFlag(Player *source, GameObject* target_obj);
 
         /* achievement req. */
-        bool IsAllNodesConrolledByTeam(uint32 team) const;  // overwrited
-        bool IsTeamScores500Disadvantage(uint32 team) const { return m_TeamScores500Disadvantage[GetTeamIndexByTeamId(team)]; }
+        bool IsAllNodesConrolledByTeam(Team team) const;    // overwrited
+        bool IsTeamScores500Disadvantage(Team team) const { return m_TeamScores500Disadvantage[GetTeamIndexByTeamId(team)]; }
     private:
         /* Gameobject spawning/despawning */
         void _CreateBanner(uint8 node, uint8 type, uint8 teamIndex, bool delay);

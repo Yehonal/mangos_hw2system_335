@@ -27,6 +27,8 @@
 typedef std::vector<std::string> Tokens;
 
 Tokens StrSplit(const std::string &src, const std::string &sep);
+uint32 GetUInt32ValueFromArray(Tokens const& data, uint16 index);
+float GetFloatValueFromArray(Tokens const& data, uint16 index);
 
 void stripLineInvisibleChars(std::string &src);
 
@@ -46,6 +48,9 @@ MANGOS_DLL_SPEC int32 irand(int32 min, int32 max);
 /* Return a random number in the range min..max (inclusive). For reliable results, the difference
 * between max and min should be less than RAND32_MAX. */
 MANGOS_DLL_SPEC uint32 urand(uint32 min, uint32 max);
+
+/* Return a random number in the range min..max (inclusive). */
+MANGOS_DLL_SPEC float frand(float min, float max);
 
 /* Return a random number in the range 0 .. RAND32_MAX. */
 MANGOS_DLL_SPEC int32 rand32();
@@ -174,6 +179,11 @@ inline bool isEastAsianCharacter(wchar_t wchar)
     return false;
 }
 
+inline bool isWhiteSpace(char c)
+{
+    return ::isspace(int(c)) != 0;
+}
+
 inline bool isNumeric(wchar_t wchar)
 {
     return (wchar >= L'0' && wchar <=L'9');
@@ -187,6 +197,33 @@ inline bool isNumeric(char c)
 inline bool isNumericOrSpace(wchar_t wchar)
 {
     return isNumeric(wchar) || wchar == L' ';
+}
+
+inline bool isNumeric(char const* str)
+{
+    for(char const* c = str; *c; ++c)
+        if (!isNumeric(*c))
+            return false;
+
+    return true;
+}
+
+inline bool isNumeric(std::string const& str)
+{
+    for(std::string::const_iterator itr = str.begin(); itr != str.end(); ++itr)
+        if (!isNumeric(*itr))
+            return false;
+
+    return true;
+}
+
+inline bool isNumeric(std::wstring const& str)
+{
+    for(std::wstring::const_iterator itr = str.begin(); itr != str.end(); ++itr)
+        if (!isNumeric(*itr))
+            return false;
+
+    return true;
 }
 
 inline bool isBasicLatinString(std::wstring wstr, bool numericOrSpace)

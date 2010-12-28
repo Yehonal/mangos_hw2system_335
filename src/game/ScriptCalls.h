@@ -21,14 +21,18 @@
 
 #include "Common.h"
 #include "ObjectMgr.h"
-#include "DBCEnums.h"
+#include "ScriptMgr.h"
+#include "DBCStructure.h"
 
+class Aura;
 class Creature;
 class CreatureAI;
 class GameObject;
 class Item;
+class Object;
 class Player;
 class Quest;
+class Unit;
 class SpellCastTargets;
 class Map;
 class InstanceData;
@@ -36,7 +40,7 @@ class InstanceData;
 bool LoadScriptingModule(char const* libName = "");
 void UnloadScriptingModule();
 
-typedef void(MANGOS_IMPORT * scriptCallScriptsInit) (const ObjectMgr::ScriptNameMap &scriptNames);
+typedef void(MANGOS_IMPORT * scriptCallScriptsInit) (ScriptMgr::ScriptNameMap const& scriptNames);
 typedef void(MANGOS_IMPORT * scriptCallScriptsFree) ();
 typedef char const* (MANGOS_IMPORT * scriptCallScriptsVersion) ();
 
@@ -55,6 +59,7 @@ typedef bool(MANGOS_IMPORT * scriptCallChooseReward)( Player *player, Creature *
 typedef bool(MANGOS_IMPORT * scriptCallItemHello)( Player *player, Item *, Quest const*);
 typedef bool(MANGOS_IMPORT * scriptCallGOHello)( Player *player, GameObject * );
 typedef bool(MANGOS_IMPORT * scriptCallAreaTrigger)( Player *player, AreaTriggerEntry const* );
+typedef bool(MANGOS_IMPORT * scriptCallProcessEventId)(uint32 eventId, Object* source, Object* target, bool isStart);
 typedef bool(MANGOS_IMPORT * scriptCallItemQuestAccept)(Player *player, Item *, Quest const*);
 typedef bool(MANGOS_IMPORT * scriptCallGOQuestAccept)(Player *player, GameObject *, Quest const*);
 typedef bool(MANGOS_IMPORT * scriptCallGOChooseReward)(Player *player, GameObject *, Quest const*, uint32 opt );
@@ -88,6 +93,7 @@ typedef struct
     scriptCallItemHello ItemHello;
     scriptCallGOHello GOHello;
     scriptCallAreaTrigger scriptAreaTrigger;
+    scriptCallProcessEventId ProcessEventId;
     scriptCallItemQuestAccept ItemQuestAccept;
     scriptCallGOQuestAccept GOQuestAccept;
     scriptCallItemUse ItemUse;

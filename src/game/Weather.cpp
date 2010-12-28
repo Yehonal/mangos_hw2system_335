@@ -35,15 +35,13 @@ Weather::Weather(uint32 zone, WeatherZoneChances const* weatherChances) : m_zone
     m_type = WEATHER_TYPE_FINE;
     m_grade = 0;
 
-    sLog.outDetail("WORLD: Starting weather system for zone %u (change every %u minutes).", m_zone, (uint32)(m_timer.GetInterval() / (MINUTE*IN_MILISECONDS)) );
+    DETAIL_FILTER_LOG(LOG_FILTER_WEATHER, "WORLD: Starting weather system for zone %u (change every %u minutes).", m_zone, (m_timer.GetInterval() / (MINUTE*IN_MILLISECONDS)) );
 }
 
 /// Launch a weather update
 bool Weather::Update(time_t diff)
 {
-    if (m_timer.GetCurrent()>=0)
-        m_timer.Update(diff);
-    else m_timer.SetCurrent(0);
+    m_timer.Update(diff);
 
     ///- If the timer has passed, ReGenerate the weather
     if(m_timer.Passed())
@@ -92,7 +90,7 @@ bool Weather::ReGenerate()
 
     static char const* seasonName[WEATHER_SEASONS] = { "spring", "summer", "fall", "winter" };
 
-    sLog.outDebug("Generating a change in %s weather for zone %u.", seasonName[season], m_zone);
+    DEBUG_FILTER_LOG(LOG_FILTER_WEATHER, "Generating a change in %s weather for zone %u.", seasonName[season], m_zone);
 
     if ((u < 60) && (m_grade < 0.33333334f))                // Get fair
     {
@@ -261,7 +259,8 @@ bool Weather::UpdateWeather()
             wthstr = "fine";
             break;
     }
-    sLog.outDetail("Change the weather of zone %u to %s.", m_zone, wthstr);
+
+    DETAIL_FILTER_LOG(LOG_FILTER_WEATHER, "Change the weather of zone %u to %s.", m_zone, wthstr);
 
     return true;
 }

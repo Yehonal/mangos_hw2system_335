@@ -25,7 +25,7 @@
 #include "SharedDefines.h"
 #include "SpellMgr.h"
 
-static eConfigFLoatValues const qualityToRate[MAX_ITEM_QUALITY] = {
+static eConfigFloatValues const qualityToRate[MAX_ITEM_QUALITY] = {
     CONFIG_FLOAT_RATE_DROP_ITEM_POOR,                                    // ITEM_QUALITY_POOR
     CONFIG_FLOAT_RATE_DROP_ITEM_NORMAL,                                  // ITEM_QUALITY_NORMAL
     CONFIG_FLOAT_RATE_DROP_ITEM_UNCOMMON,                                // ITEM_QUALITY_UNCOMMON
@@ -38,8 +38,8 @@ static eConfigFLoatValues const qualityToRate[MAX_ITEM_QUALITY] = {
 LootStore LootTemplates_Creature(     "creature_loot_template",     "creature entry",                 true);
 LootStore LootTemplates_Disenchant(   "disenchant_loot_template",   "item disenchant id",             true);
 LootStore LootTemplates_Fishing(      "fishing_loot_template",      "area id",                        true);
-LootStore LootTemplates_Gameobject(   "gameobject_loot_template",   "gameobject entry",               true);
-LootStore LootTemplates_Item(         "item_loot_template",         "item entry",                     true);
+LootStore LootTemplates_Gameobject(   "gameobject_loot_template",   "gameobject lootid",              true);
+LootStore LootTemplates_Item(         "item_loot_template",         "item entry with ITEM_FLAG_LOOTABLE", true);
 LootStore LootTemplates_Mail(         "mail_loot_template",         "mail template id",               false);
 LootStore LootTemplates_Milling(      "milling_loot_template",      "item entry (herb)",              true);
 LootStore LootTemplates_Pickpocketing("pickpocketing_loot_template","creature pickpocket lootid",     true);
@@ -153,7 +153,7 @@ void LootStore::LoadLootTable()
                 }
             }
             // else is empty - template Id and iter are the same
-            // finally iter refers to already existed or just created <entry, LootTemplate>
+            // finally iter refers to already existing or just created <entry, LootTemplate>
 
             // Adds current row to the template
             tab->second->AddEntry(storeitem);
@@ -320,7 +320,7 @@ LootItem::LootItem(LootStoreItem const& li)
     conditionId = li.conditionId;
 
     ItemPrototype const* proto = ObjectMgr::GetItemPrototype(itemid);
-    freeforall  = proto && (proto->Flags & ITEM_FLAGS_PARTY_LOOT);
+    freeforall  = proto && (proto->Flags & ITEM_FLAG_PARTY_LOOT);
 
     needs_quest = li.needs_quest;
 
@@ -333,11 +333,41 @@ LootItem::LootItem(LootStoreItem const& li)
     is_counted = 0;
 }
 
+LootItem::LootItem(uint32 itemid_, uint32 count_, uint32 randomSuffix_, int32 randomPropertyId_)
+{
+    itemid      = itemid_;
+    conditionId = 0;
+
+    ItemPrototype const* proto = ObjectMgr::GetItemPrototype(itemid);
+    freeforall  = proto && (proto->Flags & ITEM_FLAG_PARTY_LOOT);
+
+    needs_quest = false;
+
+    count       = count_;
+    randomSuffix = randomSuffix_;
+    randomPropertyId = randomPropertyId_;
+    is_looted = 0;
+    is_blocked = 0;
+    is_underthreshold = 0;
+    is_counted = 0;
+}
+
 // Basic checks for player/item compatibility - if false no chance to see the item in the loot
 bool LootItem::AllowedForPlayer(Player const * player) const
 {
     // DB conditions check
-    if ( !sObjectMgr.IsPlayerMeetToCondition(player,conditionId) )
+    if (!sObjectMgr.IsPlayerMeetToCondition(player,conditionId))
+        return false;
+
+    ItemPrototype const *pProto = ObjectMgr::GetItemPrototype(itemid);
+    if (!pProto)
+        return false;
+
+    // not show loot for not own team
+    if ((pProto->Flags2 & ITEM_FLAG2_HORDE_ONLY) && player->GetTeam() != HORDE)
+        return false;
+
+    if ((pProto->Flags2 & ITEM_FLAG2_ALLIANCE_ONLY) && player->GetTeam() != ALLIANCE)
         return false;
 
     if ( needs_quest )
@@ -349,8 +379,7 @@ bool LootItem::AllowedForPlayer(Player const * player) const
     else
     {
         // Not quest only drop (check quest starting items for already accepted non-repeatable quests)
-        ItemPrototype const *pProto = ObjectMgr::GetItemPrototype(itemid);
-        if (pProto && pProto->StartQuest && player->GetQuestStatus(pProto->StartQuest) != QUEST_STATUS_NONE && !player->HasQuestForItem(itemid))
+        if (pProto->StartQuest && player->GetQuestStatus(pProto->StartQuest) != QUEST_STATUS_NONE && !player->HasQuestForItem(itemid))
             return false;
     }
 
@@ -380,10 +409,10 @@ void Loot::AddItem(LootStoreItem const & item)
         // non-conditional one-player only items are counted here,
         // free for all items are counted in FillFFALoot(),
         // non-ffa conditionals are counted in FillNonQuestNonFFAConditionalLoot()
-        if( !item.conditionId )
+        if (!item.conditionId)
         {
             ItemPrototype const* proto = ObjectMgr::GetItemPrototype(item.itemid);
-            if( !proto || (proto->Flags & ITEM_FLAGS_PARTY_LOOT)==0 )
+            if (!proto || !(proto->Flags & ITEM_FLAG_PARTY_LOOT))
                 ++unlootedCount;
         }
     }
@@ -728,11 +757,11 @@ ByteBuffer& operator<<(ByteBuffer& b, LootView const& lv)
         case ALL_PERMISSION:
         case MASTER_PERMISSION:
         {
-            uint8 slot_type = (lv.permission==MASTER_PERMISSION) ? 2 : 0;
             for (uint8 i = 0; i < l.items.size(); ++i)
             {
                 if (!l.items[i].is_looted && !l.items[i].freeforall && !l.items[i].conditionId && l.items[i].AllowedForPlayer(lv.viewer))
                 {
+                    uint8 slot_type = (lv.permission==MASTER_PERMISSION && !l.items[i].is_underthreshold) ? 2 : 0;
                     b << uint8(i) << l.items[i];            //only send one-player loot items now, free for all will be sent later
                     b << uint8(slot_type);                  // 0 - get 2 - master selection
                     ++itemsShown;
@@ -1196,9 +1225,19 @@ void LoadLootTemplates_Item()
 
     // remove real entries and check existence loot
     for(uint32 i = 1; i < sItemStorage.MaxEntry; ++i )
+    {
         if(ItemPrototype const* proto = sItemStorage.LookupEntry<ItemPrototype>(i))
-            if (ids_set.find(proto->ItemId) != ids_set.end())
+        {
+            if  (!(proto->Flags & ITEM_FLAG_LOOTABLE))
+                continue;
+
+            if (ids_set.find(proto->ItemId) != ids_set.end() || proto->MaxMoneyLoot > 0)
                 ids_set.erase(proto->ItemId);
+            // wdb have wrong data cases, so skip by default
+            else if (!sLog.HasLogFilter(LOG_FILTER_DB_STRICTED_CHECK))
+                LootTemplates_Item.ReportNotExistedId(proto->ItemId);
+        }
+    }
 
     // output error for any still listed (not referenced from appropriate table) ids
     LootTemplates_Item.ReportUnusedIds(ids_set);
@@ -1216,11 +1255,13 @@ void LoadLootTemplates_Milling()
         if(!proto)
             continue;
 
-        if((proto->BagFamily & BAG_FAMILY_MASK_HERBS)==0)
+        if (!(proto->Flags & ITEM_FLAG_MILLABLE))
             continue;
 
         if (ids_set.find(proto->ItemId) != ids_set.end())
             ids_set.erase(proto->ItemId);
+        else
+            LootTemplates_Milling.ReportNotExistedId(proto->ItemId);
     }
 
     // output error for any still listed (not referenced from appropriate table) ids
@@ -1262,14 +1303,16 @@ void LoadLootTemplates_Prospecting()
     for(uint32 i = 1; i < sItemStorage.MaxEntry; ++i )
     {
         ItemPrototype const* proto = sItemStorage.LookupEntry<ItemPrototype>(i);
-        if(!proto)
+        if (!proto)
             continue;
 
-        if((proto->BagFamily & BAG_FAMILY_MASK_MINING_SUPP)==0)
+        if (!(proto->Flags & ITEM_FLAG_PROSPECTABLE))
             continue;
 
         if (ids_set.find(proto->ItemId) != ids_set.end())
             ids_set.erase(proto->ItemId);
+        //else -- exist some cases that possible can be prospected but not expected have any result loot
+        //    LootTemplates_Prospecting.ReportNotExistedId(proto->ItemId);
     }
 
     // output error for any still listed (not referenced from appropriate table) ids

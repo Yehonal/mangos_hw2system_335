@@ -24,7 +24,7 @@ CREATE TABLE `db_version` (
   `version` varchar(120) default NULL,
   `creature_ai_version` varchar(120) default NULL,
   `cache_id` int(10) default '0',
-  `required_9590_01_mangos_db_script_string` bit(1) default NULL
+  `required_10906_02_mangos_spell_bonus_data` bit(1) default NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=FIXED COMMENT='Used DB version notes';
 
 --
@@ -67,13 +67,14 @@ UNLOCK TABLES;
 DROP TABLE IF EXISTS `achievement_reward`;
 CREATE TABLE `achievement_reward` (
   `entry` mediumint(8) unsigned NOT NULL default '0',
+  `gender` tinyint(3) default '2',
   `title_A` mediumint(8) unsigned NOT NULL default '0',
   `title_H` mediumint(8) unsigned NOT NULL default '0',
   `item` mediumint(8) unsigned NOT NULL default '0',
   `sender` mediumint(8) unsigned NOT NULL default '0',
   `subject` varchar(255) default NULL,
   `text` text,
-  PRIMARY KEY  (`entry`)
+  PRIMARY KEY  (`entry`,`gender`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=FIXED COMMENT='Achievment system';
 
 --
@@ -103,26 +104,6 @@ CREATE TABLE `areatrigger_involvedrelation` (
 LOCK TABLES `areatrigger_involvedrelation` WRITE;
 /*!40000 ALTER TABLE `areatrigger_involvedrelation` DISABLE KEYS */;
 /*!40000 ALTER TABLE `areatrigger_involvedrelation` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `areatrigger_scripts`
---
-
-DROP TABLE IF EXISTS `areatrigger_scripts`;
-CREATE TABLE `areatrigger_scripts` (
-    `entry` MEDIUMINT( 8 ) NOT NULL ,
-    `ScriptName` CHAR( 64 ) NOT NULL ,
-    PRIMARY KEY ( `entry` )
-) ENGINE = MYISAM DEFAULT CHARSET=utf8;
-
---
--- Dumping data for table `areatrigger_scripts`
---
-
-LOCK TABLES `areatrigger_scripts` WRITE;
-/*!40000 ALTER TABLE `areatrigger_scripts` DISABLE KEYS */;
-/*!40000 ALTER TABLE `areatrigger_scripts` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -437,8 +418,6 @@ CREATE TABLE `battleground_template` (
   `id` mediumint(8) unsigned NOT NULL,
   `MinPlayersPerTeam` smallint(5) unsigned NOT NULL default '0',
   `MaxPlayersPerTeam` smallint(5) unsigned NOT NULL default '0',
-  `MinLvl` tinyint(3) unsigned NOT NULL default '0',
-  `MaxLvl` tinyint(3) unsigned NOT NULL default '0',
   `AllianceStartLoc` mediumint(8) unsigned NOT NULL,
   `AllianceStartO` float NOT NULL,
   `HordeStartLoc` mediumint(8) unsigned NOT NULL,
@@ -453,19 +432,19 @@ CREATE TABLE `battleground_template` (
 LOCK TABLES `battleground_template` WRITE;
 /*!40000 ALTER TABLE `battleground_template` DISABLE KEYS */;
 INSERT INTO `battleground_template` VALUES
-(1,0,0,0,0,611,2.72532,610,2.27452),
-(2,0,0,0,0,769,3.14159,770,3.14159),
-(4,0,2,10,70,929,0,936,3.14159),
-(3,0,0,0,0,890,3.40156,889,0.263892),
-(5,0,2,10,70,939,0,940,3.14159),
-(6,0,2,10,70,0,0,0,0),
-(7,0,0,0,0,1103,3.40156,1104,0.263892),
-(8,0,2,10,70,1258,0,1259,3.14159),
-(9,0,0,0,0,1367,0,1368,0),
-(10,5,5,10,80,1362,0,1363,0),
-(11,5,5,10,80,1364,0,1365,0),
-(30,20,40,71,80,1485,0,1486,0),
-(32,0,40,0,80,0,0,0,0);
+(1,40,40,611,2.72532,610,2.27452),
+(2,10,10,769,3.14159,770,3.14159),
+(3,15,15,890,3.40156,889,0.263892),
+(4,5,5,929,0,936,3.14159),
+(5,5,5,939,0,940,3.14159),
+(6,5,5,0,0,0,0),
+(7,15,15,1103,3.40156,1104,0.263892),
+(8,5,5,1258,0,1259,3.14159),
+(9,15,15,1367,0,1368,0),
+(10,5,5,1362,0,1363,0),
+(11,5,5,1364,0,1365,0),
+(30,40,40,1485,0,1486,0),
+(32,5,40,0,0,0,0);
 /*!40000 ALTER TABLE `battleground_template` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -509,17 +488,27 @@ LOCK TABLES `command` WRITE;
 /*!40000 ALTER TABLE `command` DISABLE KEYS */;
 INSERT INTO `command` VALUES
 ('account',0,'Syntax: .account\r\n\r\nDisplay the access level of your account.'),
+('account characters',3,'Syntax: .account characters [#accountId|$accountName]\r\n\r\nShow list all characters for account selected by provided #accountId or $accountName, or for selected player in game.'),
 ('account create',4,'Syntax: .account create $account $password\r\n\r\nCreate account and set password to it.'),
 ('account delete',4,'Syntax: .account delete $account\r\n\r\nDelete account with all characters.'),
 ('account lock',0,'Syntax: .account lock [on|off]\r\n\r\nAllow login from account only from current used IP or remove this requirement.'),
 ('account onlinelist',4,'Syntax: .account onlinelist\r\n\r\nShow list of online accounts.'),
 ('account password',0,'Syntax: .account password $old_password $new_password $new_password\r\n\r\nChange your account password.'),
-('account set addon',3,'Syntax: .account set addon [$account] #addon\r\n\r\nSet user (possible targeted) expansion addon level allowed. Addon values: 0 - normal, 1 - tbc, 2 - wotlk.'),
-('account set gmlevel',4,'Syntax: .account set gmlevel [$account] #level\r\n\r\nSet the security level for targeted player (can''t be used at self) or for account $name to a level of #level.\r\n\r\n#level may range from 0 to 3.'),
-('account set password',4,'Syntax: .account set password $account $password $password\r\n\r\nSet password for account.'),
+('account set addon',3,'Syntax: .account set addon [#accountId|$accountName] #addon\r\n\r\nSet user (possible targeted) expansion addon level allowed. Addon values: 0 - normal, 1 - tbc, 2 - wotlk.'),
+('account set gmlevel',4,'Syntax: .account set gmlevel [#accountId|$accountName] #level\r\n\r\nSet the security level for targeted player (can''t be used at self) or for #accountId or $accountName to a level of #level.\r\n\r\n#level may range from 0 to 3.'),
+('account set password',4,'Syntax: .account set password (#accountId|$accountName) $password $password\r\n\r\nSet password for account.'),
+('achievement',3,'Syntax: .achievement $playername #achivementid\r\n\r\nShow state achievment #achivmentid (can be shift link) and list of achievement criteria with progress data for selected player in game or by player name.'),
+('achievement add',3,'Syntax: .achievement add $playername #achivementid\r\n\r\nComplete achievement and all it\'s criteria for selected player in game or by player name. Command can\'t be used for counter achievements.'),
+('achievement remove',3,'Syntax: .achievement remove $playername #achivementid\r\n\r\nRemove complete state for achievement #achivmentid and reset all achievement\'s criteria for selected player in game or by player name. Also command can be used for reset counter achievements.'),
+('achievement criteria add',3,'Syntax: .achievement criteria add $playername #criteriaid #change\r\n\r\nIncrease progress for non-completed criteria at #change for selected player in game or by player name. If #chnage not provided then non-counter criteria progress set to completed state. For counter criteria increased at 1.'),
+('achievement criteria remove',3,'Syntax: .achievement criteria remove $playername #criteriaid #change\r\n\r\necrease progress for criteria at #change for selected player in game or by player name. If #chnage not provided then criteria progress reset to 0.'),
 ('additem',3,'Syntax: .additem #itemid/[#itemname]/#shift-click-item-link #itemcount\r\n\r\nAdds the specified number of items of id #itemid (or exact (!) name $itemname in brackets, or link created by shift-click at item in inventory or recipe) to your or selected character inventory. If #itemcount is omitted, only one item will be added.\r\n.'),
 ('additemset',3,'Syntax: .additemset #itemsetid\r\n\r\nAdd items from itemset of id #itemsetid to your or selected character inventory. Will add by one example each item from itemset.'),
 ('announce',1,'Syntax: .announce $MessageToBroadcast\r\n\r\nSend a global message to all players online in chat log.'),
+('auction',3,'Syntax: .auction\r\n\r\nShow your team auction store.'),
+('auction alliance',3,'Syntax: .auction alliance\r\n\r\nShow alliance auction store independent from your team.'),
+('auction goblin',3,'Syntax: .auction goblin\r\n\r\nShow goblin auction store common for all teams.'),
+('auction horde',3,'Syntax: .auction horde\r\n\r\nShow horde auction store independent from your team.'),
 ('aura',3,'Syntax: .aura #spellid\r\n\r\nAdd the aura from spell #spellid to the selected Unit.'),
 ('ban account',3,'Syntax: .ban account $Name $bantime $reason\r\nBan account kick player.\r\n$bantime: negative value leads to permban, otherwise use a timestring like \"4d20h3s\".'),
 ('ban character',3,'Syntax: .ban character $Name $bantime $reason\r\nBan account and kick player.\r\n$bantime: negative value leads to permban, otherwise use a timestring like \"4d20h3s\".'),
@@ -536,8 +525,13 @@ INSERT INTO `command` VALUES
 ('cast dist',3,'Syntax: .cast dist #spellid [#dist [triggered]]\r\n  You will cast spell to pint at distance #dist. If \'trigered\' or part provided then spell casted with triggered flag. Not all spells can be casted as area spells.'),
 ('cast self',3,'Syntax: .cast self #spellid [triggered]\r\nCast #spellid by target at target itself. If \'trigered\' or part provided then spell casted with triggered flag.'),
 ('cast target',3,'Syntax: .cast target #spellid [triggered]\r\n  Selected target will cast #spellid to his victim. If \'trigered\' or part provided then spell casted with triggered flag.'),
+('character achievements',2,'Syntax: .character achievements [$player_name]\r\n\r\nShow completed achievments for selected player or player find by $player_name.'),
 ('character customize',2,'Syntax: .character customize [$name]\r\n\r\nMark selected in game or by $name in command character for customize at next login.'),
-('character delete',4,'Syntax: .character delete $name\r\n\r\nDelete character $name.'),
+('character deleted delete', 4, 'Syntax: .character deleted delete #guid|$name\r\n\r\nCompletely deletes the selected characters.\r\nIf $name is supplied, only characters with that string in their name will be deleted, if #guid is supplied, only the character with that GUID will be deleted.'),
+('character deleted list', 3, 'Syntax: .character deleted list [#guid|$name]\r\n\r\nShows a list with all deleted characters.\r\nIf $name is supplied, only characters with that string in their name will be selected, if #guid is supplied, only the character with that GUID will be selected.'),
+('character deleted old', 4, 'Syntax: .character deleted old [#keepDays]\r\n\r\nCompletely deletes all characters with deleted time longer #keepDays. If #keepDays not provided the  used value from mangosd.conf option \'CharDelete.KeepDays\'. If referenced config option disabled (use 0 value) then command can\'t be used without #keepDays.'),
+('character deleted restore', 3, 'Syntax: .character deleted restore #guid|$name [$newname] [#new account]\r\n\r\nRestores deleted characters.\r\nIf $name is supplied, only characters with that string in their name will be restored, if $guid is supplied, only the character with that GUID will be restored.\r\nIf $newname is set, the character will be restored with that name instead of the original one. If #newaccount is set, the character will be restored to specific account character list. This works only with one character!'),
+('character erase',4,'Syntax: .character erase $name\r\n\r\nDelete character $name. Character finally deleted in case any deleting options.'),
 ('character level',3,'Syntax: .character level [$playername] [#level]\r\n\r\nSet the level of character with $playername (or the selected if not name provided) by #numberoflevels Or +1 if no #numberoflevels provided). If #numberoflevels is omitted, the level will be increase by 1. If #numberoflevels is 0, the same level will be restarted. If no character is selected and name not provided, increase your level. Command can be used for offline character. All stats and dependent values recalculated. At level decrease talents can be reset if need. Also at level decrease equipped items with greater level requirement can be lost.'),
 ('character rename',2,'Syntax: .character rename [$name]\r\n\r\nMark selected in game or by $name in command character for rename at next login.'),
 ('character reputation',2,'Syntax: .character reputation [$player_name]\r\n\r\nShow reputation information for selected player or player find by $player_name.'),
@@ -549,13 +543,16 @@ INSERT INTO `command` VALUES
 ('debug anim',2,'Syntax: .debug anim #emoteid\r\n\r\nPlay emote #emoteid for your character.'),
 ('debug arena',3,'Syntax: .debug arena\r\n\r\nToggle debug mode for arenas. In debug mode GM can start arena with single player.'),
 ('debug bg',3,'Syntax: .debug bg\r\n\r\nToggle debug mode for battlegrounds. In debug mode GM can start battleground with single player.'),
-('debug getvalue',3,'Syntax: .debug getvalue #field #isInt\r\n\r\nGet the field #field of the selected creature. If no creature is selected, get the content of your field.\r\n\r\nUse a #isInt of value 1 if the expected field content is an integer.'),
+('debug getitemvalue',3,'Syntax: .debug getitemvalue #itemguid #field [int|hex|bit|float]\r\n\r\nGet the field #field of the item #itemguid in your inventroy.\r\n\r\nUse type arg for set output format: int (decimal number), hex (hex value), bit (bitstring), float. By default use integer output.'),
+('debug getvalue',3,'Syntax: .debug getvalue #field [int|hex|bit|float]\r\n\r\nGet the field #field of the selected target. If no target is selected, get the content of your field.\r\n\r\nUse type arg for set output format: int (decimal number), hex (hex value), bit (bitstring), float. By default use integer output.'),
+('debug moditemvalue',3,'Syntax: .debug modvalue #guid #field [int|float| &= | |= | &=~ ] #value\r\n\r\nModify the field #field of the item #itemguid in your inventroy by value #value. \r\n\r\nUse type arg for set mode of modification: int (normal add/subtract #value as decimal number), float (add/subtract #value as float number), &= (bit and, set to 0 all bits in value if it not set to 1 in #value as hex number), |= (bit or, set to 1 all bits in value if it set to 1 in #value as hex number), &=~ (bit and not, set to 0 all bits in value if it set to 1 in #value as hex number). By default expect integer add/subtract.'),
+('debug modvalue',3,'Syntax: .debug modvalue #field [int|float| &= | |= | &=~ ] #value\r\n\r\nModify the field #field of the selected target by value #value. If no target is selected, set the content of your field.\r\n\r\nUse type arg for set mode of modification: int (normal add/subtract #value as decimal number), float (add/subtract #value as float number), &= (bit and, set to 0 all bits in value if it not set to 1 in #value as hex number), |= (bit or, set to 1 all bits in value if it set to 1 in #value as hex number), &=~ (bit and not, set to 0 all bits in value if it set to 1 in #value as hex number). By default expect integer add/subtract.'),
 ('debug play cinematic',1,'Syntax: .debug play cinematic #cinematicid\r\n\r\nPlay cinematic #cinematicid for you. You stay at place while your mind fly.\r\n'),
 ('debug play movie',1,'Syntax: .debug play movie #movieid\r\n\r\nPlay movie #movieid for you.'),
 ('debug play sound',1,'Syntax: .debug play sound #soundid\r\n\r\nPlay sound with #soundid.\r\nSound will be play only for you. Other players do not hear this.\r\nWarning: client may have more 5000 sounds...'),
-('debug setvalue',3,'Syntax: .debug setvalue #field #value #isInt\r\n\r\nSet the field #field of the selected creature with value #value. If no creature is selected, set the content of your field.\r\n\r\nUse a #isInt of value 1 if #value is an integer.'),
-('debug update',3,'Syntax: .debug update #field #value\r\n\r\nUpdate the field #field of the selected character or creature with value #value.\r\n\r\nIf no #value is provided, display the content of field #field.'),
-('debug Mod32Value',3,'Syntax: .debug Mod32Value #field #value\r\n\r\nAdd #value to field #field of your character.'),
+('debug setitemvalue',3,'Syntax: .debug setitemvalue #guid #field [int|hex|bit|float] #value\r\n\r\nSet the field #field of the item #itemguid in your inventroy to value #value.\r\n\r\nUse type arg for set input format: int (decimal number), hex (hex value), bit (bitstring), float. By default expect integer input format.'),
+('debug setvalue',3,'Syntax: .debug setvalue #field [int|hex|bit|float] #value\r\n\r\nSet the field #field of the selected target to value #value. If no target is selected, set the content of your field.\r\n\r\nUse type arg for set input format: int (decimal number), hex (hex value), bit (bitstring), float. By default expect integer input format.'),
+('debug spellmods',3,'Syntax: .debug spellmods (flat|pct) #spellMaskBitIndex #spellModOp #value\r\n\r\nSet at client side spellmod affect for spell that have bit set with index #spellMaskBitIndex in spell family mask for values dependent from spellmod #spellModOp to #value.'),
 ('delticket',2,'Syntax: .delticket all\r\n        .delticket #num\r\n        .delticket $character_name\r\n\rall to dalete all tickets at server, $character_name to delete ticket of this character, #num to delete ticket #num.'),
 ('demorph',2,'Syntax: .demorph\r\n\r\nDemorph the selected player.'),
 ('die',3,'Syntax: .die\r\n\r\nKill the selected player. If no player is selected, it will kill you.'),
@@ -573,12 +570,13 @@ INSERT INTO `command` VALUES
 ('gm ingame',0,'Syntax: .gm ingame\r\n\r\nDisplay a list of available in game Game Masters.'),
 ('gm list',3,'Syntax: .gm list\r\n\r\nDisplay a list of all Game Masters accounts and security levels.'),
 ('gm visible',1,'Syntax: .gm visible on/off\r\n\r\nOutput current visibility state or make GM visible(on) and invisible(off) for other players.'),
-('go creature',1,'Syntax: .go creature #creature_guid\r\nTeleport your character to creature with guid #creature_guid.\r\n.gocreature #creature_name\r\nTeleport your character to creature with this name.\r\n.gocreature id #creature_id\r\nTeleport your character to a creature that was spawned from the template with this entry.\r\n*If* more than one creature is found, then you are teleported to the first that is found inside the database.'),
+('go',1,'Syntax: .go  [$playername|pointlink|#x #y #z [#mapid]]\r\nTeleport your character to point with coordinates of player $playername, or coordinates of one from shift-link types: player, tele, taxinode, creature/creature_entry, gameobject/gameobject_entry, or explicit #x #y #z #mapid coordinates.'),
+('go creature',1,'Syntax: .go creature (#creature_guid|$creature_name|id #creature_id)\r\nTeleport your character to creature with guid #creature_guid, or teleport your character to creature with name including as part $creature_name substring, or teleport your character to a creature that was spawned from the template with this entry #creature_id.'),
 ('go graveyard',1,'Syntax: .go graveyard #graveyardId\r\n Teleport to graveyard with the graveyardId specified.'),
 ('go grid',1,'Syntax: .go grid #gridX #gridY [#mapId]\r\n\r\nTeleport the gm to center of grid with provided indexes at map #mapId (or current map if it not provided).'),
-('go object',1,'Syntax: .go object #object_guid\r\nTeleport your character to gameobject with guid #object_guid'),
+('go object',1,'Syntax: .go object (#gameobject_guid|$gameobject_name|id #gameobject_id)\r\nTeleport your character to gameobject with guid #gameobject_guid, or teleport your character to gameobject with name including as part $gameobject_name substring, or teleport your character to a gameobject that was spawned from the template with this entry #gameobject_id.'),
 ('go taxinode',1,'Syntax: .go taxinode #taxinode\r\n\r\nTeleport player to taxinode coordinates. You can look up zone using .lookup taxinode $namepart'),
-('go trigger',1,'Syntax: .go trigger #trigger_id\r\n\r\nTeleport your character to areatrigger with id #trigger_id. Character will be teleported to trigger target if selected areatrigger is telporting trigger.'),
+('go trigger',1,'Syntax: .go trigger (#trigger_id|$trigger_shift-link|$trigger_target_shift-link) [target]\r\n\r\nTeleport your character to areatrigger with id #trigger_id or trigger id associated with shift-link. If additional arg "target" provided then character will teleported to areatrigger target point.'),
 ('go xy',1,'Syntax: .go xy #x #y [#mapid]\r\n\r\nTeleport player to point with (#x,#y) coordinates at ground(water) level at map #mapid or same map if #mapid not provided.'),
 ('go xyz',1,'Syntax: .go xyz #x #y #z [#mapid]\r\n\r\nTeleport player to point with (#x,#y,#z) coordinates at ground(water) level at map #mapid or same map if #mapid not provided.'),
 ('go zonexy',1,'Syntax: .go zonexy #x #y [#zone]\r\n\r\nTeleport player to point with (#x,#y) client coordinates at ground(water) level in zone #zoneid or current zone if #zoneid not provided. You can look up zone using .lookup area $namepart'),
@@ -626,7 +624,12 @@ INSERT INTO `command` VALUES
 ('list creature',3,'Syntax: .list creature #creature_id [#max_count]\r\n\r\nOutput creatures with creature id #creature_id found in world. Output creature guids and coordinates sorted by distance from character. Will be output maximum #max_count creatures. If #max_count not provided use 10 as default value.'),
 ('list item',3,'Syntax: .list item #item_id [#max_count]\r\n\r\nOutput items with item id #item_id found in all character inventories, mails, auctions, and guild banks. Output item guids, item owner guid, owner account and owner name (guild name and guid in case guild bank). Will be output maximum #max_count items. If #max_count not provided use 10 as default value.'),
 ('list object',3,'Syntax: .list object #gameobject_id [#max_count]\r\n\r\nOutput gameobjects with gameobject id #gameobject_id found in world. Output gameobject guids and coordinates sorted by distance from character. Will be output maximum #max_count gameobject. If #max_count not provided use 10 as default value.'),
+('list talents',3,'Syntax: .list talents\r\n\r\nShow list all really known (as learned spells) talent rank spells for selected player or self.'),
 ('loadscripts',3,'Syntax: .loadscripts $scriptlibraryname\r\n\r\nUnload current and load the script library $scriptlibraryname or reload current if $scriptlibraryname omitted, in case you changed it while the server was running.'),
+('lookup account email',2,'Syntax: .lookup account email $emailpart [#limit] \r\n\r\n Searchs accounts, which email including $emailpart with optional parametr #limit of results. If #limit not provided expected 100.'),
+('lookup account ip',2,'Syntax: lookup account ip $ippart [#limit] \r\n\r\n Searchs accounts, which last used ip inluding $ippart (textual) with optional parametr #$limit of results. If #limit not provided expected 100.'),
+('lookup account name',2,'Syntax: .lookup account name $accountpart [#limit] \r\n\r\n Searchs accounts, which username including $accountpart with optional parametr #limit of results. If #limit not provided expected 100.'),
+('lookup achievement',2,'Syntax: .lookup $name\r\nLooks up a achievement by $namepart, and returns all matches with their quest ID\'s. Achievement shift-links generated with information about achievment state for selected player. Also for completed achievments in list show complete date.'),
 ('lookup area',1,'Syntax: .lookup area $namepart\r\n\r\nLooks up an area by $namepart, and returns all matches with their area ID\'s.'),
 ('lookup creature',3,'Syntax: .lookup creature $namepart\r\n\r\nLooks up a creature by $namepart, and returns all matches with their creature ID\'s.'),
 ('lookup event',2,'Syntax: .lookup event $name\r\nAttempts to find the ID of the event with the provided $name.'),
@@ -634,9 +637,9 @@ INSERT INTO `command` VALUES
 ('lookup item',3,'Syntax: .lookup item $itemname\r\n\r\nLooks up an item by $itemname, and returns all matches with their Item ID\'s.'),
 ('lookup itemset',3,'Syntax: .lookup itemset $itemname\r\n\r\nLooks up an item set by $itemname, and returns all matches with their Item set ID\'s.'),
 ('lookup object',3,'Syntax: .lookup object $objname\r\n\r\nLooks up an gameobject by $objname, and returns all matches with their Gameobject ID\'s.'),
-('lookup player account',2,'Syntax: .lookup player account $account ($limit) \r\n\r\n Searchs players, which account username is $account with optional parametr $limit of results.'),
-('lookup player ip',2,'Syntax: .lookup player ip $ip ($limit) \r\n\r\n Searchs players, which account ast_ip is $ip with optional parametr $limit of results.'),
-('lookup player email',2,'Syntax: .lookup player email $email ($limit) \r\n\r\n Searchs players, which account email is $email with optional parametr $limit of results.'),
+('lookup player account',2,'Syntax: .lookup player account $accountpart [#limit] \r\n\r\n Searchs players, which account username including $accountpart with optional parametr #limit of results. If #limit not provided expected 100.'),
+('lookup player email',2,'Syntax: .lookup player email $emailpart [#limit] \r\n\r\n Searchs players, which account email including $emailpart with optional parametr #limit of results. If #limit not provided expected 100.'),
+('lookup player ip',2,'Syntax: .lookup player ip $ippart [#limit] \r\n\r\n Searchs players, which account last used ip inluding $ippart (textual) with optional parametr #limit of results. If #limit not provided expected 100.'),
 ('lookup quest',3,'Syntax: .lookup quest $namepart\r\n\r\nLooks up a quest by $namepart, and returns all matches with their quest ID\'s.'),
 ('lookup skill',3,'Syntax: .lookup skill $$namepart\r\n\r\nLooks up a skill by $namepart, and returns all matches with their skill ID\'s.'),
 ('lookup spell',3,'Syntax: .lookup spell $namepart\r\n\r\nLooks up a spell by $namepart, and returns all matches with their spell ID\'s.'),
@@ -646,7 +649,6 @@ INSERT INTO `command` VALUES
 ('maxskill',3,'Syntax: .maxskill\r\nSets all skills of the targeted player to their maximum VALUESfor its current level.'),
 ('modify arena',1,'Syntax: .modify arena #value\r\nAdd $amount arena points to the selected player.'),
 ('modify aspeed',1,'Syntax: .modify aspeed #rate\r\n\r\nModify all speeds -run,swim,run back,swim back- of the selected player to \"normalbase speed for this move type\"*rate. If no player is selected, modify your speed.\r\n\r\n #rate may range from 0.1 to 10.'),
-('modify bit',1,'Syntax: .modify bit #field #bit\r\n\r\nToggle the #bit bit of the #field field for the selected player. If no player is selected, modify your character.'),
 ('modify bwalk',1,'Syntax: .modify bwalk #rate\r\n\r\nModify the speed of the selected player while running backwards to \"normal walk back speed\"*rate. If no player is selected, modify your speed.\r\n\r\n #rate may range from 0.1 to 10.'),
 ('modify drunk',1,'Syntax: .modify drunk #value\r\n Set drunk level to #value (0..100). Value 0 remove drunk state, 100 is max drunked state.'),
 ('modify energy',1,'Syntax: .modify energy #energy\r\n\r\nModify the energy of the selected player. If no player is selected, modify your energy.'),
@@ -665,7 +667,6 @@ INSERT INTO `command` VALUES
 ('modify runicpower',1,'Syntax: .modify runicpower #newrunicpower\r\n\r\nModify the runic power of the selected player. If no player is selected, modify your runic power.'),
 ('modify scale',1,'Syntax: .modify scale #scale\r\n\r\nChange model scale for targeted player (util relogin) or creature (until respawn).'),
 ('modify speed',1,'Syntax: .modify speed #rate\r\n.speed #rate\r\n\r\nModify the running speed of the selected player to \"normal base run speed\"*rate. If no player is selected, modify your speed.\r\n\r\n #rate may range from 0.1 to 10.'),
-('modify spell',1,''),
 ('modify standstate',2,'Syntax: .modify standstate #emoteid\r\n\r\nChange the emote of your character while standing to #emoteid.'),
 ('modify swim',1,'Syntax: .modify swim #rate\r\n\r\nModify the swim speed of the selected player to \"normal swim speed\"*rate. If no player is selected, modify your speed.\r\n\r\n #rate may range from 0.1 to 10.'),
 ('modify tp',1,'Syntax: .modify tp #amount\r\n\r\nSet free talent pointes for selected character or character\'s pet. It will be reset to default expected at next levelup/login/quest reward.'),
@@ -729,7 +730,8 @@ INSERT INTO `command` VALUES
 ('reset level',3,'Syntax: .reset level [Playername]\r\n  Reset level to 1 including reset stats and talents.  Equipped items with greater level requirement can be lost.'),
 ('reset spells',3,'Syntax: .reset spells [Playername]\r\n  Removes all non-original spells from spellbook.\r\n. Playername can be name of offline character.'),
 ('reset stats',3,'Syntax: .reset stats [Playername]\r\n  Resets(recalculate) all stats of the targeted player to their original VALUESat current level.'),
-('reset talents',3,'Syntax: .reset talents [Playername]\r\n  Removes all talents of the targeted player or pet or named player. Playername can be name of offline character. With player talents also will be reset talents for all character\'s pets if any.'),
+('reset specs',3,'Syntax: .reset specs [Playername]\r\n  Removes all talents (for all specs) of the targeted player or named player. Playername can be name of offline character. With player talents also will be reset talents for all character\'s pets if any.'),
+('reset talents',3,'Syntax: .reset talents [Playername]\r\n  Removes all talents (current spec) of the targeted player or pet or named player. With player talents also will be reset talents for all character\'s pets if any.'),
 ('respawn',3,'Syntax: .respawn\r\n\r\nRespawn selected creature or respawn all nearest creatures (if none selected) and GO without waiting respawn time expiration.'),
 ('revive',3,'Syntax: .revive\r\n\r\nRevive the selected player. If no player is selected, it will revive you.'),
 ('save',0,'Syntax: .save\r\n\r\nSaves your character.'),
@@ -745,16 +747,18 @@ INSERT INTO `command` VALUES
 ('server idleshutdown cancel',3,'Syntax: .server idleshutdown cancel\r\n\r\nCancel the restart/shutdown timer if any.'),
 ('server idlerestart',3,'Syntax: .server idlerestart #delay\r\n\r\nRestart the server after #delay seconds if no active connections are present (no players). Use #exist_code or 2 as program exist code.'),
 ('server idlerestart cancel',3,'Syntax: .server idlerestart cancel\r\n\r\nCancel the restart/shutdown timer if any.'),
+('server log filter',4,'Syntax: .server log filter [($filtername|all) (on|off)]\r\n\r\nShow or set server log filters. If used "all" then all filters will be set to on/off state.'),
+('server log level',4,'Syntax: .server log level [#level]\r\n\r\nShow or set server log level (0 - errors only, 1 - basic, 2 - detail, 3 - debug).'),
 ('server motd',0,'Syntax: .server motd\r\n\r\nShow server Message of the day.'),
 ('server plimit',3,'Syntax: .server plimit [#num|-1|-2|-3|reset|player|moderator|gamemaster|administrator]\r\n\r\nWithout arg show current player amount and security level limitations for login to server, with arg set player linit ($num > 0) or securiti limitation ($num < 0 or security leme name. With `reset` sets player limit to the one in the config file'),
 ('server restart',3,'Syntax: .server restart #delay\r\n\r\nRestart the server after #delay seconds. Use #exist_code or 2 as program exist code.'),
 ('server restart cancel',3,'Syntax: .server restart cancel\r\n\r\nCancel the restart/shutdown timer if any.'),
-('server set loglevel',4,'Syntax: .server set loglevel #level\r\n\r\nSet server log level (0 - errors only, 1 - basic, 2 - detail, 3 - debug).'),
 ('server set motd',3,'Syntax: .server set motd $MOTD\r\n\r\nSet server Message of the day.'),
 ('server shutdown',3,'Syntax: .server shutdown #delay [#exit_code]\r\n\r\nShut the server down after #delay seconds. Use #exit_code or 0 as program exit code.'),
 ('server shutdown cancel',3,'Syntax: .server shutdown cancel\r\n\r\nCancel the restart/shutdown timer if any.'),
 ('setskill',3,'Syntax: .setskill #skill #level [#max]\r\n\r\nSet a skill of id #skill with a current skill value of #level and a maximum value of #max (or equal current maximum if not provide) for the selected character. If no character is selected, you learn the skill.'),
 ('showarea',3,'Syntax: .showarea #areaid\r\n\r\nReveal the area of #areaid to the selected character. If no character is selected, reveal this area to you.'),
+('stable',3,'Syntax: .stable\r\n\r\nShow your pet stable.'),
 ('start',0,'Syntax: .start\r\n\r\nTeleport you to the starting area of your character.'),
 ('taxicheat',1,'Syntax: .taxicheat on/off\r\n\r\nTemporary grant access or remove to all taxi routes for the selected character. If no character is selected, hide or reveal all routes to you.\r\n\r\nVisited taxi nodes sill accessible after removing access.'),
 ('tele',1,'Syntax: .tele #location\r\n\r\nTeleport player to a given location.'),
@@ -762,11 +766,14 @@ INSERT INTO `command` VALUES
 ('tele del',3,'Syntax: .tele del $name\r\n\r\nRemove location with name $name for .tele command locations list.'),
 ('tele group',1,'Syntax: .tele group#location\r\n\r\nTeleport a selected player and his group members to a given location.'),
 ('tele name',1,'Syntax: .tele name [#playername] #location\r\n\r\nTeleport the given character to a given location. Character can be offline.'),
-('ticket',2,'Syntax: .ticket on\r\n        .ticket off\r\n        .ticket #num\r\n        .ticket $character_name\r\n\r\non/off for GMs to show or not a new ticket directly, $character_name to show ticket of this character, #num to show ticket #num.'),
+('ticket',2,'Syntax: .ticket on\r\n        .ticket off\r\n        .ticket #num\r\n        .ticket $character_name\r\n        .ticket respond #num $response\r\n        .ticket respond $character_name $response\r\n\r\non/off for GMs to show or not a new ticket directly, $character_name to show ticket of this character, #num to show ticket #num.'),
 ('titles add',2,'Syntax: .titles add #title\r\nAdd title #title (id or shift-link) to known titles list for selected player.'),
 ('titles current',2,'Syntax: .titles current #title\r\nSet title #title (id or shift-link) as current selected titl for selected player. If title not in known title list for player then it will be added to list.'),
 ('titles remove',2,'Syntax: .titles remove #title\r\nRemove title #title (id or shift-link) from known titles list for selected player.'),
 ('titles setmask',2,'Syntax: .titles setmask #mask\r\n\r\nAllows user to use all titles from #mask.\r\n\r\n #mask=0 disables the title-choose-field'),
+('trigger',2,'Syntax: .trigger [#trigger_id|$trigger_shift-link|$trigger_target_shift-link]\r\n\r\nShow detail infor about areatrigger with id #trigger_id or trigger id associated with shift-link. If areatrigger id or shift-link not provided then selected nearest areatrigger at current map.'),
+('trigger active',2,'Syntax: .trigger active\r\n\r\nShow list of areatriggers with activation zone including current character position.'),
+('trigger near',2,'Syntax: .trigger near [#distance]\r\n\r\nOutput areatriggers at distance #distance from player. If #distance not provided use 10 as default value.'),
 ('unaura',3,'Syntax: .unaura #spellid\r\n\r\nRemove aura due to spell #spellid from the selected Unit.'),
 ('unban account',3,'Syntax: .unban account $Name\r\nUnban accounts for account name pattern.'),
 ('unban character',3,'Syntax: .unban character $Name\r\nUnban accounts for character name pattern.'),
@@ -776,7 +783,6 @@ INSERT INTO `command` VALUES
 ('waterwalk',2,'Syntax: .waterwalk on/off\r\n\r\nSet on/off waterwalk state for selected player.'),
 ('wchange',3,'Syntax: .wchange #weathertype #status\r\n\r\nSet current weather to #weathertype with an intensity of #status.\r\n\r\n#weathertype can be 1 for rain, 2 for snow, and 3 for sand. #status can be 0 for disabled, and 1 for enabled.'),
 ('whispers',1,'Syntax: .whispers on|off\r\nEnable/disable accepting whispers by GM from players. By default use mangosd.conf setting.'),
-('wp',2,'Using WP Command:\r\nEach Waypoint Command has it\'s own description!'),
 ('wp add',2,'Syntax: .wp add [#creature_guid or Select a Creature]'),
 ('wp export',3,'Syntax: .wp export [#creature_guid or Select a Creature] $filename'),
 ('wp import',3,'Syntax: .wp import $filename'),
@@ -829,10 +835,11 @@ UNLOCK TABLES;
 
 DROP TABLE IF EXISTS `creature_addon`;
 CREATE TABLE `creature_addon` (
-  `guid` int(11) NOT NULL default '0',
+  `guid` int(10) unsigned NOT NULL default '0',
   `mount` mediumint(8) unsigned NOT NULL default '0',
   `bytes1` int(10) unsigned NOT NULL default '0',
-  `bytes2` int(10) unsigned NOT NULL default '0',
+  `b2_0_sheath` tinyint(3) unsigned NOT NULL DEFAULT '0',
+  `b2_1_pvp_state` tinyint(3) unsigned NOT NULL DEFAULT '0',
   `emote` int(10) unsigned NOT NULL default '0',
   `moveflags` int(10) unsigned NOT NULL default '0',
   `auras` text,
@@ -949,6 +956,7 @@ CREATE TABLE `creature_model_info` (
   `combat_reach` float NOT NULL default '0',
   `gender` tinyint(3) unsigned NOT NULL default '2',
   `modelid_other_gender` mediumint(8) unsigned NOT NULL default '0',
+  `modelid_alternative` mediumint(8) unsigned NOT NULL default '0',
   PRIMARY KEY  (`modelid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COMMENT='Creature System (Model related info)';
 
@@ -959,8 +967,50 @@ CREATE TABLE `creature_model_info` (
 LOCK TABLES `creature_model_info` WRITE;
 /*!40000 ALTER TABLE `creature_model_info` DISABLE KEYS */;
 INSERT INTO `creature_model_info` VALUES
-(10045, 1, 1.5, 2, 0);
+(49, 0.3060, 1.5, 0, 50, 0),
+(50, 0.2080, 1.5, 1, 49, 0),
+(51, 0.3720, 1.5, 0, 52, 0),
+(52, 0.2360, 1.5, 1, 51, 0),
+(53, 0.3470, 1.5, 0, 54, 0),
+(54, 0.3470, 1.5, 1, 53, 0),
+(55, 0.3890, 1.5, 0, 56, 0),
+(56, 0.3060, 1.5, 1, 55, 0),
+(57, 0.3830, 1.5, 0, 58, 0),
+(58, 0.3830, 1.5, 1, 57, 0),
+(59, 0.9747, 1.5, 0, 60, 0),
+(60, 0.8725, 1.5, 1, 59, 0),
+(1478, 0.3060, 1.5, 0, 1479, 0),
+(1479, 0.3060, 1.5, 1, 1478, 0),
+(1563, 0.3519, 1.5, 0, 1564, 0),
+(1564, 0.3519, 1.5, 1, 1563, 0),
+(10045, 1.0000, 1.5, 2, 0, 0),
+(15475, 0.3830, 1.5, 1, 15476, 0),
+(15476, 0.3830, 1.5, 0, 15475, 0),
+(16125, 1.0000, 1.5, 0, 16126, 0),
+(16126, 1.0000, 1.5, 1, 16125, 0);
 /*!40000 ALTER TABLE `creature_model_info` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `creature_model_race`
+--
+
+DROP TABLE IF EXISTS `creature_model_race`;
+CREATE TABLE `creature_model_race` (
+  `modelid` mediumint(8) unsigned NOT NULL default '0',
+  `racemask` mediumint(8) unsigned NOT NULL default '0',
+  `creature_entry` mediumint(8) unsigned NOT NULL default '0' COMMENT 'option 1, modelid_N from creature_template',
+  `modelid_racial` mediumint(8) unsigned NOT NULL default '0' COMMENT 'option 2, explicit modelid',
+  PRIMARY KEY  (`modelid`,`racemask`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8 COMMENT='Model system';
+
+--
+-- Dumping data for table `creature_model_race`
+--
+
+LOCK TABLES `creature_model_race` WRITE;
+/*!40000 ALTER TABLE `creature_model_race` DISABLE KEYS */;
+/*!40000 ALTER TABLE `creature_model_race` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -975,6 +1025,7 @@ CREATE TABLE `creature_movement` (
   `position_y` float NOT NULL default '0',
   `position_z` float NOT NULL default '0',
   `waittime` int(10) unsigned NOT NULL default '0',
+  `script_id` mediumint(8) unsigned NOT NULL default '0',
   `textid1` int(11) NOT NULL default '0',
   `textid2` int(11) NOT NULL default '0',
   `textid3` int(11) NOT NULL default '0',
@@ -996,6 +1047,76 @@ CREATE TABLE `creature_movement` (
 LOCK TABLES `creature_movement` WRITE;
 /*!40000 ALTER TABLE `creature_movement` DISABLE KEYS */;
 /*!40000 ALTER TABLE `creature_movement` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `creature_movement_scripts`
+--
+
+DROP TABLE IF EXISTS `creature_movement_scripts`;
+CREATE TABLE `creature_movement_scripts` (
+  `id` mediumint(8) unsigned NOT NULL default '0',
+  `delay` int(10) unsigned NOT NULL default '0',
+  `command` mediumint(8) unsigned NOT NULL default '0',
+  `datalong` mediumint(8) unsigned NOT NULL default '0',
+  `datalong2` int(10) unsigned NOT NULL default '0',
+  `datalong3` int(10) unsigned NOT NULL default '0',
+  `datalong4` int(10) unsigned NOT NULL default '0',
+  `data_flags` tinyint(3) unsigned NOT NULL default '0',
+  `dataint` int(11) NOT NULL default '0',
+  `dataint2` int(11) NOT NULL default '0',
+  `dataint3` int(11) NOT NULL default '0',
+  `dataint4` int(11) NOT NULL default '0',
+  `x` float NOT NULL default '0',
+  `y` float NOT NULL default '0',
+  `z` float NOT NULL default '0',
+  `o` float NOT NULL default '0',
+  `comments` varchar(255) NOT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+
+--
+-- Dumping data for table `creature_movement_scripts`
+--
+
+LOCK TABLES `creature_movement_scripts` WRITE;
+/*!40000 ALTER TABLE `creature_movement_scripts` DISABLE KEYS */;
+/*!40000 ALTER TABLE `creature_movement_scripts` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `creature_movement_template`
+--
+
+DROP TABLE IF EXISTS `creature_movement_template`;
+CREATE TABLE `creature_movement_template` (
+  `entry` mediumint(8) unsigned NOT NULL COMMENT 'Creature entry',
+  `point` mediumint(8) unsigned NOT NULL default '0',
+  `position_x` float NOT NULL default '0',
+  `position_y` float NOT NULL default '0',
+  `position_z` float NOT NULL default '0',
+  `waittime` int(10) unsigned NOT NULL default '0',
+  `script_id` mediumint(8) unsigned NOT NULL default '0',
+  `textid1` int(11) NOT NULL default '0',
+  `textid2` int(11) NOT NULL default '0',
+  `textid3` int(11) NOT NULL default '0',
+  `textid4` int(11) NOT NULL default '0',
+  `textid5` int(11) NOT NULL default '0',
+  `emote` mediumint(8) unsigned NOT NULL default '0',
+  `spell` mediumint(8) unsigned NOT NULL default '0',
+  `wpguid` int(11) NOT NULL default '0',
+  `orientation` float NOT NULL default '0',
+  `model1` mediumint(9) NOT NULL default '0',
+  `model2` mediumint(9) NOT NULL default '0',
+  PRIMARY KEY  (`entry`,`point`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=FIXED COMMENT='Creature waypoint system';
+
+--
+-- Dumping data for table `creature_movement_template`
+--
+
+LOCK TABLES `creature_movement_template` WRITE;
+/*!40000 ALTER TABLE `creature_movement_template` DISABLE KEYS */;
+/*!40000 ALTER TABLE `creature_movement_template` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -1047,28 +1168,6 @@ LOCK TABLES `creature_questrelation` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `creature_respawn`
---
-
-DROP TABLE IF EXISTS `creature_respawn`;
-CREATE TABLE `creature_respawn` (
-  `guid` int(10) unsigned NOT NULL default '0' COMMENT 'Global Unique Identifier',
-  `respawntime` bigint(20) NOT NULL default '0',
-  `instance` mediumint(8) unsigned NOT NULL default '0',
-  PRIMARY KEY  (`guid`,`instance`),
-  KEY `instance` (`instance`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC COMMENT='Grid Loading System';
-
---
--- Dumping data for table `creature_respawn`
---
-
-LOCK TABLES `creature_respawn` WRITE;
-/*!40000 ALTER TABLE `creature_respawn` DISABLE KEYS */;
-/*!40000 ALTER TABLE `creature_respawn` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `creature_template`
 --
 
@@ -1080,10 +1179,10 @@ CREATE TABLE `creature_template` (
   `difficulty_entry_3` mediumint(8) unsigned NOT NULL default '0',
   `KillCredit1` int(11) unsigned NOT NULL default '0',
   `KillCredit2` int(11) unsigned NOT NULL default '0',
-  `modelid_A` mediumint(8) unsigned NOT NULL default '0',
-  `modelid_A2` mediumint(8) unsigned NOT NULL default '0',
-  `modelid_H` mediumint(8) unsigned NOT NULL default '0',
-  `modelid_H2` mediumint(8) unsigned NOT NULL default '0',
+  `modelid_1` mediumint(8) unsigned NOT NULL default '0',
+  `modelid_2` mediumint(8) unsigned NOT NULL default '0',
+  `modelid_3` mediumint(8) unsigned NOT NULL default '0',
+  `modelid_4` mediumint(8) unsigned NOT NULL default '0',
   `name` char(100) NOT NULL default '0',
   `subname` char(100) default NULL,
   `IconName` char(100) default NULL,
@@ -1153,6 +1252,8 @@ CREATE TABLE `creature_template` (
   `movementId` int(11) UNSIGNED DEFAULT '0' NOT NULL,
   `RegenHealth` tinyint(3) unsigned NOT NULL default '1',
   `equipment_id` mediumint(8) unsigned NOT NULL default '0',
+  `trainer_id` mediumint(8) unsigned NOT NULL default '0',
+  `vendor_id` mediumint(8) unsigned NOT NULL default '0',
   `mechanic_immune_mask` int(10) unsigned NOT NULL default '0',
   `flags_extra` int(10) unsigned NOT NULL default '0',
   `ScriptName` char(64) NOT NULL default '',
@@ -1166,7 +1267,7 @@ CREATE TABLE `creature_template` (
 LOCK TABLES `creature_template` WRITE;
 /*!40000 ALTER TABLE `creature_template` DISABLE KEYS */;
 INSERT INTO `creature_template` VALUES
-(1,0,0,0,0,0,10045,0,10045,0,'Waypoint(Only GM can see it)','Visual',NULL,0,1,1,64,64,0,0,5,35,35,0,0.91,1.14286,1,0,2,3,0,10,1,2000,2200,8,4096,0,0,0,0,0,0,1,2,100,8,5242886,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,'',0,3,1,1,0,0,0,0,0,0,0,0,1,0,0,130,'');
+(1,0,0,0,0,0,10045,0,0,0,'Waypoint(Only GM can see it)','Visual',NULL,0,1,1,64,64,0,0,5,35,35,0,0.91,1.14286,1,0,2,3,0,10,1,2000,2200,8,4096,0,0,0,0,0,0,1,2,100,8,5242886,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,'',0,3,1,1,0,0,0,0,0,0,0,0,1,0,0,0,0,130,'');
 /*!40000 ALTER TABLE `creature_template` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1179,7 +1280,8 @@ CREATE TABLE `creature_template_addon` (
   `entry` mediumint(8) unsigned NOT NULL default '0',
   `mount` mediumint(8) unsigned NOT NULL default '0',
   `bytes1` int(10) unsigned NOT NULL default '0',
-  `bytes2` int(10) unsigned NOT NULL default '0',
+  `b2_0_sheath` tinyint(3) unsigned NOT NULL DEFAULT '0',
+  `b2_1_pvp_state` tinyint(3) unsigned NOT NULL DEFAULT '0',
   `emote` mediumint(8) unsigned NOT NULL default '0',
   `moveflags` int(10) unsigned NOT NULL default '0',
   `auras` text,
@@ -1360,11 +1462,18 @@ CREATE TABLE `event_scripts` (
   `command` mediumint(8) unsigned NOT NULL default '0',
   `datalong` mediumint(8) unsigned NOT NULL default '0',
   `datalong2` int(10) unsigned NOT NULL default '0',
+  `datalong3` int(10) unsigned NOT NULL default '0',
+  `datalong4` int(10) unsigned NOT NULL default '0',
+  `data_flags` tinyint(3) unsigned NOT NULL default '0',
   `dataint` int(11) NOT NULL default '0',
+  `dataint2` int(11) NOT NULL default '0',
+  `dataint3` int(11) NOT NULL default '0',
+  `dataint4` int(11) NOT NULL default '0',
   `x` float NOT NULL default '0',
   `y` float NOT NULL default '0',
   `z` float NOT NULL default '0',
-  `o` float NOT NULL default '0'
+  `o` float NOT NULL default '0',
+  `comments` varchar(255) NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 --
@@ -1504,8 +1613,8 @@ CREATE TABLE `game_event` (
   `entry` mediumint(8) unsigned NOT NULL COMMENT 'Entry of the game event',
   `start_time` timestamp NOT NULL default '0000-00-00 00:00:00' COMMENT 'Absolute start date, the event will never start before',
   `end_time` timestamp NOT NULL default '0000-00-00 00:00:00' COMMENT 'Absolute end date, the event will never start afler',
-  `occurence` bigint(20) unsigned NOT NULL default '86400' COMMENT 'Delay in hours between occurences of the event',
-  `length` bigint(20) unsigned NOT NULL default '43200' COMMENT 'Length in hours of the event',
+  `occurence` bigint(20) unsigned NOT NULL default '86400' COMMENT 'Delay in minutes between occurences of the event',
+  `length` bigint(20) unsigned NOT NULL default '43200' COMMENT 'Length in minutes of the event',
   `holiday` mediumint(8) unsigned NOT NULL default '0' COMMENT 'Client side holiday id',
   `description` varchar(255) default NULL COMMENT 'Description of the event displayed in console',
   PRIMARY KEY  (`entry`)
@@ -1527,7 +1636,7 @@ UNLOCK TABLES;
 DROP TABLE IF EXISTS `game_event_creature`;
 CREATE TABLE `game_event_creature` (
   `guid` int(10) unsigned NOT NULL,
-  `event` smallint(6) NOT NULL default '0' COMMENT 'Put negatives values to remove during event',
+  `event` smallint(6) NOT NULL default '0' COMMENT 'Negatives value to remove during event and ignore pool grouping, positive value for spawn during event and if guid is part of pool then al pool memebers must be listed as part of event spawn.',
   PRIMARY KEY  (`guid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
@@ -1541,34 +1650,13 @@ LOCK TABLES `game_event_creature` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `game_event_creature_quest`
---
-
-DROP TABLE IF EXISTS `game_event_creature_quest`;
-CREATE TABLE `game_event_creature_quest` (
-  `id` mediumint(8) unsigned NOT NULL default '0',
-  `quest` mediumint(8) unsigned NOT NULL default '0',
-  `event` smallint(5) unsigned NOT NULL default '0',
-  PRIMARY KEY  (`id`,`quest`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
-
---
--- Dumping data for table `game_event_creature_quest`
---
-
-LOCK TABLES `game_event_creature_quest` WRITE;
-/*!40000 ALTER TABLE `game_event_creature_quest` DISABLE KEYS */;
-/*!40000 ALTER TABLE `game_event_creature_quest` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `game_event_gameobject`
 --
 
 DROP TABLE IF EXISTS `game_event_gameobject`;
 CREATE TABLE `game_event_gameobject` (
   `guid` int(10) unsigned NOT NULL,
-  `event` smallint(6) NOT NULL default '0' COMMENT 'Put negatives values to remove during event',
+  `event` smallint(6) NOT NULL default '0' COMMENT 'Negatives value to remove during event and ignore pool grouping, positive value for spawn during event and if guid is part of pool then al pool memebers must be listed as part of event spawn.',
   PRIMARY KEY  (`guid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
@@ -1601,6 +1689,26 @@ CREATE TABLE `game_event_model_equip` (
 LOCK TABLES `game_event_model_equip` WRITE;
 /*!40000 ALTER TABLE `game_event_model_equip` DISABLE KEYS */;
 /*!40000 ALTER TABLE `game_event_model_equip` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `game_event_quest`
+--
+
+DROP TABLE IF EXISTS `game_event_quest`;
+CREATE TABLE `game_event_quest` (
+  `quest` mediumint(8) unsigned NOT NULL default '0' COMMENT 'entry from quest_template',
+  `event` smallint(5) unsigned NOT NULL default '0' COMMENT 'entry from game_event',
+  PRIMARY KEY  (`quest`,`event`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8 COMMENT='Game event system';
+
+--
+-- Dumping data for table `game_event_quest`
+--
+
+LOCK TABLES `game_event_quest` WRITE;
+/*!40000 ALTER TABLE `game_event_quest` DISABLE KEYS */;
+/*!40000 ALTER TABLE `game_event_quest` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -1702,7 +1810,9 @@ CREATE TABLE `gameobject` (
   `spawntimesecs` int(11) NOT NULL default '0',
   `animprogress` tinyint(3) unsigned NOT NULL default '0',
   `state` tinyint(3) unsigned NOT NULL default '0',
-  PRIMARY KEY  (`guid`)
+  PRIMARY KEY  (`guid`),
+  KEY `idx_map` (`map`),
+  KEY `idx_id` (`id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=FIXED COMMENT='Gameobject System';
 
 --
@@ -1803,28 +1913,6 @@ LOCK TABLES `gameobject_questrelation` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `gameobject_respawn`
---
-
-DROP TABLE IF EXISTS `gameobject_respawn`;
-CREATE TABLE `gameobject_respawn` (
-  `guid` int(10) unsigned NOT NULL default '0' COMMENT 'Global Unique Identifier',
-  `respawntime` bigint(20) NOT NULL default '0',
-  `instance` mediumint(8) unsigned NOT NULL default '0',
-  PRIMARY KEY  (`guid`,`instance`),
-  KEY `instance` (`instance`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC COMMENT='Grid Loading System';
-
---
--- Dumping data for table `gameobject_respawn`
---
-
-LOCK TABLES `gameobject_respawn` WRITE;
-/*!40000 ALTER TABLE `gameobject_respawn` DISABLE KEYS */;
-/*!40000 ALTER TABLE `gameobject_respawn` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `gameobject_scripts`
 --
 
@@ -1835,11 +1923,18 @@ CREATE TABLE `gameobject_scripts` (
   `command` mediumint(8) unsigned NOT NULL default '0',
   `datalong` mediumint(8) unsigned NOT NULL default '0',
   `datalong2` int(10) unsigned NOT NULL default '0',
+  `datalong3` int(10) unsigned NOT NULL default '0',
+  `datalong4` int(10) unsigned NOT NULL default '0',
+  `data_flags` tinyint(3) unsigned NOT NULL default '0',
   `dataint` int(11) NOT NULL default '0',
+  `dataint2` int(11) NOT NULL default '0',
+  `dataint3` int(11) NOT NULL default '0',
+  `dataint4` int(11) NOT NULL default '0',
   `x` float NOT NULL default '0',
   `y` float NOT NULL default '0',
   `z` float NOT NULL default '0',
-  `o` float NOT NULL default '0'
+  `o` float NOT NULL default '0',
+  `comments` varchar(255) NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 --
@@ -1897,6 +1992,8 @@ CREATE TABLE `gameobject_template` (
   `data21` int(10) unsigned NOT NULL default '0',
   `data22` int(10) unsigned NOT NULL default '0',
   `data23` int(10) unsigned NOT NULL default '0',
+  `mingold` mediumint(8) unsigned NOT NULL default '0',
+  `maxgold` mediumint(8) unsigned NOT NULL default '0',
   `ScriptName` varchar(64) NOT NULL default '',
   PRIMARY KEY  (`entry`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=FIXED COMMENT='Gameobject System';
@@ -1948,7 +2045,7 @@ CREATE TABLE gossip_menu_option (
   option_text text,
   option_id tinyint(3) unsigned NOT NULL default '0',
   npc_option_npcflag int(10) unsigned NOT NULL default '0',
-  action_menu_id mediumint(8) unsigned NOT NULL default '0',
+  action_menu_id mediumint(8) NOT NULL default '0',
   action_poi_id mediumint(8) unsigned NOT NULL default '0',
   action_script_id mediumint(8) unsigned NOT NULL default '0',
   box_coded tinyint(3) unsigned NOT NULL default '0',
@@ -1973,22 +2070,22 @@ CREATE TABLE gossip_menu_option (
 LOCK TABLES `gossip_menu_option` WRITE;
 /*!40000 ALTER TABLE `gossip_menu_option` DISABLE KEYS */;
 INSERT INTO gossip_menu_option VALUES
-(0,0,0,'GOSSIP_OPTION_QUESTGIVER',2,2,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
-(0,1,1,'GOSSIP_OPTION_VENDOR',3,128,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
-(0,2,2,'GOSSIP_OPTION_TAXIVENDOR',4,8192,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
-(0,3,3,'GOSSIP_OPTION_TRAINER',5,16,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
-(0,4,4,'GOSSIP_OPTION_SPIRITHEALER',6,16384,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
-(0,5,4,'GOSSIP_OPTION_SPIRITGUIDE',7,32768,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
-(0,6,5,'GOSSIP_OPTION_INNKEEPER',8,65536,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
-(0,7,6,'GOSSIP_OPTION_BANKER',9,131072,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
-(0,8,7,'GOSSIP_OPTION_PETITIONER',10,262144,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
-(0,9,8,'GOSSIP_OPTION_TABARDDESIGNER',11,524288,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
-(0,10,9,'GOSSIP_OPTION_BATTLEFIELD',12,1048576,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
-(0,11,6,'GOSSIP_OPTION_AUCTIONEER',13,2097152,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
-(0,12,0,'GOSSIP_OPTION_STABLEPET',14,4194304,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
-(0,13,1,'GOSSIP_OPTION_ARMORER',15,4096,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
-(0,14,2,'GOSSIP_OPTION_UNLEARNTALENTS',16,16,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
-(0,15,2,'GOSSIP_OPTION_UNLEARNPETSKILLS',17,16,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0);
+(0, 0,0,'GOSSIP_OPTION_QUESTGIVER',       2,0x000002,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
+(0, 1,1,'GOSSIP_OPTION_VENDOR',           3,0x000080,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
+(0, 2,2,'GOSSIP_OPTION_TAXIVENDOR',       4,0x002000,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
+(0, 3,3,'GOSSIP_OPTION_TRAINER',          5,0x000010,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
+(0, 4,4,'GOSSIP_OPTION_SPIRITHEALER',     6,0x004000,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
+(0, 5,4,'GOSSIP_OPTION_SPIRITGUIDE',      7,0x008000,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
+(0, 6,5,'GOSSIP_OPTION_INNKEEPER',        8,0x010000,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
+(0, 7,6,'GOSSIP_OPTION_BANKER',           9,0x020000,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
+(0, 8,7,'GOSSIP_OPTION_PETITIONER',      10,0x040000,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
+(0, 9,8,'GOSSIP_OPTION_TABARDDESIGNER',  11,0x080000,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
+(0,10,9,'GOSSIP_OPTION_BATTLEFIELD',     12,0x100000,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
+(0,11,6,'GOSSIP_OPTION_AUCTIONEER',      13,0x200000,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
+(0,12,0,'GOSSIP_OPTION_STABLEPET',       14,0x400000,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
+(0,13,1,'GOSSIP_OPTION_ARMORER',         15,0x001000,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
+(0,14,0,'GOSSIP_OPTION_UNLEARNTALENTS',  16,0x000010,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0),
+(0,15,2,'GOSSIP_OPTION_UNLEARNPETSKILLS',17,0x000010,0,0,0,0,0,NULL,0,0,0,0,0,0,0,0,0);
 /*!40000 ALTER TABLE `gossip_menu_option` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2003,11 +2100,18 @@ CREATE TABLE `gossip_scripts` (
   `command` mediumint(8) unsigned NOT NULL default '0',
   `datalong` mediumint(8) unsigned NOT NULL default '0',
   `datalong2` int(10) unsigned NOT NULL default '0',
+  `datalong3` int(10) unsigned NOT NULL default '0',
+  `datalong4` int(10) unsigned NOT NULL default '0',
+  `data_flags` tinyint(3) unsigned NOT NULL default '0',
   `dataint` int(11) NOT NULL default '0',
+  `dataint2` int(11) NOT NULL default '0',
+  `dataint3` int(11) NOT NULL default '0',
+  `dataint4` int(11) NOT NULL default '0',
   `x` float NOT NULL default '0',
   `y` float NOT NULL default '0',
   `z` float NOT NULL default '0',
-  `o` float NOT NULL default '0'
+  `o` float NOT NULL default '0',
+  `comments` varchar(255) NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 --
@@ -2026,14 +2130,10 @@ UNLOCK TABLES;
 DROP TABLE IF EXISTS `instance_template`;
 CREATE TABLE `instance_template` (
   `map` smallint(5) unsigned NOT NULL,
-  `parent` int(10) unsigned NOT NULL,
+  `parent` smallint(5) unsigned NOT NULL default '0',
   `levelMin` tinyint(3) unsigned NOT NULL default '0',
   `levelMax` tinyint(3) unsigned NOT NULL default '0',
-  `startLocX` float default NULL,
-  `startLocY` float default NULL,
-  `startLocZ` float default NULL,
-  `startLocO` float default NULL,
-  `script` varchar(128) NOT NULL default '',
+  `ScriptName` varchar(128) NOT NULL default '',
   PRIMARY KEY  (`map`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
@@ -2044,6 +2144,26 @@ CREATE TABLE `instance_template` (
 LOCK TABLES `instance_template` WRITE;
 /*!40000 ALTER TABLE `instance_template` DISABLE KEYS */;
 /*!40000 ALTER TABLE `instance_template` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `item_convert`
+--
+
+DROP TABLE IF EXISTS `item_convert`;
+CREATE TABLE `item_convert` (
+  `entry` mediumint(8) unsigned NOT NULL default '0',
+  `item` mediumint(8) unsigned NOT NULL default '0',
+  PRIMARY KEY  (`entry`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=FIXED COMMENT='Npc System';
+
+--
+-- Dumping data for table `item_convert`
+--
+
+LOCK TABLES `item_convert` WRITE;
+/*!40000 ALTER TABLE `item_convert` DISABLE KEYS */;
+/*!40000 ALTER TABLE `item_convert` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -2129,7 +2249,7 @@ CREATE TABLE `item_template` (
   `displayid` mediumint(8) unsigned NOT NULL default '0',
   `Quality` tinyint(3) unsigned NOT NULL default '0',
   `Flags` int(10) unsigned NOT NULL default '0',
-  `Faction` int(11) UNSIGNED NOT NULL default '0',
+  `Flags2` int(10) unsigned NOT NULL default '0',
   `BuyCount` tinyint(3) unsigned NOT NULL default '1',
   `BuyPrice` int(10) unsigned NOT NULL default '0',
   `SellPrice` int(10) unsigned NOT NULL default '0',
@@ -2250,7 +2370,7 @@ CREATE TABLE `item_template` (
   `GemProperties` mediumint(9) NOT NULL default '0',
   `RequiredDisenchantSkill` smallint(6) NOT NULL default '-1',
   `ArmorDamageModifier` float NOT NULL default '0',
-  `Duration` int(11) NOT NULL default '0' COMMENT 'Duration in seconds. Negative value means realtime, postive value ingame time',
+  `Duration` int(11) UNSIGNED DEFAULT '0' NOT NULL COMMENT 'Duration in seconds.',
   `ItemLimitCategory` smallint(6) NOT NULL default '0',
   `HolidayId` int(11) UNSIGNED DEFAULT '0' NOT NULL,
   `ScriptName` varchar(64) NOT NULL default '',
@@ -2258,7 +2378,7 @@ CREATE TABLE `item_template` (
   `FoodType` tinyint(3) unsigned NOT NULL default '0',
   `minMoneyLoot` int(10) unsigned NOT NULL default '0',
   `maxMoneyLoot` int(10) unsigned NOT NULL default '0',
-  `NonConsumable` tinyint(1) UNSIGNED NOT NULL default '0',
+  `ExtraFlags` tinyint(1) UNSIGNED NOT NULL default '0',
   PRIMARY KEY  (`entry`),
   KEY `items_index` (`class`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=FIXED COMMENT='Item System';
@@ -2367,6 +2487,7 @@ UNLOCK TABLES;
 DROP TABLE IF EXISTS `locales_achievement_reward`;
 CREATE TABLE `locales_achievement_reward` (
   `entry` mediumint(8) unsigned NOT NULL default '0',
+  `gender` tinyint(3) default '2',
   `subject_loc1` varchar(100) NOT NULL default '',
   `subject_loc2` varchar(100) NOT NULL default '',
   `subject_loc3` varchar(100) NOT NULL default '',
@@ -2383,7 +2504,7 @@ CREATE TABLE `locales_achievement_reward` (
   `text_loc6` text default NULL,
   `text_loc7` text default NULL,
   `text_loc8` text default NULL,
-  PRIMARY KEY  (`entry`)
+  PRIMARY KEY  (`entry`,`gender`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 --
@@ -2945,7 +3066,7 @@ INSERT INTO `mangos_string` VALUES
 (24,'You used it recently.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (25,'Password not changed (unknown error)!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (26,'The password was changed',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(27,'The new passwords do not match or the old password is wrong',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(27,'The old password is wrong',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (28,'Your account is now locked.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (29,'Your account is now unlocked.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (30,', rank ',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
@@ -2980,6 +3101,8 @@ INSERT INTO `mangos_string` VALUES
 (59,'Using creature EventAI: %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (61,'Username: ',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (62,'Password: ',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(63, "Accepts whispers", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(64, "Doesn't accept whispers", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 (100,'Global notify: ',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (101,'Map: %u (%s) Zone: %u (%s) Area: %u (%s) Phase: %u\nX: %f Y: %f Z: %f Orientation: %f\ngrid[%u,%u]cell[%u,%u] InstanceID: %u\n ZoneX: %f ZoneY: %f\nGroundZ: %f FloorZ: %f Have height data (Map: %u VMap: %u)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (102,'%s is already being teleported.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
@@ -3011,8 +3134,8 @@ INSERT INTO `mangos_string` VALUES
 (128,'GUID %i, faction is %i, flags is %i, npcflag is %i, DY flag is %i',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (129,'Wrong faction: %u (not found in factiontemplate.dbc).',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (130,'You changed GUID=%i \'s Faction to %i, flags to %i, npcflag to %i, dyflag to %i.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(131,'You changed the spellflatid=%i, val= %i, mark =%i to %s.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(132,'%s changed your spellflatid=%i, val= %i, mark =%i.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(131,'You changed the %s spellmod %u to value %i for spell with family bit %u for %s.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(132,'%s changed your spellmod %u to value %i for spell with family bit %u.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (133,'%s has access to all taxi nodes now (until logout).',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (134,'%s has no more access to all taxi nodes now (only visited accessible).',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (135,'%s has given you access to all taxi nodes (until logout).',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
@@ -3056,7 +3179,7 @@ INSERT INTO `mangos_string` VALUES
 (174,'%s changed your runic power to %i/%i.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (175,'Liquid level: %f, ground: %f, type: %d, status: %d',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (200,'No selection.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(201,'Object GUID is: lowpart %u highpart %X',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(201,'Object GUID is: %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (202,'The name was too long by %i characters.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (203,'Error, name can only contain characters A-Z and a-z.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (204,'The subname was too long by %i characters.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
@@ -3065,7 +3188,7 @@ INSERT INTO `mangos_string` VALUES
 (207,'Item \'%i\' not found in database.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (208,'Item \'%i\' \'%s\' deleted from vendor list',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (209,'Item \'%i\' not found in vendor list.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(210,'Item \'%i\' already in vendor list.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(210,'Item \'%i\' (with extended cost %i) already in vendor list.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (211,'Spells of %s reset.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (212,'Spells of %s will reset at next login.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (213,'Talents of %s reset.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
@@ -3124,12 +3247,11 @@ INSERT INTO `mangos_string` VALUES
 (266,'Nothing found!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (267,'Object not found!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (268,'Creature not found!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(269,'Warning: Mob found more than once - you will be teleported to the first one found in DB.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (270,'Creature Removed',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (271,'Creature moved.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (272,'Creature (GUID:%u) must be on the same map as player!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (273,'Game Object (GUID: %u) not found',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(274,'Game Object (GUID: %u) has references in not found creature %u GO list, can\'t be deleted.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(274,'Game Object (GUID: %u) has references in not found owner %s GO list, can\'t be deleted.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (275,'Game Object (GUID: %u) removed',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (276,'Game Object |cffffffff|Hgameobject:%d|h[%s]|h|r (GUID: %u) turned',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (277,'Game Object |cffffffff|Hgameobject:%d|h[%s]|h|r (GUID: %u) moved',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
@@ -3159,29 +3281,29 @@ INSERT INTO `mangos_string` VALUES
 (302,'Player\'s chat is already enabled.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (303,'Your chat has been enabled.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (304,'You have enabled %s\'s chat.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(305, 'Faction %s (%u) reputation of %s was set to %5d!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(306, 'The arena points of %s was set to %u!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(307, 'No faction found!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(308, 'Faction %i unknown!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(309, 'Invalid parameter %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(310, 'delta must be between 0 and %d (inclusive)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(311, '%d - |cffffffff|Hfaction:%d|h[%s]|h|r',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(312, ' [visible]',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(313, ' [at war]',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(314, ' [peace forced]',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(315, ' [hidden]',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(316, ' [invisible forced]',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(317, ' [inactive]',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(318, 'Hated',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(319, 'Hostile',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(320, 'Unfriendly',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(321, 'Neutral',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(322, 'Friendly',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(323, 'Honored',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(324, 'Revered',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(325, 'Exalted',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(326, 'Faction %s (%u) can\'not have reputation.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(327, ' [no reputation]',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(305,'Faction %s (%u) reputation of %s was set to %5d!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(306,'The arena points of %s was set to %u!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(307,'No faction found!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(308,'Faction %i unknown!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(309,'Invalid parameter %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(310,'delta must be between 0 and %d (inclusive)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(311,'%d - |cffffffff|Hfaction:%d|h[%s]|h|r',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(312,' [visible]',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(313,' [at war]',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(314,' [peace forced]',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(315,' [hidden]',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(316,' [invisible forced]',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(317,' [inactive]',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(318,'Hated',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(319,'Hostile',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(320,'Unfriendly',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(321,'Neutral',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(322,'Friendly',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(323,'Honored',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(324,'Revered',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(325,'Exalted',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(326,'Faction %s (%u) can\'not have reputation.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(327,' [no reputation]',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (328,'Characters at account %s (Id: %u)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (329,'  %s (GUID %u)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (330,'No players found!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
@@ -3211,6 +3333,25 @@ INSERT INTO `mangos_string` VALUES
 (354,'Title %u (%s) removed from known titles list for player %s.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (355,'Title %u (%s) set as current selected title for player %s.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (356,'Current selected title for player %s reset as not known now.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(357,'Areatrigger %u not has target coordinates',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(358,'No areatriggers found!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(359,'%s|cffffffff|Hareatrigger_target:%u|h[Trigger target %u]|h|r Map %u X:%f Y:%f Z:%f%s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(360,'%s[Trigger target %u] Map %u X:%f Y:%f Z:%f',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(361,'|cffffffff|Hareatrigger:%u|h[Trigger %u]|h|r Map %u X:%f Y:%f Z:%f%s%s%s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(362,'[Trigger %u] Map %u X:%f Y:%f Z:%f%s%s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(363,' (Dist %f)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(364,' [Tavern]',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(365,' [Quest]',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(366,'Explore quest:',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(367,'Required level %u',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(368,'Required Items:',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(369,'Required quest (normal difficulty):',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(370,'Required heroic keys:',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(371,'Required quest (heroic difficulty):',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(372,'No achievement!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(373,'Response:\n%s ',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(374,'Tickets count: %i\n',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(375,'Player %s not have tickets.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (400,'|cffff0000[System Message]:|rScripts reloaded',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (401,'You change security level of account %s to %i.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (402,'%s changed your security level to %i.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
@@ -3278,9 +3419,9 @@ INSERT INTO `mangos_string` VALUES
 (465,'Teleport location deleted.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (466,'No taxinodes found!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (467,'Target unit has %d auras:',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(468,'id: %d eff: %d type: %d duration: %d maxduration: %d name: %s%s%s caster: %s %u',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(468,'id: %d eff: %d type: %d duration: %d maxduration: %d name: %s%s%s caster: %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (469,'Target unit has %d auras of type %d:',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(470,'id: %d eff: %d name: %s%s%s caster: %s %u',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(470,'id: %d eff: %d name: %s%s%s caster: %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (471,'Quest %u not found.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (472,'Quest %u started from item. For correct work, please, add item to inventory and start quest in normal way: .additem %u',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (473,'Quest removed.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
@@ -3322,12 +3463,12 @@ INSERT INTO `mangos_string` VALUES
 (509,'%d - sender: %s (guid: %u account: %u ) receiver: %s (guid: %u account: %u ) %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (510,'%d - owner: %s (guid: %u account: %u ) %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (511,'Wrong link type!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(512,'%d - |cffffffff|Hitem:%d:0:0:0:0:0:0:0:0|h[%s]|h|r ',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(512,'%d - |cffffffff|Hitem:%d:0:0:0:0:0:0:0:0|h[%s]|h|r %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (513,'%d - |cffffffff|Hquest:%d:%d|h[%s]|h|r %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (514,'%d - |cffffffff|Hcreature_entry:%d|h[%s]|h|r ',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(515,'%d - |cffffffff|Hcreature:%d|h[%s X:%f Y:%f Z:%f MapId:%d]|h|r ',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(515,'%d%s - |cffffffff|Hcreature:%d|h[%s X:%f Y:%f Z:%f MapId:%d]|h|r ',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (516,'%d - |cffffffff|Hgameobject_entry:%d|h[%s]|h|r ',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(517,'%d - |cffffffff|Hgameobject:%d|h[%s X:%f Y:%f Z:%f MapId:%d]|h|r ',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(517,'%d%s, Entry %d - |cffffffff|Hgameobject:%d|h[%s X:%f Y:%f Z:%f MapId:%d]|h|r',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (518,'%d - |cffffffff|Hitemset:%d|h[%s %s]|h|r ',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (519,'|cffffffff|Htele:%s|h[%s]|h|r ',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (520,'%d - |cffffffff|Hspell:%d|h[%s]|h|r ',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
@@ -3372,19 +3513,17 @@ INSERT INTO `mangos_string` VALUES
 (559,'%s reset your level progress.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (560,'The area has been set as explored.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (561,'The area has been set as not explored.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(562,'GUID=%i \'s updateIndex: %i, value:  %i.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(563,'You change GUID=%i \'s UpdateIndex: %i value to %i.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(564,'The value index %u is too big to %u(count: %u).',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(565,'Set %u uint32 Value:[OPCODE]:%u [VALUE]:%u',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(566,'You Set %u Field:%u to uint32 Value: %u',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(567,'Set %u float Value:[OPCODE]:%u [VALUE]:%f',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(568,'You Set %u Field:%i to float Value: %f',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(569,'Get %u uint32 Value:[OPCODE]:%u [VALUE]:%u',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(570,'The uint32 value of %u in %u is: %u',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(571,'Get %u float Value:[OPCODE]:%u [VALUE]:%f',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(572,'The float of %u value in %u is: %f',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(575,'.Mod32Value:[OPCODE]:%u [VALUE]:%i',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(576,'You modified the value of Field:%u to Value: %u',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(564,'The value index %u is too big to %s (count: %u).',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(565,'Set for %s field:%u to uint32 value:%u',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(566,'You set for %s field:%u to uint32 value: %u',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(567,'Set for %s field:%u to to float value:%f',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(568,'You set for %s field:%u to float value: %f',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(569,'Get %s uint32 value:[FIELD]:%u [VALUE]:%u',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(570,'%s has uint32 value:[FIELD]:%u [VALUE]:%u',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(571,'Get %s float value:[FIELD]:%u [VALUE]:%f',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(572,'%s has float value:[FIELD]:%u [VALUE]:%f',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(575,'Modify %s uint32 field:%u to sum with:%i = %u (%i)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(576,'You modify for %s uint32 field:%u to sum with:%i = %u (%i)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (577,'You are now invisible.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (578,'You are now visible.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (579,'Selected player or creature not have victim.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
@@ -3569,24 +3708,37 @@ INSERT INTO `mangos_string` VALUES
 (1007,'Account %s NOT created (probably sql file format was updated)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1008,'Account %s NOT created (unknown error)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1009,'Player %s (Guid: %u) Account %s (Id: %u) deleted.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(1010,'|    Account    |       Character      |       IP        | GM | Expansion |',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(1011,'|<Error>        | %20s |<Error>          |<Er>| <Error>   |',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(1012,'===========================================================================',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(1013,'|%15s| %20s | %15s |%4d| %9d |',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1010,'| ID         |    Account    |       Character      |       IP        | GM | Expansion |',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1012,'========================================================================================',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1013,'| %10u |%15s| %20s | %15s |%4d| %9d |',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1014,'No online players.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1015,'Used not fully typed quit command, need type it fully (quit), or command used not in RA command line.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1016,'| GUID       | Name                 | Account                      | Delete Date         |',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1017,'| %10u | %20s | %15s (%10u) | %19s |',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1018,'==========================================================================================',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1019,'No characters found.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1020,'Restoring the following characters:',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1021,'Deleting the following characters:',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1022,'ERROR: You can only assign a new name if you have only selected a single character!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1023,'Character \'%s\' (GUID: %u Account %u) can\'t be restored: account not exist!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1024,'Character \'%s\' (GUID: %u Account %u) can\'t be restored: account character list full!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1025,'Character \'%s\' (GUID: %u Account %u) can\'t be restored: new name already used!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1026,'GUID: %u Name: %s Account: %s (%u) Date: %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1027,'Log filters state:',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1028,'All log filters set to: %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1029, 'Command can be called only from RA-console.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1100,'Account %s (Id: %u) have up to %u expansion allowed now.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1101,'Message of the day changed to:\r\n%s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1102,'Message sent to %s: %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1103,'%d - %s %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1104,'%d - %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(1105,'%d - %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1105,'%d - %s %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1106,'%d - %s %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1107,'%d - %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1108,'%d - %s %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1109,'%d - %s %s %s %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(1110,'%d - %s X:%f Y:%f Z:%f MapId:%d',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(1111,'%d - %s X:%f Y:%f Z:%f MapId:%d',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1110,'%d%s - %s X:%f Y:%f Z:%f MapId:%d',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1111,'%d%s - %s X:%f Y:%f Z:%f MapId:%d',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1112,'Failed to open file: %s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1113,'Account %s (%u) have max amount allowed characters (client limit)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1114,'Dump file have broken data!',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
@@ -3610,6 +3762,37 @@ INSERT INTO `mangos_string` VALUES
 (1132,'   Follow player %s (lowguid %u)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1133,'   Follow creature %s (lowguid %u)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1134,'   Follow <NULL>',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1135,'List known talents:',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1136,'   (Found talents: %u used talent points: %u)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1137,'%d%s - |cffffffff|Hgameobject:%d|h[%s X:%f Y:%f Z:%f MapId:%d]|h|r ',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1138,'=================================================================================',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1139,'| GUID       | Name                 | Race            | Class           | Level |',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1140,'| %10u | %20s | %15s | %15s | %5u |',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1141,'%u - |cffffffff|Hplayer:%s|h[%s]|h|r %s %s %u',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1142,'%u - %s (Online:%s IP:%s GM:%u Expansion:%u)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1143,'Spawned by event %u (%s)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1144,'Despawned by event %u (%s)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1145,'Part of pool %u',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1146,'Part of pool %u, top pool %u',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1147,'The (top)pool %u is spawned by event %u (%s)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1148,'The (top)pool %u is despawned by event %u (%s)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1149,' (Pool %u)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1150,' (Event %i)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1151,' (Pool %u Event %i)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1152,'[usable]',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1153,'Get %s bitstr value:[FIELD]:%u [VALUE]:%s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1154,'%s has bitstr value:[FIELD]:%u [VALUE]:%s',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1155,'Get %s hex value:[FIELD]:%u [VALUE]:%x',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1156,'%s has hex value:[FIELD]:%u [VALUE]:%x',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1157,'Modify %s hex field:%u %s %x = %x (hex)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1158,'You modify for %s hex field:%u %s %x = %x (hex)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1159,'Modify %s float field:%u to sum with:%f = %f',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1160,'You modify for %s float field:%u to sum with:%f = %f',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1161,'Criteria:',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1162,' [counter]',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1163,'Achievement %u doesn\'t exist.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1164,'Achievement criteria %u doesn\'t exist.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1165,'Spell %u not have auras.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1200,'You try to view cinemitic %u but it doesn\'t exist.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1201,'You try to view movie %u but it doesn\'t exist.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `mangos_string` ENABLE KEYS */;
@@ -3809,6 +3992,30 @@ LOCK TABLES `npc_trainer` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `npc_trainer_template`
+--
+
+DROP TABLE IF EXISTS `npc_trainer_template`;
+CREATE TABLE `npc_trainer_template` (
+  `entry` mediumint(8) unsigned NOT NULL default '0',
+  `spell` mediumint(8) unsigned NOT NULL default '0',
+  `spellcost` int(10) unsigned NOT NULL default '0',
+  `reqskill` smallint(5) unsigned NOT NULL default '0',
+  `reqskillvalue` smallint(5) unsigned NOT NULL default '0',
+  `reqlevel` tinyint(3) unsigned NOT NULL default '0',
+  UNIQUE KEY `entry_spell` (`entry`,`spell`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+
+--
+-- Dumping data for table `npc_trainer_template`
+--
+
+LOCK TABLES `npc_trainer_template` WRITE;
+/*!40000 ALTER TABLE `npc_trainer_template` DISABLE KEYS */;
+/*!40000 ALTER TABLE `npc_trainer_template` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `npc_vendor`
 --
 
@@ -3819,7 +4026,7 @@ CREATE TABLE `npc_vendor` (
   `maxcount` tinyint(3) unsigned NOT NULL default '0',
   `incrtime` int(10) unsigned NOT NULL default '0',
   `ExtendedCost` mediumint(8) unsigned NOT NULL default '0',
-  PRIMARY KEY  (`entry`,`item`)
+  PRIMARY KEY  (`entry`,`item`,`ExtendedCost`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=FIXED COMMENT='Npc System';
 
 --
@@ -3829,6 +4036,29 @@ CREATE TABLE `npc_vendor` (
 LOCK TABLES `npc_vendor` WRITE;
 /*!40000 ALTER TABLE `npc_vendor` DISABLE KEYS */;
 /*!40000 ALTER TABLE `npc_vendor` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `npc_vendor_template`
+--
+
+DROP TABLE IF EXISTS `npc_vendor_template`;
+CREATE TABLE `npc_vendor_template` (
+  `entry` mediumint(8) unsigned NOT NULL default '0',
+  `item` mediumint(8) unsigned NOT NULL default '0',
+  `maxcount` tinyint(3) unsigned NOT NULL default '0',
+  `incrtime` int(10) unsigned NOT NULL default '0',
+  `ExtendedCost` mediumint(8) unsigned NOT NULL default '0',
+  PRIMARY KEY  (`entry`,`item`,`ExtendedCost`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=FIXED COMMENT='Npc System';
+
+--
+-- Dumping data for table `npc_vendor_template`
+--
+
+LOCK TABLES `npc_vendor_template` WRITE;
+/*!40000 ALTER TABLE `npc_vendor_template` DISABLE KEYS */;
+/*!40000 ALTER TABLE `npc_vendor_template` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -10113,6 +10343,7 @@ CREATE TABLE `playercreateinfo` (
   `position_x` float NOT NULL default '0',
   `position_y` float NOT NULL default '0',
   `position_z` float NOT NULL default '0',
+  `orientation` float NOT NULL default '0',
   PRIMARY KEY  (`race`,`class`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
@@ -10123,68 +10354,68 @@ CREATE TABLE `playercreateinfo` (
 LOCK TABLES `playercreateinfo` WRITE;
 /*!40000 ALTER TABLE `playercreateinfo` DISABLE KEYS */;
 INSERT INTO `playercreateinfo` VALUES
-(1,1,0,12,-8949,-132,84),
-(1,2,0,12,-8949,-132,84),
-(1,4,0,12,-8949,-132,84),
-(1,5,0,12,-8949,-132,84),
-(1,6,609,4298,2355.84,-5664.77,426.028),
-(1,8,0,12,-8949,-132,84),
-(1,9,0,12,-8949,-132,84),
-(2,1,1,14,-618,-4251,39),
-(2,3,1,14,-618,-4251,39),
-(2,4,1,14,-618,-4251,39),
-(2,6,609,4298,2358.44,-5666.9,426.023),
-(2,7,1,14,-618,-4251,39),
-(2,9,1,14,-618,-4251,39),
-(3,1,0,1,-6240,331,383),
-(3,2,0,1,-6240,331,383),
-(3,3,0,1,-6240,331,383),
-(3,4,0,1,-6240,331,383),
-(3,5,0,1,-6240,331,383),
-(3,6,609,4298,2358.44,-5666.9,426.023),
-(4,1,1,141,10311,832,1327),
-(4,3,1,141,10311,832,1327),
-(4,4,1,141,10311,832,1327),
-(4,5,1,141,10311,832,1327),
-(4,6,609,4298,2356.21,-5662.21,426.026),
-(4,11,1,141,10311,832,1327),
-(5,1,0,85,1676,1677,122),
-(5,4,0,85,1676,1677,122),
-(5,5,0,85,1676,1677,122),
-(5,8,0,85,1676,1677,122),
-(5,9,0,85,1676,1677,122),
-(5,6,609,4298,2356.21,-5662.21,426.026),
-(6,1,1,215,-2917,-257,53),
-(6,3,1,215,-2917,-257,53),
-(6,6,609,4298,2358.17,-5663.21,426.027),
-(6,7,1,215,-2917,-257,53),
-(6,11,1,215,-2917,-257,53),
-(7,1,0,1,-6240,331,383),
-(7,4,0,1,-6240,331,383),
-(7,6,609,4298,2355.05,-5661.7, 426.026),
-(7,8,0,1,-6240,331,383),
-(7,9,0,1,-6240,331,383),
-(8,1,1,14,-618,-4251,39),
-(8,3,1,14,-618,-4251,39),
-(8,4,1,14,-618,-4251,39),
-(8,5,1,14,-618,-4251,39),
-(8,6,609,4298,2355.05,-5661.7, 426.026),
-(8,7,1,14,-618,-4251,39),
-(8,8,1,14,-618,-4251,39),
-(10,2,530,3431,10349.6,-6357.29,33.4026),
-(10,3,530,3431,10349.6,-6357.29,33.4026),
-(10,4,530,3431,10349.6,-6357.29,33.4026),
-(10,5,530,3431,10349.6,-6357.29,33.4026),
-(10,6,609,4298,2355.84,-5664.77,426.028),
-(10,8,530,3431,10349.6,-6357.29,33.4026),
-(10,9,530,3431,10349.6,-6357.29,33.4026),
-(11,1,530,3526,-3961.64,-13931.2,100.615),
-(11,2,530,3526,-3961.64,-13931.2,100.615),
-(11,3,530,3526,-3961.64,-13931.2,100.615),
-(11,5,530,3526,-3961.64,-13931.2,100.615),
-(11,6,609,4298,2358.17,-5663.21,426.027),
-(11,7,530,3526,-3961.64,-13931.2,100.615),
-(11,8,530,3526,-3961.64,-13931.2,100.615);
+(1,1,0,12,-8949,-132,84,0),
+(1,2,0,12,-8949,-132,84,0),
+(1,4,0,12,-8949,-132,84,0),
+(1,5,0,12,-8949,-132,84,0),
+(1,6,609,4298,2355.84,-5664.77,426.028,3.659973),
+(1,8,0,12,-8949,-132,84,0),
+(1,9,0,12,-8949,-132,84,0),
+(2,1,1,14,-618,-4251,39,0),
+(2,3,1,14,-618,-4251,39,0),
+(2,4,1,14,-618,-4251,39,0),
+(2,6,609,4298,2358.44,-5666.9,426.023,3.659973),
+(2,7,1,14,-618,-4251,39,0),
+(2,9,1,14,-618,-4251,39,0),
+(3,1,0,1,-6240,331,383,6.177156),
+(3,2,0,1,-6240,331,383,6.177156),
+(3,3,0,1,-6240,331,383,6.177156),
+(3,4,0,1,-6240,331,383,6.177156),
+(3,5,0,1,-6240,331,383,6.177156),
+(3,6,609,4298,2358.44,-5666.9,426.023,3.659973),
+(4,1,1,141,10311,832,1327,5.696318),
+(4,3,1,141,10311,832,1327,5.696318),
+(4,4,1,141,10311,832,1327,5.696318),
+(4,5,1,141,10311,832,1327,5.696318),
+(4,6,609,4298,2356.21,-5662.21,426.026,3.659973),
+(4,11,1,141,10311,832,1327,5.696318),
+(5,1,0,85,1676,1677,122,2.70526),
+(5,4,0,85,1676,1677,122,2.70526),
+(5,5,0,85,1676,1677,122,2.70526),
+(5,6,609,4298,2356.21,-5662.21,426.026,3.659973),
+(5,8,0,85,1676,1677,122,2.70526),
+(5,9,0,85,1676,1677,122,2.70526),
+(6,1,1,215,-2917,-257,53,0),
+(6,3,1,215,-2917,-257,53,0),
+(6,6,609,4298,2358.17,-5663.21,426.027,3.659973),
+(6,7,1,215,-2917,-257,53,0),
+(6,11,1,215,-2917,-257,53,0),
+(7,1,0,1,-6240,331,383,0),
+(7,4,0,1,-6240,331,383,0),
+(7,6,609,4298,2355.05,-5661.7, 426.026,3.659973),
+(7,8,0,1,-6240,331,383,0),
+(7,9,0,1,-6240,331,383,0),
+(8,1,1,14,-618,-4251,39,0),
+(8,3,1,14,-618,-4251,39,0),
+(8,4,1,14,-618,-4251,39,0),
+(8,5,1,14,-618,-4251,39,0),
+(8,6,609,4298,2355.05,-5661.7, 426.026,3.659973),
+(8,7,1,14,-618,-4251,39,0),
+(8,8,1,14,-618,-4251,39,0),
+(10,2,530,3431,10349.6,-6357.29,33.4026,5.316046),
+(10,3,530,3431,10349.6,-6357.29,33.4026,5.316046),
+(10,4,530,3431,10349.6,-6357.29,33.4026,5.316046),
+(10,5,530,3431,10349.6,-6357.29,33.4026,5.316046),
+(10,6,609,4298,2355.84,-5664.77,426.028,3.659973),
+(10,8,530,3431,10349.6,-6357.29,33.4026,5.316046),
+(10,9,530,3431,10349.6,-6357.29,33.4026,5.316046),
+(11,1,530,3526,-3961.64,-13931.2,100.615,2.083644),
+(11,2,530,3526,-3961.64,-13931.2,100.615,2.083644),
+(11,3,530,3526,-3961.64,-13931.2,100.615,2.083644),
+(11,5,530,3526,-3961.64,-13931.2,100.615,2.083644),
+(11,6,609,4298,2358.17,-5663.21,426.027,3.659973),
+(11,7,530,3526,-3961.64,-13931.2,100.615,2.083644),
+(11,8,530,3526,-3961.64,-13931.2,100.615,2.083644);
 /*!40000 ALTER TABLE `playercreateinfo` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -10211,32 +10442,26 @@ LOCK TABLES `playercreateinfo_action` WRITE;
 /*!40000 ALTER TABLE `playercreateinfo_action` DISABLE KEYS */;
 INSERT INTO `playercreateinfo_action` VALUES
 (1,1,0,6603,0),
-(1,1,11,117,128),
+(1,1,1,78,0),
+(1,1,9,59752,0),
 (1,1,72,6603,0),
 (1,1,73,78,0),
 (1,1,82,59752,0),
-(1,1,83,117,128),
 (1,1,84,6603,0),
 (1,1,96,6603,0),
 (1,1,108,6603,0),
 (1,2,0,6603,0),
-(1,2,1,21084,0),
+(1,2,1,20154,0),
 (1,2,2,635,0),
 (1,2,9,59752,0),
-(1,2,10,159,128),
-(1,2,11,2070,128),
 (1,4,0,6603,0),
 (1,4,1,1752,0),
 (1,4,2,2098,0),
 (1,4,3,2764,0),
 (1,4,10,59752,0),
-(1,4,11,2070,128),
-(1,5,0,6603,0),
-(1,5,1,585,0),
-(1,5,2,2050,0),
+(1,5,0,585,0),
+(1,5,1,2050,0),
 (1,5,9,59752,0),
-(1,5,10,159,128),
-(1,5,11,2070,128),
 (1,6,0,6603,0),
 (1,6,1,49576,0),
 (1,6,2,45477,0),
@@ -10244,23 +10469,19 @@ INSERT INTO `playercreateinfo_action` VALUES
 (1,6,4,45902,0),
 (1,6,5,47541,0),
 (1,6,11,59752,0),
-(1,8,0,6603,0),
-(1,8,1,133,0),
-(1,8,2,168,0),
+(1,8,0,133,0),
+(1,8,1,168,0),
 (1,8,9,59752,0),
-(1,8,10,159,128),
-(1,8,11,2070,128),
-(1,9,0,6603,0),
-(1,9,1,686,0),
-(1,9,2,687,0),
+(1,9,0,686,0),
+(1,9,1,687,0),
 (1,9,9,59752,0),
-(1,9,10,159,128),
 (1,9,11,4604,128),
 (2,1,0,6603,0),
+(2,1,1,78, 0),
+(2,1,2,20572, 0),
 (2,1,72,6603,0),
 (2,1,73,78,0),
 (2,1,74,20572,0),
-(2,1,83,117,128),
 (2,1,84,6603,0),
 (2,1,96,6603,0),
 (2,1,108,6603,0),
@@ -10268,14 +10489,11 @@ INSERT INTO `playercreateinfo_action` VALUES
 (2,3,1,2973,0),
 (2,3,2,75,0),
 (2,3,9,20572,0),
-(2,3,10,159,128),
-(2,3,11,117,128),
 (2,4,0,6603,0),
 (2,4,1,1752,0),
 (2,4,2,2098,0),
 (2,4,3,2764,0),
 (2,4,4,20572,0),
-(2,4,11,117,128),
 (2,6,0,6603,0),
 (2,6,1,49576,0),
 (2,6,2,45477,0),
@@ -10287,39 +10505,30 @@ INSERT INTO `playercreateinfo_action` VALUES
 (2,7,1,403,0),
 (2,7,2,331,0),
 (2,7,3,33697,0),
-(2,7,10,159,128),
-(2,7,11,117,128),
-(2,9,0,6603,0),
-(2,9,1,686,0),
-(2,9,2,687,0),
-(2,9,3,33702,0),
-(2,9,10,159,128),
-(2,9,11,117,128),
+(2,9,0,686,0),
+(2,9,1,687,0),
+(2,9,2,33702,0),
 (3,1,0,6603,0),
 (3,1,1,78,0),
-(3,1,11,117,128),
+(3,1,2,20594,0),
+(3,1,3,2481,0),
 (3,1,72,6603,0),
 (3,1,73,78,0),
 (3,1,74,20594,0),
 (3,1,75,2481,0),
-(3,1,83,117,128),
 (3,1,84,6603,0),
 (3,1,96,6603,0),
 (3,1,108,6603,0),
 (3,2,0,6603,0),
-(3,2,1,21084,0),
+(3,2,1,20154,0),
 (3,2,2,635,0),
 (3,2,3,20594,0),
 (3,2,4,2481,0),
-(3,2,10,159,128),
-(3,2,11,4540,128),
 (3,3,0,6603,0),
 (3,3,1,2973,0),
 (3,3,2,75,0),
 (3,3,3,20594,0),
 (3,3,4,2481,0),
-(3,3,10,159,128),
-(3,3,11,117,128),
 (3,3,75,20594,0),
 (3,3,76,2481,0),
 (3,4,0,6603,0),
@@ -10328,14 +10537,10 @@ INSERT INTO `playercreateinfo_action` VALUES
 (3,4,3,2764,0),
 (3,4,4,20594,0),
 (3,4,5,2481,0),
-(3,4,11,4540,128),
-(3,5,0,6603,0),
-(3,5,1,585,0),
-(3,5,2,2050,0),
-(3,5,3,20594,0),
-(3,5,4,2481,0),
-(3,5,10,159,128),
-(3,5,11,4540,128),
+(3,5,0,585,0),
+(3,5,1,2050,0),
+(3,5,2,20594,0),
+(3,5,3,2481,0),
 (3,6,0,6603,0),
 (3,6,1,49576,0),
 (3,6,2,45477,0),
@@ -10343,32 +10548,30 @@ INSERT INTO `playercreateinfo_action` VALUES
 (3,6,4,45902,0),
 (3,6,5,47541,0),
 (3,6,10,2481,0),
+(4,1,0,6603,0),
+(4,1,1,78,0),
+(4,1,108,6603,0),
+(4,1,2,58984,0),
 (4,1,72,6603,0),
 (4,1,73,78,0),
-(4,1,82,58984,0),
-(4,1,83,117,128),
-(4,1,85,6603,0),
-(4,1,97,6603,0),
-(4,1,109,6603,0),
+(4,1,74,58984,0),
+(4,1,84,6603,0),
+(4,1,96,6603,0),
 (4,3,0,6603,0),
 (4,3,1,2973,0),
 (4,3,2,75,0),
 (4,3,3,58984,0),
-(4,3,10,159,128),
-(4,3,11,117,128),
+(4,3,81,58984,0),
 (4,4,0,6603,0),
 (4,4,1,1752,0),
 (4,4,2,2098,0),
 (4,4,3,2764,0),
-(4,4,10,58984,0),
-(4,4,11,4540,128),
+(4,4,4,58984,0),
 (4,4,82,58984,0),
-(4,5,0,6603,0),
-(4,5,1,585,0),
-(4,5,2,2050,0),
-(4,5,3,58984,0),
-(4,5,10,159,128),
-(4,5,11,2070,128),
+(4,5,0,585,0),
+(4,5,1,2050,0),
+(4,5,2,58984,0),
+(4,5,81,58984,0),
 (4,6,0,6603,0),
 (4,6,1,49576,0),
 (4,6,2,45477,0),
@@ -10377,13 +10580,17 @@ INSERT INTO `playercreateinfo_action` VALUES
 (4,6,5,47541,0),
 (4,6,10,58984,0),
 (4,6,83,58984,0),
-(4,11,0,6603,0),
-(4,11,1,5176,0),
-(4,11,2,5185,0),
-(4,11,9,58984,0),
-(4,11,10,159,128),
-(4,11,11,4536,128),
+(4,11,0,5176,0),
+(4,11,1,5185,0),
+(4,11,108,6603,0),
+(4,11,2,58984,0),
+(4,11,72,6603,0),
+(4,11,74,58984,0),
+(4,11,84,6603,0),
+(4,11,96,6603,0),
 (5,1,0,6603,0),
+(5,1,1,78,0),
+(5,1,2,20577,0),
 (5,1,72,6603,0),
 (5,1,73,78,0),
 (5,1,74,20577,0),
@@ -10397,12 +10604,9 @@ INSERT INTO `playercreateinfo_action` VALUES
 (5,4,3,2764,0),
 (5,4,4,20577,0),
 (5,4,11,4604,128),
-(5,5,0,6603,0),
-(5,5,1,585,0),
-(5,5,2,2050,0),
-(5,5,3,20577,0),
-(5,5,10,159,128),
-(5,5,11,4604,128),
+(5,5,0,585,0),
+(5,5,1,2050,0),
+(5,5,2,20577,0),
 (5,6,0,6603,0),
 (5,6,1,49576,0),
 (5,6,2,45477,0),
@@ -10410,25 +10614,18 @@ INSERT INTO `playercreateinfo_action` VALUES
 (5,6,4,45902,0),
 (5,6,5,47541,0),
 (5,6,10,20577,0),
-(5,8,0,6603,0),
-(5,8,1,133,0),
-(5,8,2,168,0),
-(5,8,3,20577,0),
-(5,8,10,159,128),
-(5,8,11,4604,128),
-(5,9,0,6603,0),
-(5,9,1,686,0),
-(5,9,2,687,0),
-(5,9,3,20577,0),
-(5,9,10,159,128),
-(5,9,11,4604,128),
+(5,8,0,133,0),
+(5,8,1,168,0),
+(5,8,2,20577,0),
+(5,9,0,686,0),
+(5,9,1,687,0),
+(5,9,2,20577,0),
 (6,1,0,6603,0),
 (6,1,1,78,0),
-(6,1,3,20549,0),
+(6,1,2,20549,0),
 (6,1,72,6603,0),
 (6,1,73,78,0),
 (6,1,74,20549,0),
-(6,1,83,4540,128),
 (6,1,84,6603,0),
 (6,1,96,6603,0),
 (6,1,108,6603,0),
@@ -10436,9 +10633,7 @@ INSERT INTO `playercreateinfo_action` VALUES
 (6,3,1,2973,0),
 (6,3,2,75,0),
 (6,3,3,20549,0),
-(6,3,10,159,128),
-(6,3,11,117,128),
-(6,3,76,20549,0),
+(6,3,75,20549,0),
 (6,6,0,6603,0),
 (6,6,1,49576,0),
 (6,6,2,45477,0),
@@ -10451,28 +10646,20 @@ INSERT INTO `playercreateinfo_action` VALUES
 (6,7,1,403,0),
 (6,7,2,331,0),
 (6,7,3,20549,0),
-(6,7,10,159,128),
 (6,7,11,4604,128),
-(6,7,76,20549,0),
-(6,11,0,6603,0),
-(6,11,1,5176,0),
-(6,11,2,5185,0),
-(6,11,3,20549,0),
-(6,11,10,159,128),
-(6,11,11,4536,128),
-(6,11,73,6603,0),
-(6,11,76,20549,0),
-(6,11,85,6603,0),
-(6,11,97,6603,0),
-(6,11,109,6603,0),
+(6,7,75,20549,0),
+(6,11,0,5176,0),
+(6,11,1,5185,0),
+(6,11,108,6603,0),
+(6,11,2,20549,0),
+(6,11,72,6603,0),
+(6,11,75,20549,0),
+(6,11,84,6603,0),
+(6,11,96,6603,0),
 (7,1,0,6603,0),
 (7,1,1,78,0),
-(7,1,10,20589,0),
-(7,1,11,117,128),
 (7,1,72,6603,0),
 (7,1,73,78,0),
-(7,1,82,20589,0),
-(7,1,83,117,128),
 (7,1,84,6603,0),
 (7,1,96,6603,0),
 (7,1,108,6603,0),
@@ -10480,8 +10667,6 @@ INSERT INTO `playercreateinfo_action` VALUES
 (7,4,1,1752,0),
 (7,4,2,2098,0),
 (7,4,3,2764,0),
-(7,4,10,20589,0),
-(7,4,11,117,128),
 (7,6,0,6603,0),
 (7,6,1,49576,0),
 (7,6,2,45477,0),
@@ -10495,24 +10680,17 @@ INSERT INTO `playercreateinfo_action` VALUES
 (7,6,84,6603,0),
 (7,6,96,6603,0),
 (7,6,108,6603,0),
-(7,8,0,6603,0),
-(7,8,1,133,0),
-(7,8,2,168,0),
-(7,8,9,20589,0),
-(7,8,10,159,128),
-(7,8,11,4536,128),
-(7,9,0,6603,0),
-(7,9,1,686,0),
-(7,9,2,687,0),
-(7,9,9,20589,0),
-(7,9,10,159,128),
-(7,9,11,4604,128),
+(7,8,0,133,0),
+(7,8,1,168,0),
+(7,9,0,686,0),
+(7,9,1,687,0),
 (8,1,0,6603,0),
+(8,1,1,78,0),
+(8,1,2,26297,0),
 (8,1,72,6603,0),
 (8,1,73,78,0),
 (8,1,74,2764,0),
 (8,1,75,26297,0),
-(8,1,83,117,128),
 (8,1,84,6603,0),
 (8,1,96,6603,0),
 (8,1,108,6603,0),
@@ -10520,20 +10698,16 @@ INSERT INTO `playercreateinfo_action` VALUES
 (8,3,1,2973,0),
 (8,3,2,75,0),
 (8,3,3,26297,0),
-(8,3,10,159,128),
 (8,3,11,4604,128),
 (8,4,0,6603,0),
 (8,4,1,1752,0),
 (8,4,2,2098,0),
 (8,4,3,2764,0),
 (8,4,4,26297,0),
-(8,4,11,117,128),
-(8,5,0,6603,0),
-(8,5,1,585,0),
-(8,5,2,2050,0),
-(8,5,3,26297,0),
-(8,5,10,159,128),
-(8,5,11,4540,128),
+(8,4,76,26297,0),
+(8,5,0,585,0),
+(8,5,1,2050,0),
+(8,5,2,26297,0),
 (8,6,0,6603,0),
 (8,6,1,49576,0),
 (8,6,2,45477,0),
@@ -10545,25 +10719,17 @@ INSERT INTO `playercreateinfo_action` VALUES
 (8,7,1,403,0),
 (8,7,2,331,0),
 (8,7,3,26297,0),
-(8,7,10,159,128),
-(8,7,11,117,128),
-(8,8,0,6603,0),
-(8,8,1,133,0),
-(8,8,2,168,0),
-(8,8,3,26297,0),
-(8,8,10,159,128),
-(8,8,11,117,128),
+(8,8,0,133,0),
+(8,8,1,168,0),
+(8,8,2,26297,0),
 (10,2,0,6603,0),
-(10,2,1,21084,0),
 (10,2,2,635,0),
 (10,2,3,28730,0),
-(10,2,10,159,128),
 (10,2,11,20857,128),
 (10,3,0,6603,0),
 (10,3,1,2973,0),
 (10,3,2,75,0),
 (10,3,3,28730,0),
-(10,3,10,159,128),
 (10,3,11,20857,128),
 (10,4,0,6603,0),
 (10,4,1,1752,0),
@@ -10575,7 +10741,6 @@ INSERT INTO `playercreateinfo_action` VALUES
 (10,5,1,585,0),
 (10,5,2,2050,0),
 (10,5,3,28730,0),
-(10,5,10,159,128),
 (10,5,11,20857,128),
 (10,6,0,6603,0),
 (10,6,1,49576,0),
@@ -10588,47 +10753,33 @@ INSERT INTO `playercreateinfo_action` VALUES
 (10,8,1,133,0),
 (10,8,2,168,0),
 (10,8,3,28730,0),
-(10,8,10,159,128),
 (10,8,11,20857,128),
 (10,9,0,6603,0),
 (10,9,1,686,0),
 (10,9,2,687,0),
 (10,9,3,28730,0),
-(10,9,10,159,128),
 (10,9,11,20857,128),
 (11,1,0,6603,0),
 (11,1,72,6603,0),
 (11,1,73,78,0),
 (11,1,74,28880,0),
-(11,1,83,4540,128),
 (11,1,84,6603,0),
 (11,1,96,6603,0),
 (11,1,108,6603,0),
 (11,2,0,6603,0),
-(11,2,1,21084,0),
 (11,2,2,635,0),
 (11,2,3,59542,0),
-(11,2,10,159,128),
-(11,2,11,4540,128),
-(11,2,83,4540,128),
 (11,3,0,6603,0),
 (11,3,1,2973,0),
 (11,3,2,75,0),
 (11,3,3,59543,0),
-(11,3,10,159,128),
-(11,3,11,4540,128),
 (11,3,72,6603,0),
 (11,3,73,2973,0),
 (11,3,74,75,0),
-(11,3,82,159,128),
-(11,3,83,4540,128),
 (11,5,0,6603,0),
 (11,5,1,585,0),
 (11,5,2,2050,0),
 (11,5,3,59544,0),
-(11,5,10,159,128),
-(11,5,11,4540,128),
-(11,5,83,4540,128),
 (11,6,0,6603,0),
 (11,6,1,49576,0),
 (11,6,2,45477,0),
@@ -10641,15 +10792,10 @@ INSERT INTO `playercreateinfo_action` VALUES
 (11,7,1,403,0),
 (11,7,2,331,0),
 (11,7,3,59547,0),
-(11,7,10,159,128),
-(11,7,11,4540,128),
 (11,8,0,6603,0),
 (11,8,1,133,0),
 (11,8,2,168,0),
-(11,8,3,59548,0),
-(11,8,10,159,128),
-(11,8,11,4540,128),
-(11,8,83,4540,128);
+(11,8,3,59548,0);
 /*!40000 ALTER TABLE `playercreateinfo_action` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -10706,7 +10852,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (1,1,204,'Defense'),
 (1,1,522,'SPELLDEFENSE (DND)'),
 (1,1,668,'Language Common'),
-(1,1,1843,'Disarm'),
 (1,1,2382,'Generic'),
 (1,1,2457,'Battle Stance'),
 (1,1,2479,'Honorless Target'),
@@ -10741,6 +10886,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (1,1,58985,'Perception'),
 (1,1,59752,'Every Man for Himself'),
 (1,1,61437,'Opening'),
+(1,1,68398, 'Opening'),
 (1,2,81,'Dodge'),
 (1,2,107,'Block'),
 (1,2,198,'One-Handed Maces'),
@@ -10750,7 +10896,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (1,2,522,'SPELLDEFENSE (DND)'),
 (1,2,635,'Holy Light'),
 (1,2,668,'Language Common'),
-(1,2,1843,'Disarm'),
 (1,2,2382,'Generic'),
 (1,2,2479,'Honorless Target'),
 (1,2,3050,'Detect'),
@@ -10770,7 +10915,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (1,2,9078,'Cloth'),
 (1,2,9116,'Shield'),
 (1,2,9125,'Generic'),
-(1,2,21084,'Seal of Righteousness'),
+(1,2,20154,'Seal of Righteousness'),
 (1,2,20597,'Sword Specialization'),
 (1,2,20598,'The Human Spirit'),
 (1,2,20599,'Diplomacy'),
@@ -10784,6 +10929,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (1,2,58985,'Perception'),
 (1,2,59752,'Every Man for Himself'),
 (1,2,61437,'Opening'),
+(1,2,68398,'Opening'),
 (1,4,81,'Dodge'),
 (1,4,203,'Unarmed'),
 (1,4,204,'Defense'),
@@ -10792,7 +10938,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (1,4,674,'Dual Wield'),
 (1,4,1180,'Daggers'),
 (1,4,1752,'Sinister Strike'),
-(1,4,1843,'Disarm'),
 (1,4,2098,'Eviscerate'),
 (1,4,2382,'Generic'),
 (1,4,2479,'Honorless Target'),
@@ -10827,6 +10972,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (1,4,58985,'Perception'),
 (1,4,59752,'Every Man for Himself'),
 (1,4,61437,'Opening'),
+(1,4,68398,'Opening'),
 (1,5,81,'Dodge'),
 (1,5,198,'One-Handed Maces'),
 (1,5,203,'Unarmed'),
@@ -10835,7 +10981,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (1,5,522,'SPELLDEFENSE (DND)'),
 (1,5,585,'Smite'),
 (1,5,668,'Language Common'),
-(1,5,1843,'Disarm'),
 (1,5,2050,'Lesser Heal'),
 (1,5,2382,'Generic'),
 (1,5,2479,'Honorless Target'),
@@ -10867,6 +11012,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (1,5,58985,'Perception'),
 (1,5,59752,'Every Man for Himself'),
 (1,5,61437,'Opening'),
+(1,5,68398,'Opening'),
 (1,6,81,'Dodge'),
 (1,6,196,'One-Handed Axes'),
 (1,6,197,'Two-Handed Axes'),
@@ -10879,7 +11025,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (1,6,668,'Language Common'),
 (1,6,674,'Dual Wield'),
 (1,6,750,'Plate Mail'),
-(1,6,1843,'Disarm'),
 (1,6,2382,'Generic'),
 (1,6,2479,'Honorless Target'),
 (1,6,3050,'Detect'),
@@ -10936,6 +11081,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (1,6,59921,'Frost Fever'),
 (1,6,61437,'Opening'),
 (1,6,61455,'Runic Focus'),
+(1,6,68398, 'Opening'),
 (1,8,81,'Dodge'),
 (1,8,133,'Fireball'),
 (1,8,168,'Frost Armor'),
@@ -10944,7 +11090,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (1,8,227,'Staves'),
 (1,8,522,'SPELLDEFENSE (DND)'),
 (1,8,668,'Language Common'),
-(1,8,1843,'Disarm'),
 (1,8,2382,'Generic'),
 (1,8,2479,'Honorless Target'),
 (1,8,3050,'Detect'),
@@ -10975,6 +11120,8 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (1,8,58985,'Perception'),
 (1,8,59752,'Every Man for Himself'),
 (1,8,61437,'Opening'),
+(1,8,68398,'Opening'),
+(1,8,71761,'Deep Freeze Immunity State'),
 (1,9,81,'Dodge'),
 (1,9,203,'Unarmed'),
 (1,9,204,'Defense'),
@@ -10984,7 +11131,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (1,9,686,'Shadow Bolt'),
 (1,9,687,'Demon Skin'),
 (1,9,1180,'Daggers'),
-(1,9,1843,'Disarm'),
 (1,9,2382,'Generic'),
 (1,9,2479,'Honorless Target'),
 (1,9,3050,'Detect'),
@@ -11003,6 +11149,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (1,9,8386,'Attacking'),
 (1,9,9078,'Cloth'),
 (1,9,9125,'Generic'),
+(1,9,18822,'Improved Enslave Demon'),
 (1,9,20597,'Sword Specialization'),
 (1,9,20598,'The Human Spirit'),
 (1,9,20599,'Diplomacy'),
@@ -11016,6 +11163,8 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (1,9,58985,'Perception'),
 (1,9,59752,'Every Man for Himself'),
 (1,9,61437,'Opening'),
+(1,9,68398,'Opening'),
+(1,9,75445,'Demonic Immolate'),
 (2,1,78,'Heroic Strike'),
 (2,1,81,'Dodge'),
 (2,1,107,'Block'),
@@ -11026,7 +11175,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (2,1,204,'Defense'),
 (2,1,522,'SPELLDEFENSE (DND)'),
 (2,1,669,'Language Orcish'),
-(2,1,1843,'Disarm'),
 (2,1,2382,'Generic'),
 (2,1,2457,'Battle Stance'),
 (2,1,2479,'Honorless Target'),
@@ -11059,6 +11207,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (2,1,32215,'Victorious State'),
 (2,1,45927,'Summon Friend'),
 (2,1,61437,'Opening'),
+(2,1,68398,'Opening'),
 (2,3,75,'Auto Shot'),
 (2,3,81,'Dodge'),
 (2,3,196,'One-Handed Axes'),
@@ -11068,7 +11217,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (2,3,264,'Bows'),
 (2,3,522,'SPELLDEFENSE (DND)'),
 (2,3,669,'Language Orcish'),
-(2,3,1843,'Disarm'),
 (2,3,2382,'Generic'),
 (2,3,2479,'Honorless Target'),
 (2,3,2973,'Raptor Strike'),
@@ -11100,6 +11248,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (2,3,34082,'Advantaged State (DND)'),
 (2,3,45927,'Summon Friend'),
 (2,3,61437,'Opening'),
+(2,3,68398,'Opening'),
 (2,4,81,'Dodge'),
 (2,4,203,'Unarmed'),
 (2,4,204,'Defense'),
@@ -11108,7 +11257,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (2,4,674,'Dual Wield'),
 (2,4,1180,'Daggers'),
 (2,4,1752,'Sinister Strike'),
-(2,4,1843,'Disarm'),
 (2,4,2098,'Eviscerate'),
 (2,4,2382,'Generic'),
 (2,4,2479,'Honorless Target'),
@@ -11141,6 +11289,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (2,4,22810,'Opening - No Text'),
 (2,4,45927,'Summon Friend'),
 (2,4,61437,'Opening'),
+(2,4,68398,'Opening'),
 (2,6,81,'Dodge'),
 (2,6,196,'One-Handed Axes'),
 (2,6,197,'Two-Handed Axes'),
@@ -11153,7 +11302,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (2,6,669,'Language Orcish'),
 (2,6,674,'Dual Wield'),
 (2,6,750,'Plate Mail'),
-(2,6,1843,'Disarm'),
 (2,6,2382,'Generic'),
 (2,6,2479,'Honorless Target'),
 (2,6,3050,'Detect'),
@@ -11208,6 +11356,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (2,6,59921,'Frost Fever'),
 (2,6,61437,'Opening'),
 (2,6,61455,'Runic Focus'),
+(2,6,68398,'Opening'),
 (2,7,81,'Dodge'),
 (2,7,107,'Block'),
 (2,7,198,'One-Handed Maces'),
@@ -11218,7 +11367,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (2,7,403,'Lightning Bolt'),
 (2,7,522,'SPELLDEFENSE (DND)'),
 (2,7,669,'Language Orcish'),
-(2,7,1843,'Disarm'),
 (2,7,2382,'Generic'),
 (2,7,2479,'Honorless Target'),
 (2,7,3050,'Detect'),
@@ -11248,6 +11396,9 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (2,7,33697,'Blood Fury'),
 (2,7,45927,'Summon Friend'),
 (2,7,61437,'Opening'),
+(2,7,65222,'Command'),
+(2,7,68398,'Opening'),
+(2,7,75461,'Flame Shock Passive'),
 (2,9,81,'Dodge'),
 (2,9,203,'Unarmed'),
 (2,9,204,'Defense'),
@@ -11257,7 +11408,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (2,9,686,'Shadow Bolt'),
 (2,9,687,'Demon Skin'),
 (2,9,1180,'Daggers'),
-(2,9,1843,'Disarm'),
 (2,9,2382,'Generic'),
 (2,9,2479,'Honorless Target'),
 (2,9,3050,'Detect'),
@@ -11276,6 +11426,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (2,9,8386,'Attacking'),
 (2,9,9078,'Cloth'),
 (2,9,9125,'Generic'),
+(2,9,18822,'Improved Enslave Demon'),
 (2,9,20573,'Hardiness'),
 (2,9,20574,'Axe Specialization'),
 (2,9,20575,'Command'),
@@ -11287,6 +11438,8 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (2,9,45927,'Summon Friend'),
 (2,9,58284,'Chaos Bolt Passive'),
 (2,9,61437,'Opening'),
+(2,9,68398,'Opening'),
+(2,9,75445,'Demonic Immolate'),
 (3,1,78,'Heroic Strike'),
 (3,1,81,'Dodge'),
 (3,1,107,'Block'),
@@ -11298,7 +11451,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (3,1,522,'SPELLDEFENSE (DND)'),
 (3,1,668,'Language Common'),
 (3,1,672,'Language Dwarven'),
-(3,1,1843,'Disarm'),
 (3,1,2382,'Generic'),
 (3,1,2457,'Battle Stance'),
 (3,1,2479,'Honorless Target'),
@@ -11332,6 +11484,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (3,1,45927,'Summon Friend'),
 (3,1,59224,'Mace Specialization'),
 (3,1,61437,'Opening'),
+(3,1,68398,'Opening'),
 (3,2,81,'Dodge'),
 (3,2,107,'Block'),
 (3,2,198,'One-Handed Maces'),
@@ -11342,7 +11495,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (3,2,635,'Holy Light'),
 (3,2,668,'Language Common'),
 (3,2,672,'Language Dwarven'),
-(3,2,1843,'Disarm'),
 (3,2,2382,'Generic'),
 (3,2,2479,'Honorless Target'),
 (3,2,2481,'Find Treasure'),
@@ -11363,7 +11515,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (3,2,9078,'Cloth'),
 (3,2,9116,'Shield'),
 (3,2,9125,'Generic'),
-(3,2,21084,'Seal of Righteousness'),
+(3,2,20154,'Seal of Righteousness'),
 (3,2,20594,'Stoneform'),
 (3,2,20595,'Gun Specialization'),
 (3,2,20596,'Frost Resistance'),
@@ -11375,6 +11527,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (3,2,45927,'Summon Friend'),
 (3,2,59224,'Mace Specialization'),
 (3,2,61437,'Opening'),
+(3,2,68398,'Opening'),
 (3,3,75,'Auto Shot'),
 (3,3,81,'Dodge'),
 (3,3,196,'One-Handed Axes'),
@@ -11385,7 +11538,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (3,3,522,'SPELLDEFENSE (DND)'),
 (3,3,668,'Language Common'),
 (3,3,672,'Language Dwarven'),
-(3,3,1843,'Disarm'),
 (3,3,2382,'Generic'),
 (3,3,2479,'Honorless Target'),
 (3,3,2481,'Find Treasure'),
@@ -11418,6 +11570,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (3,3,45927,'Summon Friend'),
 (3,3,59224,'Mace Specialization'),
 (3,3,61437,'Opening'),
+(3,3,68398,'Opening'),
 (3,4,81,'Dodge'),
 (3,4,203,'Unarmed'),
 (3,4,204,'Defense'),
@@ -11427,7 +11580,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (3,4,674,'Dual Wield'),
 (3,4,1180,'Daggers'),
 (3,4,1752,'Sinister Strike'),
-(3,4,1843,'Disarm'),
 (3,4,2098,'Eviscerate'),
 (3,4,2382,'Generic'),
 (3,4,2479,'Honorless Target'),
@@ -11461,6 +11613,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (3,4,45927,'Summon Friend'),
 (3,4,59224,'Mace Specialization'),
 (3,4,61437,'Opening'),
+(3,4,68398,'Opening'),
 (3,5,81,'Dodge'),
 (3,5,198,'One-Handed Maces'),
 (3,5,203,'Unarmed'),
@@ -11470,7 +11623,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (3,5,585,'Smite'),
 (3,5,668,'Language Common'),
 (3,5,672,'Language Dwarven'),
-(3,5,1843,'Disarm'),
 (3,5,2050,'Lesser Heal'),
 (3,5,2382,'Generic'),
 (3,5,2479,'Honorless Target'),
@@ -11501,6 +11653,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (3,5,45927,'Summon Friend'),
 (3,5,59224,'Mace Specialization'),
 (3,5,61437,'Opening'),
+(3,5,68398,'Opening'),
 (3,6,81,'Dodge'),
 (3,6,196,'One-Handed Axes'),
 (3,6,197,'Two-Handed Axes'),
@@ -11514,7 +11667,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (3,6,672,'Language Dwarven'),
 (3,6,674,'Dual Wield'),
 (3,6,750,'Plate Mail'),
-(3,6,1843,'Disarm'),
 (3,6,2382,'Generic'),
 (3,6,2479,'Honorless Target'),
 (3,6,2481,'Find Treasure'),
@@ -11570,6 +11722,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (3,6,59921,'Frost Fever'),
 (3,6,61437,'Opening'),
 (3,6,61455,'Runic Focus'),
+(3,6,68398,'Opening'),
 (4,1,78,'Heroic Strike'),
 (4,1,81,'Dodge'),
 (4,1,107,'Block'),
@@ -11582,7 +11735,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (4,1,668,'Language Common'),
 (4,1,671,'Language Darnassian'),
 (4,1,1180,'Daggers'),
-(4,1,1843,'Disarm'),
 (4,1,2382,'Generic'),
 (4,1,2457,'Battle Stance'),
 (4,1,2479,'Honorless Target'),
@@ -11607,6 +11759,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (4,1,20582,'Quickness'),
 (4,1,20583,'Nature Resistance'),
 (4,1,20585,'Wisp Spirit'),
+(4,1,21009,'Elusiveness'),
 (4,1,21651,'Opening'),
 (4,1,21652,'Closing'),
 (4,1,22027,'Remove Insignia'),
@@ -11615,6 +11768,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (4,1,45927,'Summon Friend'),
 (4,1,58984,'Shadowmelt'),
 (4,1,61437,'Opening'),
+(4,1,68398,'Opening'),
 (4,3,75,'Auto Shot'),
 (4,3,81,'Dodge'),
 (4,3,197,'Two-Handed Axes'),
@@ -11625,7 +11779,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (4,3,668,'Language Common'),
 (4,3,671,'Language Darnassian'),
 (4,3,1180,'Daggers'),
-(4,3,1843,'Disarm'),
 (4,3,2382,'Generic'),
 (4,3,2479,'Honorless Target'),
 (4,3,2973,'Raptor Strike'),
@@ -11648,6 +11801,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (4,3,20582,'Quickness'),
 (4,3,20583,'Nature Resistance'),
 (4,3,20585,'Wisp Spirit'),
+(4,3,21009,'Elusiveness'),
 (4,3,21651,'Opening'),
 (4,3,21652,'Closing'),
 (4,3,22027,'Remove Insignia'),
@@ -11657,6 +11811,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (4,3,45927,'Summon Friend'),
 (4,3,58984,'Shadowmelt'),
 (4,3,61437,'Opening'),
+(4,3,68398,'Opening'),
 (4,4,81,'Dodge'),
 (4,4,203,'Unarmed'),
 (4,4,204,'Defense'),
@@ -11666,7 +11821,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (4,4,674,'Dual Wield'),
 (4,4,1180,'Daggers'),
 (4,4,1752,'Sinister Strike'),
-(4,4,1843,'Disarm'),
 (4,4,2098,'Eviscerate'),
 (4,4,2382,'Generic'),
 (4,4,2479,'Honorless Target'),
@@ -11691,6 +11845,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (4,4,20582,'Quickness'),
 (4,4,20583,'Nature Resistance'),
 (4,4,20585,'Wisp Spirit'),
+(4,4,21009,'Elusiveness'),
 (4,4,21184,'Rogue Passive (DND)'),
 (4,4,21651,'Opening'),
 (4,4,21652,'Closing'),
@@ -11699,6 +11854,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (4,4,45927,'Summon Friend'),
 (4,4,58984,'Shadowmelt'),
 (4,4,61437,'Opening'),
+(4,4,68398,'Opening'),
 (4,5,81,'Dodge'),
 (4,5,198,'One-Handed Maces'),
 (4,5,203,'Unarmed'),
@@ -11708,7 +11864,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (4,5,585,'Smite'),
 (4,5,668,'Language Common'),
 (4,5,671,'Language Darnassian'),
-(4,5,1843,'Disarm'),
 (4,5,2050,'Lesser Heal'),
 (4,5,2382,'Generic'),
 (4,5,2479,'Honorless Target'),
@@ -11731,6 +11886,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (4,5,20582,'Quickness'),
 (4,5,20583,'Nature Resistance'),
 (4,5,20585,'Wisp Spirit'),
+(4,5,21009,'Elusiveness'),
 (4,5,21651,'Opening'),
 (4,5,21652,'Closing'),
 (4,5,22027,'Remove Insignia'),
@@ -11738,6 +11894,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (4,5,45927,'Summon Friend'),
 (4,5,58984,'Shadowmelt'),
 (4,5,61437,'Opening'),
+(4,5,68398,'Opening'),
 (4,6,81,'Dodge'),
 (4,6,196,'One-Handed Axes'),
 (4,6,197,'Two-Handed Axes'),
@@ -11751,7 +11908,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (4,6,671,'Language Darnassian'),
 (4,6,674,'Dual Wield'),
 (4,6,750,'Plate Mail'),
-(4,6,1843,'Disarm'),
 (4,6,2382,'Generic'),
 (4,6,2479,'Honorless Target'),
 (4,6,3050,'Detect'),
@@ -11806,6 +11962,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (4,6,59921,'Frost Fever'),
 (4,6,61437,'Opening'),
 (4,6,61455,'Runic Focus'),
+(4,6,68398,'Opening'),
 (4,11,81,'Dodge'),
 (4,11,203,'Unarmed'),
 (4,11,204,'Defense'),
@@ -11814,7 +11971,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (4,11,668,'Language Common'),
 (4,11,671,'Language Darnassian'),
 (4,11,1180,'Daggers'),
-(4,11,1843,'Disarm'),
 (4,11,2382,'Generic'),
 (4,11,2479,'Honorless Target'),
 (4,11,3050,'Detect'),
@@ -11845,6 +12001,8 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (4,11,45927,'Summon Friend'),
 (4,11,58984,'Shadowmelt'),
 (4,11,61437,'Opening'),
+(4,11,66530,'Improved Barkskin (Passive)'),
+(4,11,68398,'Opening'),
 (5,1,78,'Heroic Strike'),
 (5,1,81,'Dodge'),
 (5,1,107,'Block'),
@@ -11855,7 +12013,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (5,1,522,'SPELLDEFENSE (DND)'),
 (5,1,669,'Language Orcish'),
 (5,1,1180,'Daggers'),
-(5,1,1843,'Disarm'),
 (5,1,2382,'Generic'),
 (5,1,2457,'Battle Stance'),
 (5,1,2479,'Honorless Target'),
@@ -11889,6 +12046,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (5,1,32215,'Victorious State'),
 (5,1,45927,'Summon Friend'),
 (5,1,61437,'Opening'),
+(5,1,68398,'Opening'),
 (5,4,81,'Dodge'),
 (5,4,203,'Unarmed'),
 (5,4,204,'Defense'),
@@ -11897,7 +12055,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (5,4,674,'Dual Wield'),
 (5,4,1180,'Daggers'),
 (5,4,1752,'Sinister Strike'),
-(5,4,1843,'Disarm'),
 (5,4,2098,'Eviscerate'),
 (5,4,2382,'Generic'),
 (5,4,2479,'Honorless Target'),
@@ -11931,6 +12088,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (5,4,22810,'Opening - No Text'),
 (5,4,45927,'Summon Friend'),
 (5,4,61437,'Opening'),
+(5,4,68398,'Opening'),
 (5,5,81,'Dodge'),
 (5,5,198,'One-Handed Maces'),
 (5,5,203,'Unarmed'),
@@ -11939,7 +12097,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (5,5,522,'SPELLDEFENSE (DND)'),
 (5,5,585,'Smite'),
 (5,5,669,'Language Orcish'),
-(5,5,1843,'Disarm'),
 (5,5,2050,'Lesser Heal'),
 (5,5,2382,'Generic'),
 (5,5,2479,'Honorless Target'),
@@ -11970,6 +12127,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (5,5,22810,'Opening - No Text'),
 (5,5,45927,'Summon Friend'),
 (5,5,61437,'Opening'),
+(5,5,68398,'Opening'),
 (5,6,81,'Dodge'),
 (5,6,196,'One-Handed Axes'),
 (5,6,197,'Two-Handed Axes'),
@@ -11982,7 +12140,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (5,6,669,'Language Orcish'),
 (5,6,674,'Dual Wield'),
 (5,6,750,'Plate Mail'),
-(5,6,1843,'Disarm'),
 (5,6,2382,'Generic'),
 (5,6,2479,'Honorless Target'),
 (5,6,3050,'Detect'),
@@ -12038,6 +12195,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (5,6,59921,'Frost Fever'),
 (5,6,61437,'Opening'),
 (5,6,61455,'Runic Focus'),
+(5,6,68398,'Opening'),
 (5,8,81,'Dodge'),
 (5,8,133,'Fireball'),
 (5,8,168,'Frost Armor'),
@@ -12046,7 +12204,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (5,8,227,'Staves'),
 (5,8,522,'SPELLDEFENSE (DND)'),
 (5,8,669,'Language Orcish'),
-(5,8,1843,'Disarm'),
 (5,8,2382,'Generic'),
 (5,8,2479,'Honorless Target'),
 (5,8,3050,'Detect'),
@@ -12076,6 +12233,8 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (5,8,22810,'Opening - No Text'),
 (5,8,45927,'Summon Friend'),
 (5,8,61437,'Opening'),
+(5,8,68398,'Opening'),
+(5,8,71761,'Deep Freeze Immunity State'),
 (5,9,81,'Dodge'),
 (5,9,203,'Unarmed'),
 (5,9,204,'Defense'),
@@ -12085,7 +12244,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (5,9,686,'Shadow Bolt'),
 (5,9,687,'Demon Skin'),
 (5,9,1180,'Daggers'),
-(5,9,1843,'Disarm'),
 (5,9,2382,'Generic'),
 (5,9,2479,'Honorless Target'),
 (5,9,3050,'Detect'),
@@ -12107,6 +12265,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (5,9,9078,'Cloth'),
 (5,9,9125,'Generic'),
 (5,9,17737,'Language Gutterspeak'),
+(5,9,18822,'Improved Enslave Demon'),
 (5,9,20577,'Cannibalize'),
 (5,9,20579,'Shadow Resistance'),
 (5,9,21651,'Opening'),
@@ -12116,6 +12275,8 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (5,9,45927,'Summon Friend'),
 (5,9,58284,'Chaos Bolt Passive'),
 (5,9,61437,'Opening'),
+(5,9,68398,'Opening'),
+(5,9,75445,'Demonic Immolate'),
 (6,1,78,'Heroic Strike'),
 (6,1,81,'Dodge'),
 (6,1,107,'Block'),
@@ -12127,7 +12288,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (6,1,522,'SPELLDEFENSE (DND)'),
 (6,1,669,'Language Orcish'),
 (6,1,670,'Language Taurahe'),
-(6,1,1843,'Disarm'),
 (6,1,2382,'Generic'),
 (6,1,2457,'Battle Stance'),
 (6,1,2479,'Honorless Target'),
@@ -12160,6 +12320,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (6,1,32215,'Victorious State'),
 (6,1,45927,'Summon Friend'),
 (6,1,61437,'Opening'),
+(6,1,68398,'Opening'),
 (6,3,75,'Auto Shot'),
 (6,3,81,'Dodge'),
 (6,3,196,'One-Handed Axes'),
@@ -12170,7 +12331,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (6,3,522,'SPELLDEFENSE (DND)'),
 (6,3,669,'Language Orcish'),
 (6,3,670,'Language Taurahe'),
-(6,3,1843,'Disarm'),
 (6,3,2382,'Generic'),
 (6,3,2479,'Honorless Target'),
 (6,3,2973,'Raptor Strike'),
@@ -12202,6 +12362,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (6,3,34082,'Advantaged State (DND)'),
 (6,3,45927,'Summon Friend'),
 (6,3,61437,'Opening'),
+(6,3,68398,'Opening'),
 (6,6,81,'Dodge'),
 (6,6,196,'One-Handed Axes'),
 (6,6,197,'Two-Handed Axes'),
@@ -12215,7 +12376,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (6,6,670,'Language Taurahe'),
 (6,6,674,'Dual Wield'),
 (6,6,750,'Plate Mail'),
-(6,6,1843,'Disarm'),
 (6,6,2382,'Generic'),
 (6,6,2479,'Honorless Target'),
 (6,6,3050,'Detect'),
@@ -12270,6 +12430,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (6,6,59921,'Frost Fever'),
 (6,6,61437,'Opening'),
 (6,6,61455,'Runic Focus'),
+(6,6,68398,'Opening'),
 (6,7,81,'Dodge'),
 (6,7,107,'Block'),
 (6,7,198,'One-Handed Maces'),
@@ -12281,7 +12442,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (6,7,522,'SPELLDEFENSE (DND)'),
 (6,7,669,'Language Orcish'),
 (6,7,670,'Language Taurahe'),
-(6,7,1843,'Disarm'),
 (6,7,2382,'Generic'),
 (6,7,2479,'Honorless Target'),
 (6,7,3050,'Detect'),
@@ -12311,6 +12471,8 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (6,7,27763,'Totem'),
 (6,7,45927,'Summon Friend'),
 (6,7,61437,'Opening'),
+(6,7,68398,'Opening'),
+(6,7,75461,'Flame Shock Passive'),
 (6,11,81,'Dodge'),
 (6,11,198,'One-Handed Maces'),
 (6,11,203,'Unarmed'),
@@ -12319,7 +12481,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (6,11,522,'SPELLDEFENSE (DND)'),
 (6,11,669,'Language Orcish'),
 (6,11,670,'Language Taurahe'),
-(6,11,1843,'Disarm'),
 (6,11,2382,'Generic'),
 (6,11,2479,'Honorless Target'),
 (6,11,3050,'Detect'),
@@ -12350,6 +12511,8 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (6,11,27764,'Fetish'),
 (6,11,45927,'Summon Friend'),
 (6,11,61437,'Opening'),
+(6,11,66530,'Improved Barkskin (Passive)'),
+(6,11,68398,'Opening'),
 (7,1,78,'Heroic Strike'),
 (7,1,81,'Dodge'),
 (7,1,107,'Block'),
@@ -12361,7 +12524,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (7,1,522,'SPELLDEFENSE (DND)'),
 (7,1,668,'Language Common'),
 (7,1,1180,'Daggers'),
-(7,1,1843,'Disarm'),
 (7,1,2382,'Generic'),
 (7,1,2457,'Battle Stance'),
 (7,1,2479,'Honorless Target'),
@@ -12395,6 +12557,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (7,1,32215,'Victorious State'),
 (7,1,45927,'Summon Friend'),
 (7,1,61437,'Opening'),
+(7,1,68398,'Opening'),
 (7,4,81,'Dodge'),
 (7,4,203,'Unarmed'),
 (7,4,204,'Defense'),
@@ -12403,7 +12566,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (7,4,668,'Language Common'),
 (7,4,1180,'Daggers'),
 (7,4,1752,'Sinister Strike'),
-(7,4,1843,'Disarm'),
 (7,4,2098,'Eviscerate'),
 (7,4,2382,'Generic'),
 (7,4,2479,'Honorless Target'),
@@ -12437,6 +12599,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (7,4,22810,'Opening - No Text'),
 (7,4,45927,'Summon Friend'),
 (7,4,61437,'Opening'),
+(7,4,68398,'Opening'),
 (7,6,81,'Dodge'),
 (7,6,196,'One-Handed Axes'),
 (7,6,197,'Two-Handed Axes'),
@@ -12449,7 +12612,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (7,6,668,'Language Common'),
 (7,6,674,'Dual Wield'),
 (7,6,750,'Plate Mail'),
-(7,6,1843,'Disarm'),
 (7,6,2382,'Generic'),
 (7,6,2479,'Honorless Target'),
 (7,6,3050,'Detect'),
@@ -12505,6 +12667,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (7,6,59921,'Frost Fever'),
 (7,6,61437,'Opening'),
 (7,6,61455,'Runic Focus'),
+(7,6,68398,'Opening'),
 (7,8,81,'Dodge'),
 (7,8,133,'Fireball'),
 (7,8,168,'Frost Armor'),
@@ -12513,7 +12676,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (7,8,227,'Staves'),
 (7,8,522,'SPELLDEFENSE (DND)'),
 (7,8,668,'Language Common'),
-(7,8,1843,'Disarm'),
 (7,8,2382,'Generic'),
 (7,8,2479,'Honorless Target'),
 (7,8,3050,'Detect'),
@@ -12543,6 +12705,8 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (7,8,22810,'Opening - No Text'),
 (7,8,45927,'Summon Friend'),
 (7,8,61437,'Opening'),
+(7,8,68398,'Opening'),
+(7,8,71761,'Deep Freeze Immunity State'),
 (7,9,81,'Dodge'),
 (7,9,203,'Unarmed'),
 (7,9,204,'Defense'),
@@ -12552,7 +12716,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (7,9,686,'Shadow Bolt'),
 (7,9,687,'Demon Skin'),
 (7,9,1180,'Daggers'),
-(7,9,1843,'Disarm'),
 (7,9,2382,'Generic'),
 (7,9,2479,'Honorless Target'),
 (7,9,3050,'Detect'),
@@ -12572,6 +12735,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (7,9,8386,'Attacking'),
 (7,9,9078,'Cloth'),
 (7,9,9125,'Generic'),
+(7,9,18822,'Improved Enslave Demon'),
 (7,9,20589,'Escape Artist'),
 (7,9,20591,'Expansive Mind'),
 (7,9,20592,'Arcane Resistance'),
@@ -12583,6 +12747,8 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (7,9,45927,'Summon Friend'),
 (7,9,58284,'Chaos Bolt Passive'),
 (7,9,61437,'Opening'),
+(7,9,68398,'Opening'),
+(7,9,75445,'Demonic Immolate'),
 (8,1,78,'Heroic Strike'),
 (8,1,81,'Dodge'),
 (8,1,107,'Block'),
@@ -12593,7 +12759,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (8,1,522,'SPELLDEFENSE (DND)'),
 (8,1,669,'Language Orcish'),
 (8,1,1180,'Daggers'),
-(8,1,1843,'Disarm'),
 (8,1,2382,'Generic'),
 (8,1,2457,'Battle Stance'),
 (8,1,2479,'Honorless Target'),
@@ -12631,6 +12796,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (8,1,45927,'Summon Friend'),
 (8,1,58943,'Da Voodoo Shuffle'),
 (8,1,61437,'Opening'),
+(8,1,68398,'Opening'),
 (8,3,75,'Auto Shot'),
 (8,3,81,'Dodge'),
 (8,3,196,'One-Handed Axes'),
@@ -12640,7 +12806,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (8,3,264,'Bows'),
 (8,3,522,'SPELLDEFENSE (DND)'),
 (8,3,669,'Language Orcish'),
-(8,3,1843,'Disarm'),
 (8,3,2382,'Generic'),
 (8,3,2479,'Honorless Target'),
 (8,3,2973,'Raptor Strike'),
@@ -12675,6 +12840,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (8,3,45927,'Summon Friend'),
 (8,3,58943,'Da Voodoo Shuffle'),
 (8,3,61437,'Opening'),
+(8,3,68398,'Opening'),
 (8,4,81,'Dodge'),
 (8,4,203,'Unarmed'),
 (8,4,204,'Defense'),
@@ -12683,7 +12849,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (8,4,674,'Dual Wield'),
 (8,4,1180,'Daggers'),
 (8,4,1752,'Sinister Strike'),
-(8,4,1843,'Disarm'),
 (8,4,2098,'Eviscerate'),
 (8,4,2382,'Generic'),
 (8,4,2479,'Honorless Target'),
@@ -12719,6 +12884,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (8,4,45927,'Summon Friend'),
 (8,4,58943,'Da Voodoo Shuffle'),
 (8,4,61437,'Opening'),
+(8,4,68398,'Opening'),
 (8,5,81,'Dodge'),
 (8,5,198,'One-Handed Maces'),
 (8,5,203,'Unarmed'),
@@ -12727,7 +12893,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (8,5,522,'SPELLDEFENSE (DND)'),
 (8,5,585,'Smite'),
 (8,5,669,'Language Orcish'),
-(8,5,1843,'Disarm'),
 (8,5,2050,'Lesser Heal'),
 (8,5,2382,'Generic'),
 (8,5,2479,'Honorless Target'),
@@ -12760,6 +12925,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (8,5,45927,'Summon Friend'),
 (8,5,58943,'Da Voodoo Shuffle'),
 (8,5,61437,'Opening'),
+(8,5,68398,'Opening'),
 (8,6,81,'Dodge'),
 (8,6,196,'One-Handed Axes'),
 (8,6,197,'Two-Handed Axes'),
@@ -12772,7 +12938,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (8,6,669,'Language Orcish'),
 (8,6,674,'Dual Wield'),
 (8,6,750,'Plate Mail'),
-(8,6,1843,'Disarm'),
 (8,6,2382,'Generic'),
 (8,6,2479,'Honorless Target'),
 (8,6,3050,'Detect'),
@@ -12830,6 +12995,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (8,6,59921,'Frost Fever'),
 (8,6,61437,'Opening'),
 (8,6,61455,'Runic Focus'),
+(8,6,68398,'Opening'),
 (8,7,81,'Dodge'),
 (8,7,107,'Block'),
 (8,7,198,'One-Handed Maces'),
@@ -12840,7 +13006,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (8,7,403,'Lightning Bolt'),
 (8,7,522,'SPELLDEFENSE (DND)'),
 (8,7,669,'Language Orcish'),
-(8,7,1843,'Disarm'),
 (8,7,2382,'Generic'),
 (8,7,2479,'Honorless Target'),
 (8,7,3050,'Detect'),
@@ -12873,6 +13038,8 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (8,7,45927,'Summon Friend'),
 (8,7,58943,'Da Voodoo Shuffle'),
 (8,7,61437,'Opening'),
+(8,7,68398,'Opening'),
+(8,7,75461,'Flame Shock Passive'),
 (8,8,81,'Dodge'),
 (8,8,133,'Fireball'),
 (8,8,168,'Frost Armor'),
@@ -12881,7 +13048,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (8,8,227,'Staves'),
 (8,8,522,'SPELLDEFENSE (DND)'),
 (8,8,669,'Language Orcish'),
-(8,8,1843,'Disarm'),
 (8,8,2382,'Generic'),
 (8,8,2479,'Honorless Target'),
 (8,8,3050,'Detect'),
@@ -12913,6 +13079,8 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (8,8,45927,'Summon Friend'),
 (8,8,58943,'Da Voodoo Shuffle'),
 (8,8,61437,'Opening'),
+(8,8,68398,'Opening'),
+(8,8,71761,'Deep Freeze Immunity State'),
 (10,2,81,'Dodge'),
 (10,2,107,'Block'),
 (10,2,201,'One-Handed Swords'),
@@ -12943,7 +13111,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (10,2,9078,'Cloth'),
 (10,2,9116,'Shield'),
 (10,2,9125,'Generic'),
-(10,2,21084,'Seal of Righteousness'),
+(10,2,20154,'Seal of Righteousness'),
 (10,2,21651,'Opening'),
 (10,2,21652,'Closing'),
 (10,2,22027,'Remove Insignia'),
@@ -12951,6 +13119,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (10,2,27762,'Libram'),
 (10,2,28730,'Arcane Torrent'),
 (10,2,28877,'Arcane Affinity'),
+(10,2,68398, 'Opening'),
 (10,3,75,'Auto Shot'),
 (10,3,81,'Dodge'),
 (10,3,197,'Two-Handed Axes'),
@@ -12989,6 +13158,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (10,3,28730,'Arcane Torrent'),
 (10,3,28877,'Arcane Affinity'),
 (10,3,34082,'Advantaged State (DND)'),
+(10,3,68398,'Opening'),
 (10,4,81,'Dodge'),
 (10,4,203,'Unarmed'),
 (10,4,204,'Defense'),
@@ -13027,6 +13197,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (10,4,22810,'Opening - No Text'),
 (10,4,25046,'Arcane Torrent'),
 (10,4,28877,'Arcane Affinity'),
+(10,4,68398,'Opening'),
 (10,5,81,'Dodge'),
 (10,5,198,'One-Handed Maces'),
 (10,5,203,'Unarmed'),
@@ -13062,6 +13233,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (10,5,22810,'Opening - No Text'),
 (10,5,28730,'Arcane Torrent'),
 (10,5,28877,'Arcane Affinity'),
+(10,5,68398, 'Opening'),
 (10,6,81,'Dodge'),
 (10,6,196,'One-Handed Axes'),
 (10,6,197,'Two-Handed Axes'),
@@ -13076,7 +13248,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (10,6,750,'Plate Mail'),
 (10,6,813,'Language Thalassian'),
 (10,6,822,'Magic Resistance'),
-(10,6,1843,'Disarm'),
 (10,6,2382,'Generic'),
 (10,6,2479,'Honorless Target'),
 (10,6,3050,'Detect'),
@@ -13129,6 +13300,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (10,6,59921,'Frost Fever'),
 (10,6,61437,'Opening'),
 (10,6,61455,'Runic Focus'),
+(10,6,68398,'Opening'),
 (10,8,81,'Dodge'),
 (10,8,133,'Fireball'),
 (10,8,168,'Frost Armor'),
@@ -13163,6 +13335,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (10,8,22810,'Opening - No Text'),
 (10,8,28730,'Arcane Torrent'),
 (10,8,28877,'Arcane Affinity'),
+(10,8,68398,'Opening'),
 (10,9,81,'Dodge'),
 (10,9,203,'Unarmed'),
 (10,9,204,'Defense'),
@@ -13192,6 +13365,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (10,9,8386,'Attacking'),
 (10,9,9078,'Cloth'),
 (10,9,9125,'Generic'),
+(10,9,18822,'Improved Enslave Demon'),
 (10,9,21651,'Opening'),
 (10,9,21652,'Closing'),
 (10,9,22027,'Remove Insignia'),
@@ -13199,6 +13373,8 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (10,9,28730,'Arcane Torrent'),
 (10,9,28877,'Arcane Affinity'),
 (10,9,58284,'Chaos Bolt Passive'),
+(10,9,68398,'Opening'),
+(10,9,75445,'Demonic Immolate'),
 (11,1,78,'Heroic Strike'),
 (11,1,81,'Dodge'),
 (11,1,107,'Block'),
@@ -13209,7 +13385,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (11,1,204,'Defense'),
 (11,1,522,'SPELLDEFENSE (DND)'),
 (11,1,668,'Language Common'),
-(11,1,1843,'Disarm'),
 (11,1,2382,'Generic'),
 (11,1,2457,'Battle Stance'),
 (11,1,2479,'Honorless Target'),
@@ -13243,6 +13418,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (11,1,45927,'Summon Friend'),
 (11,1,59221,'Shadow Resistance'),
 (11,1,61437,'Opening'),
+(11,1,68398,'Opening'),
 (11,2,81,'Dodge'),
 (11,2,107,'Block'),
 (11,2,198,'One-Handed Maces'),
@@ -13252,7 +13428,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (11,2,522,'SPELLDEFENSE (DND)'),
 (11,2,635,'Holy Light'),
 (11,2,668,'Language Common'),
-(11,2,1843,'Disarm'),
 (11,2,2382,'Generic'),
 (11,2,2479,'Honorless Target'),
 (11,2,3050,'Detect'),
@@ -13273,7 +13448,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (11,2,9078,'Cloth'),
 (11,2,9116,'Shield'),
 (11,2,9125,'Generic'),
-(11,2,21084,'Seal of Righteousness'),
+(11,2,20154,'Seal of Righteousness'),
 (11,2,21651,'Opening'),
 (11,2,21652,'Closing'),
 (11,2,22027,'Remove Insignia'),
@@ -13285,6 +13460,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (11,2,59221,'Shadow Resistance'),
 (11,2,59542,'Gift of the Naaru'),
 (11,2,61437,'Opening'),
+(11,2,68398,'Opening'),
 (11,3,75,'Auto Shot'),
 (11,3,81,'Dodge'),
 (11,3,197,'Two-Handed Axes'),
@@ -13293,7 +13469,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (11,3,204,'Defense'),
 (11,3,522,'SPELLDEFENSE (DND)'),
 (11,3,668,'Language Common'),
-(11,3,1843,'Disarm'),
 (11,3,2382,'Generic'),
 (11,3,2479,'Honorless Target'),
 (11,3,2973,'Raptor Strike'),
@@ -13327,6 +13502,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (11,3,59221,'Shadow Resistance'),
 (11,3,59543,'Gift of the Naaru'),
 (11,3,61437,'Opening'),
+(11,3,68398,'Opening'),
 (11,5,81,'Dodge'),
 (11,5,198,'One-Handed Maces'),
 (11,5,203,'Unarmed'),
@@ -13335,7 +13511,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (11,5,522,'SPELLDEFENSE (DND)'),
 (11,5,585,'Smite'),
 (11,5,668,'Language Common'),
-(11,5,1843,'Disarm'),
 (11,5,2050,'Lesser Heal'),
 (11,5,2382,'Generic'),
 (11,5,2479,'Honorless Target'),
@@ -13366,6 +13541,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (11,5,59221,'Shadow Resistance'),
 (11,5,59544,'Gift of the Naaru'),
 (11,5,61437,'Opening'),
+(11,5,68398,'Opening'),
 (11,6,81,'Dodge'),
 (11,6,196,'One-Handed Axes'),
 (11,6,197,'Two-Handed Axes'),
@@ -13378,7 +13554,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (11,6,668,'Language Common'),
 (11,6,674,'Dual Wield'),
 (11,6,750,'Plate Mail'),
-(11,6,1843,'Disarm'),
 (11,6,2382,'Generic'),
 (11,6,2479,'Honorless Target'),
 (11,6,3050,'Detect'),
@@ -13435,6 +13610,7 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (11,6,59921,'Frost Fever'),
 (11,6,61437,'Opening'),
 (11,6,61455,'Runic Focus'),
+(11,6,68398,'Opening'),
 (11,7,81,'Dodge'),
 (11,7,107,'Block'),
 (11,7,198,'One-Handed Maces'),
@@ -13445,7 +13621,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (11,7,403,'Lightning Bolt'),
 (11,7,522,'SPELLDEFENSE (DND)'),
 (11,7,668,'Language Common'),
-(11,7,1843,'Disarm'),
 (11,7,2382,'Generic'),
 (11,7,2479,'Honorless Target'),
 (11,7,3050,'Detect'),
@@ -13476,6 +13651,8 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (11,7,59221,'Shadow Resistance'),
 (11,7,59547,'Gift of the Naaru'),
 (11,7,61437,'Opening'),
+(11,7,68398,'Opening'),
+(11,7,75461,'Flame Shock Passive'),
 (11,8,81,'Dodge'),
 (11,8,133,'Fireball'),
 (11,8,168,'Frost Armor'),
@@ -13484,7 +13661,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (11,8,227,'Staves'),
 (11,8,522,'SPELLDEFENSE (DND)'),
 (11,8,668,'Language Common'),
-(11,8,1843,'Disarm'),
 (11,8,2382,'Generic'),
 (11,8,2479,'Honorless Target'),
 (11,8,3050,'Detect'),
@@ -13513,7 +13689,9 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (11,8,45927,'Summon Friend'),
 (11,8,59221,'Shadow Resistance'),
 (11,8,59548,'Gift of the Naaru'),
-(11,8,61437,'Opening');
+(11,8,61437,'Opening'),
+(11,8,68398,'Opening'),
+(11,8,71761,'Deep Freeze Immunity State');
 /*!40000 ALTER TABLE `playercreateinfo_spell` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -13553,8 +13731,8 @@ CREATE TABLE `pool_creature` (
   `pool_entry` mediumint(8) unsigned NOT NULL default '0',
   `chance` float unsigned NOT NULL default '0',
   `description` varchar(255) NOT NULL,
-  PRIMARY KEY  (`pool_entry`,`guid`),
-  INDEX `idx_guid`(`guid`)
+  PRIMARY KEY  (`guid`),
+  INDEX `pool_idx` (pool_entry)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 
@@ -13577,8 +13755,8 @@ CREATE TABLE `pool_gameobject` (
   `pool_entry` mediumint(8) unsigned NOT NULL default '0',
   `chance` float unsigned NOT NULL default '0',
   `description` varchar(255) NOT NULL,
-  PRIMARY KEY  (`guid`,`pool_entry`),
-  INDEX `idx_guid`(`guid`)
+  PRIMARY KEY  (`guid`),
+  INDEX `pool_idx` (pool_entry)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 --
@@ -13600,7 +13778,8 @@ CREATE TABLE `pool_pool` (
   `mother_pool` mediumint(8) unsigned NOT NULL default '0',
   `chance` float NOT NULL default '0',
   `description` varchar(255) NOT NULL,
-  PRIMARY KEY  (`pool_id`,`mother_pool`)
+  PRIMARY KEY  (pool_id),
+  INDEX pool_idx (mother_pool)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 --
@@ -13631,26 +13810,6 @@ CREATE TABLE `pool_template` (
 LOCK TABLES `pool_template` WRITE;
 /*!40000 ALTER TABLE `pool_template` DISABLE KEYS */;
 /*!40000 ALTER TABLE `pool_template` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `game_event_pool`
---
-
-DROP TABLE IF EXISTS `game_event_pool`;
-CREATE TABLE `game_event_pool` (
-  `pool_entry` mediumint(8) unsigned NOT NULL default '0' COMMENT 'Id of the pool',
-  `event` smallint(6) NOT NULL default '0' COMMENT 'Put negatives values to remove during event',
-  PRIMARY KEY  (`pool_entry`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
-
---
--- Dumping data for table `game_event_pool`
---
-
-LOCK TABLES `game_event_pool` WRITE;
-/*!40000 ALTER TABLE `game_event_pool` DISABLE KEYS */;
-/*!40000 ALTER TABLE `game_event_pool` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -13691,11 +13850,18 @@ CREATE TABLE `quest_end_scripts` (
   `command` mediumint(8) unsigned NOT NULL default '0',
   `datalong` mediumint(8) unsigned NOT NULL default '0',
   `datalong2` int(10) unsigned NOT NULL default '0',
+  `datalong3` int(10) unsigned NOT NULL default '0',
+  `datalong4` int(10) unsigned NOT NULL default '0',
+  `data_flags` tinyint(3) unsigned NOT NULL default '0',
   `dataint` int(11) NOT NULL default '0',
+  `dataint2` int(11) NOT NULL default '0',
+  `dataint3` int(11) NOT NULL default '0',
+  `dataint4` int(11) NOT NULL default '0',
   `x` float NOT NULL default '0',
   `y` float NOT NULL default '0',
   `z` float NOT NULL default '0',
-  `o` float NOT NULL default '0'
+  `o` float NOT NULL default '0',
+  `comments` varchar(255) NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 --
@@ -13713,14 +13879,15 @@ UNLOCK TABLES;
 
 DROP TABLE IF EXISTS `quest_poi`;
 CREATE TABLE `quest_poi` (
-  `questid` int(11) unsigned NOT NULL DEFAULT '0',
+  `questId` mediumint(8) unsigned NOT NULL DEFAULT '0',
+  `poiId` tinyint(3) NOT NULL DEFAULT '0',
   `objIndex` int(11) NOT NULL DEFAULT '0',
   `mapId` int(11) unsigned NOT NULL DEFAULT '0',
-  `unk1` int(11) unsigned NOT NULL DEFAULT '0',
-  `unk2` int(11) unsigned NOT NULL DEFAULT '0',
+  `mapAreaId` mediumint(8) unsigned NOT NULL DEFAULT '0',
+  `floorId` tinyint(3) unsigned NOT NULL DEFAULT '0',
   `unk3` int(11) unsigned NOT NULL DEFAULT '0',
   `unk4` int(11) unsigned NOT NULL DEFAULT '0',
-  PRIMARY KEY (`questid`,`objIndex`)
+  PRIMARY KEY (`questId`,`poiId`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 --
@@ -13738,11 +13905,11 @@ UNLOCK TABLES;
 
 DROP TABLE IF EXISTS `quest_poi_points`;
 CREATE TABLE `quest_poi_points` (
-  `questId` int(11) unsigned NOT NULL DEFAULT '0',
-  `objIndex` int(11) NOT NULL DEFAULT '0',
+  `questId` mediumint(8) unsigned NOT NULL DEFAULT '0',
+  `poiId` tinyint(3) NOT NULL DEFAULT '0',
   `x` int(11) NOT NULL DEFAULT '0',
   `y` int(11) NOT NULL DEFAULT '0',
-  KEY `idx` (`questId`,`objIndex`)
+  KEY `idx_poip` (`questId`,`poiId`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 --
@@ -13765,11 +13932,18 @@ CREATE TABLE `quest_start_scripts` (
   `command` mediumint(8) unsigned NOT NULL default '0',
   `datalong` mediumint(8) unsigned NOT NULL default '0',
   `datalong2` int(10) unsigned NOT NULL default '0',
+  `datalong3` int(10) unsigned NOT NULL default '0',
+  `datalong4` int(10) unsigned NOT NULL default '0',
+  `data_flags` tinyint(3) unsigned NOT NULL default '0',
   `dataint` int(11) NOT NULL default '0',
+  `dataint2` int(11) NOT NULL default '0',
+  `dataint3` int(11) NOT NULL default '0',
+  `dataint4` int(11) NOT NULL default '0',
   `x` float NOT NULL default '0',
   `y` float NOT NULL default '0',
   `z` float NOT NULL default '0',
-  `o` float NOT NULL default '0'
+  `o` float NOT NULL default '0',
+  `comments` varchar(255) NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 --
@@ -13790,11 +13964,12 @@ CREATE TABLE `quest_template` (
   `entry` mediumint(8) unsigned NOT NULL default '0',
   `Method` tinyint(3) unsigned NOT NULL default '2',
   `ZoneOrSort` smallint(6) NOT NULL default '0',
-  `SkillOrClass` smallint(6) NOT NULL default '0',
   `MinLevel` tinyint(3) unsigned NOT NULL default '0',
   `QuestLevel` smallint(6) NOT NULL default '0',
   `Type` smallint(5) unsigned NOT NULL default '0',
+  `RequiredClasses` smallint(5) unsigned NOT NULL default '0',
   `RequiredRaces` smallint(5) unsigned NOT NULL default '0',
+  `RequiredSkill` smallint(5) unsigned NOT NULL default '0',
   `RequiredSkillValue` smallint(5) unsigned NOT NULL default '0',
   `RepObjectiveFaction` smallint(5) unsigned NOT NULL default '0',
   `RepObjectiveValue` mediumint(9) NOT NULL default '0',
@@ -13967,6 +14142,59 @@ LOCK TABLES `reference_loot_template` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `reputation_reward_rate`
+--
+
+DROP TABLE IF EXISTS `reputation_reward_rate`;
+CREATE TABLE `reputation_reward_rate` (
+  `faction` mediumint(8) unsigned NOT NULL default '0',
+  `quest_rate` float NOT NULL default '1',
+  `creature_rate` float NOT NULL default '1',
+  `spell_rate` float NOT NULL default '1',
+  PRIMARY KEY  (`faction`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+
+--
+-- Dumping data for table `reputation_reward_rate`
+--
+
+LOCK TABLES `reputation_reward_rate` WRITE;
+/*!40000 ALTER TABLE `reputation_reward_rate` DISABLE KEYS */;
+/*!40000 ALTER TABLE `reputation_reward_rate` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `reputation_spillover_template`
+--
+
+DROP TABLE IF EXISTS `reputation_spillover_template`;
+CREATE TABLE `reputation_spillover_template` (
+  `faction` smallint(6) unsigned NOT NULL default '0' COMMENT 'faction entry',
+  `faction1` smallint(6) unsigned NOT NULL default '0' COMMENT 'faction to give spillover for',
+  `rate_1` float NOT NULL default '0' COMMENT 'the given rep points * rate',
+  `rank_1` tinyint(3) unsigned NOT NULL default '0' COMMENT 'max rank, above this will not give any spillover',
+  `faction2` smallint(6) unsigned NOT NULL default '0',
+  `rate_2` float NOT NULL default '0',
+  `rank_2` tinyint(3) unsigned NOT NULL default '0',
+  `faction3` smallint(6) unsigned NOT NULL default '0',
+  `rate_3` float NOT NULL default '0',
+  `rank_3` tinyint(3) unsigned NOT NULL default '0',
+  `faction4` smallint(6) unsigned NOT NULL default '0',
+  `rate_4` float NOT NULL default '0',
+  `rank_4` tinyint(3) unsigned NOT NULL default '0',
+  PRIMARY KEY  (`faction`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC COMMENT='Reputation spillover reputation gain';
+
+--
+-- Dumping data for table `reputation_spillover_template`
+--
+
+LOCK TABLES `reputation_spillover_template` WRITE;
+/*!40000 ALTER TABLE `reputation_spillover_template` DISABLE KEYS */;
+/*!40000 ALTER TABLE `reputation_spillover_template` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `reserved_name`
 --
 
@@ -13983,6 +14211,46 @@ CREATE TABLE `reserved_name` (
 LOCK TABLES `reserved_name` WRITE;
 /*!40000 ALTER TABLE `reserved_name` DISABLE KEYS */;
 /*!40000 ALTER TABLE `reserved_name` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `scripted_areatrigger`
+--
+
+DROP TABLE IF EXISTS `scripted_areatrigger`;
+CREATE TABLE `scripted_areatrigger` (
+  `entry` MEDIUMINT( 8 ) NOT NULL ,
+  `ScriptName` CHAR( 64 ) NOT NULL ,
+  PRIMARY KEY ( `entry` )
+) ENGINE = MYISAM DEFAULT CHARSET=utf8;
+
+--
+-- Dumping data for table `scripted_areatrigger`
+--
+
+LOCK TABLES `scripted_areatrigger` WRITE;
+/*!40000 ALTER TABLE `scripted_areatrigger` DISABLE KEYS */;
+/*!40000 ALTER TABLE `scripted_areatrigger` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `scripted_event_id`
+--
+
+DROP TABLE IF EXISTS `scripted_event_id`;
+CREATE TABLE `scripted_event_id` (
+  `id` mediumint(8) NOT NULL,
+  `ScriptName` char(64) NOT NULL,
+  PRIMARY KEY  (`id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8 COMMENT='Script library scripted events';
+
+--
+-- Dumping data for table `scripted_event_id`
+--
+
+LOCK TABLES `scripted_event_id` WRITE;
+/*!40000 ALTER TABLE `scripted_event_id` DISABLE KEYS */;
+/*!40000 ALTER TABLE `scripted_event_id` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -14113,6 +14381,7 @@ CREATE TABLE `spell_bonus_data` (
   `direct_bonus` float NOT NULL default '0',
   `dot_bonus` float NOT NULL default '0',
   `ap_bonus` float NOT NULL default '0',
+  `ap_dot_bonus` float NOT NULL default '0',
   `comments` varchar(255) default NULL,
   PRIMARY KEY  (`entry`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
@@ -14125,161 +14394,155 @@ LOCK TABLES `spell_bonus_data` WRITE;
 /*!40000 ALTER TABLE `spell_bonus_data` DISABLE KEYS */;
 INSERT INTO `spell_bonus_data` VALUES
 /* Death Knight */
-(48721, 0,      0,       0.04,  'Death Knight - Blood Boil'),
-(55078, 0,      0,       0.055, 'Death Knight - Blood Plague Dummy Proc'),
-(50444, 0,      0,       0.105, 'Death Knight - Corpse Explosion Triggered'),
-(52212, 0,      0,       0.0475,'Death Knight - Death and Decay Triggered'),
-(47632, 0,      0,       0.15,  'Death Knight - Death Coil Damage'),
-(47633, 0,      0,       0.15,  'Death Knight - Death Coil Heal'),
-(55095, 0,      0,       0.055, 'Death Knight - Frost Fever'),
-(49184, 0,      0,       0.1,   'Death Knight - Howling Blast'),
-(45477, 0,      0,       0.1,   'Death Knight - Icy Touch'),
-(56903, 0,      0,       0,     'Death Knight - Lichflame'),
-(50842, 0,      0,       0.04,  'Death Knight - Pestilence'),
-(50401, 0,      0,       0,     'Death Knight - Razor Frost'),
-(47476, 0,      0,       0.06,  'Death Knight - Strangulate'),
-(50536, 0,      0,       0.013, 'Death Knight - Unholy Blight Triggered'),
+(48721, 0,      0,       0.04,  0,     'Death Knight - Blood Boil'),
+(55078, 0,      0,       0,     0.06325,'Death Knight - Blood Plague'),
+(50444, 0,      0,       0.105, 0,     'Death Knight - Corpse Explosion Triggered'),
+(52212, 0,      0,       0.0475,0,     'Death Knight - Death and Decay Triggered'),
+(47632, 0,      0,       0.15,  0,     'Death Knight - Death Coil Damage'),
+(47633, 0,      0,       0.15,  0,     'Death Knight - Death Coil Heal'),
+(48743, 0,      0,       0,     0,     'Death Knight - Death Pact'),
+(55095, 0,      0,       0,     0.06325,'Death Knight - Frost Fever'),
+(49184, 0,      0,       0.2,   0,     'Death Knight - Howling Blast'),
+(45477, 0,      0,       0.1,   0,     'Death Knight - Icy Touch'),
+(56903, 0,      0,       0,     0,     'Death Knight - Lichflame'),
+(50842, 0,      0,       0.04,  0,     'Death Knight - Pestilence'),
+(50401, 0,      0,       0,     0,     'Death Knight - Razor Frost'),
+(47476, 0,      0,       0.06,  0,     'Death Knight - Strangulate'),
+(50536, 0,      0,       0,     0.013, 'Death Knight - Unholy Blight Triggered'),
 /* Druid */
-(5185,  1.6104, 0,       0,     'Druid - Healing Touch'),
-(339,   0,      0.1,     0,     'Druid - Entangling Roots'),
-(60089, 0,      0,       0.15,  'Druid - Faerie Fire (Feral) Triggered'),
-(42231, 0.12898,0,       0,     'Druid - Hurricane Triggered'),
-(5570,  0,      0.2,     0,     'Druid - Insect Swarm'),
-(33763, 0,      0.09518, 0,     'Druid - Lifebloom'),
-(8921,  0.1515, 0.13,    0,     'Druid - Moonfire'),
-(50464, 0.6611, 0,       0,     'Druid - Nourish'),
-(8936,  0.539,  0.188,   0,     'Druid - Regrowth'),
-(774,   0,      0.37604, 0,     'Druid - Rejuvenation'),
-(50288, 0.05,   0,       0,     'Druid - Starfall'),
-(50294, 0.012,  0,       0,     'Druid - Starfall AOE'),
-(2912,  1,      0,       0,     'Druid - Starfire'),
-(18562, 0,      0,       0,     'Druid - Swiftmend'),
-(44203, 0.538,  0,       0,     'Druid - Tranquility Triggered'),
-(61391, 0.193,  0,       0,     'Druid - Typhoon'),
-(48438, 0,      0.11505, 0,     'Druid - Wild Growth'),
-(5176,  0.5714, 0,       0,     'Druid - Wrath'),
+(5185,  1.6104, 0,       0,     0,     'Druid - Healing Touch'),
+(339,   0,      0.1,     0,     0,     'Druid - Entangling Roots'),
+(60089, 0,      0,       0.15,  0,     'Druid - Faerie Fire (Feral) Triggered'),
+(42231, 0.12898,0,       0,     0,     'Druid - Hurricane Triggered'),
+(5570,  0,      0.2,     0,     0,     'Druid - Insect Swarm'),
+(33745, 0,      0,       0.01,  0.01,  'Druid - Lacerate'),
+(33763, 0,      0.09518, 0,     0,     'Druid - Lifebloom'),
+(48628, 0,      0,       0,     0.15,  'Druid - Lock Jaw'),
+(8921,  0.1515, 0.13,    0,     0,     'Druid - Moonfire'),
+(50464, 0.6611, 0,       0,     0,     'Druid - Nourish'),
+(9007,  0,      0,       0,     0.03,  'Druid - Pounce Bleed'),
+(1822,  0,      0,       0,     0.06,  'Druid - Rake'),
+(8936,  0.539,  0.188,   0,     0,     'Druid - Regrowth'),
+(50288, 0.05,   0,       0,     0,     'Druid - Starfall'),
+(50294, 0.012,  0,       0,     0,     'Druid - Starfall AOE'),
+(18562, 0,      0,       0,     0,     'Druid - Swiftmend'),
+(44203, 0.538,  0,       0,     0,     'Druid - Tranquility Triggered'),
+(48438, 0,      0.11505, 0,     0,     'Druid - Wild Growth'),
+(5176,  0.5714, 0,       0,     0,     'Druid - Wrath'),
 /* Generic */
-(54757, 0,      0,       0,     'Generic - Pyro Rocket'),
+(54757, 0,      0,       0,     0,     'Generic - Pyro Rocket'),
+/* Hunter */
+(3044,  0,      0,       0.15,  0,     'Hunter - Arcane Shot'),
+(3674,  0,      0,       0,     0.02,  'Hunter - Black Arrow'),
+(19306, 0,      0,       0.2,   0,     'Hunter - Counterattack'),
+(13812, 0,      0,       0.1,   0.1,   'Hunter - Explosive Trap'),
+(13797, 0,      0,       0,     0.02,  'Hunter - Immolation Trap'),
+(1495,  0,      0,       0.2,   0,     'Hunter - Mongoose Bite'),
+(1978,  0,      0,       0,     0.04,  'Hunter - Serpent Sting'),
+(42243, 0,      0,       0.0837,0,     'Hunter - Volley'),
 /* Mage */
-(44425, 0.714286,0,      0,     'Mage - Arcane Barrage'),
-(30451, 0.7143, 0,       0,     'Mage - Arcane Blast'),
-(1449,  0.2128, 0,       0,     'Mage - Arcane Explosion'),
-(7268,  0.2857, 0,       0,     'Mage - Arcane Missiles Triggered Spell'),
-(42208, 0.1437, 0,       0,     'Mage - Blizzard Triggered'),
-(2136,  0.4286, 0,       0,     'Mage - Fire Blast'),
-(133,   1,      0,       0,     'Mage - Fire Ball'),
-(2120,  0.2357, 0.122,   0,     'Mage - Flamestrike'),
-(122,   0.193,  0,       0,     'Mage - Frost Nova'),
-(116,   0.8143, 0,       0,     'Mage - Frost Bolt'),
-(44614, 0.8571, 0,       0,     'Mage - Frostfire Bolt'),
-(11426, 0.8053, 0,       0,     'Mage - Ice Barrier'),
-(30455, 0.1429, 0,       0,     'Mage - Ice Lance'),
-(44457, 0.4,    0.2,     0,     'Mage - Living Bomb'),
-(1463,  0.8053, 0,       0,     'Mage - Mana Shield'),
-(34913, 0,      0,       0,     'Mage - Molten Armor Triggered'),
-(11366, 1.15,   0.05,    0,     'Mage - Pyroblast'),
-(2948,  0.4286, 0,       0,     'Mage - Scorch'),
+(44425, 0.714286,0,      0,     0,     'Mage - Arcane Barrage'),
+(7268,  0.2857, 0,       0,     0,     'Mage - Arcane Missiles Triggered Spell'),
+(42208, 0.1437, 0,       0,     0,     'Mage - Blizzard Triggered'),
+(133,   1,      0,       0,     0,     'Mage - Fire Ball'),
+(2120,  0.2357, 0.122,   0,     0,     'Mage - Flamestrike'),
+(116,   0.8143, 0,       0,     0,     'Mage - Frost Bolt'),
+(44614, 0.8571, 0,       0,     0,     'Mage - Frostfire Bolt'),
+(30455, 0.1429, 0,       0,     0,     'Mage - Ice Lance'),
+(1463,  0.8053, 0,       0,     0,     'Mage - Mana Shield'),
+(34913, 0,      0,       0,     0,     'Mage - Molten Armor Triggered'),
+(11366, 1.15,   0.05,    0,     0,     'Mage - Pyroblast'),
 /* Paladin */
-(26573, 0,      0.04,    0.04,  'Paladin - Consecration'),
-(879,   0.15,   0,       0.15,  'Paladin - Exorcism'),
-(25997, 0,      0,       0,     'Paladin - Eye for an Eye'),
-(19750, 1,      0,       0,     'Paladin - Flash of Light'),
-(53595, 0,      0,       0,     'Paladin - Hammer of the Righteous'),
-(635,   1.66,   0,       0,     'Paladin - Holy Light'),
-(25912, 0.4286, 0,       0,     'Paladin - Holy Shock Triggered Hurt'),
-(20925, 0.09,   0,       0.056, 'Paladin - Holy Shield'),
-(2812,  0.07,   0,       0.07,  'Paladin - Holy Wrath'),
-(54158, 0.25,   0,       0,     'Paladin - Judgement'),
-(20467, 0.25,   0,       0.16,  'Paladin - Judgement of Command'),
-(53733, 0,      0,       0,     'Paladin - Judgement of Corruption'),
-(20267, 0.1,    0,       0.1,   'Paladin - Judgement of Light Proc'),
-(31804, 0,      0,       0,     'Paladin - Judgement of Vengeance'),
-(20424, 0,      0,       0,     'Paladin - Seal of Command Proc'),
-(53739, 0,      0.00156, 0.003, 'Paladin - Seal of Corruption (full stack proc)'),
-(25742, 0.07,   0,       0.039, 'Paladin - Seal of Righteousness Dummy Proc'),
-(42463, 0,      0.00156, 0.003, 'Paladin - Seal of Vengeance (full stack proc)'),
-(53600, 0,      0,       0,     'Paladin - Shield of Righteousness'),
+(26573, 0,      0.04,    0,     0.04,  'Paladin - Consecration'),
+(879,   0.15,   0,       0.15,  0,     'Paladin - Exorcism'),
+(25997, 0,      0,       0,     0,     'Paladin - Eye for an Eye'),
+(19750, 1,      0,       0,     0,     'Paladin - Flash of Light'),
+(53595, 0,      0,       0,     0,     'Paladin - Hammer of the Righteous'),
+(635,   1.66,   0,       0,     0,     'Paladin - Holy Light'),
+(20925, 0.09,   0,       0.056, 0,     'Paladin - Holy Shield'),
+(2812,  0.07,   0,       0.07,  0,     'Paladin - Holy Wrath'),
+(54158, 0.25,   0,       0,     0,     'Paladin - Judgement'),
+(20467, 0.25,   0,       0.16,  0,     'Paladin - Judgement of Command'),
+(53733, 0,      0,       0,     0,     'Paladin - Judgement of Corruption'),
+(20267, 0.1,    0,       0.1,   0,     'Paladin - Judgement of Light Proc'),
+(31804, 0,      0,       0,     0,     'Paladin - Judgement of Vengeance'),
+(20424, 0,      0,       0,     0,     'Paladin - Seal of Command Proc'),
+(53739, 0,      0,       0.003, 0,     'Paladin - Seal of Corruption (full stack proc)'),
+(25742, 0.07,   0,       0.039, 0,     'Paladin - Seal of Righteousness Dummy Proc'),
+(42463, 0,      0,       0.003, 0,     'Paladin - Seal of Vengeance (full stack proc)'),
+(53600, 0,      0,       0,     0,     'Paladin - Shield of Righteousness'),
 /* Priest */
-(32546, 0.8068, 0,       0,     'Priest - Binding Heal'),
-(27813, 0,      0,       0,     'Priest - Blessed Recovery'),
-(34861, 0.402,  0,       0,     'Priest - Circle of Healing'),
-(19236, 0.8068, 0,       0,     'Priest - Desperate Prayer'),
-(2944,  0,      0.1849,  0,     'Priest - Devouring Plague'),
-(63544, 0,      0,       0,     'Priest - Empowered Renew Triggered'),
-(14914, 0.5711, 0.024,   0,     'Priest - Holy Fire'),
-(15237, 0.1606, 0,       0,     'Priest - Holy Nova Damage'),
-(2061,  0.8068, 0,       0,     'Priest - Flash Heal'),
-(2060,  1.6135, 0,       0,     'Priest - Greater Heal'),
-(23455, 0.3035, 0,       0,     'Priest - Holy Nova Heal'),
-(63675, 0,      0,       0,     'Priest - Improved Devouring Plague Triggered'),
-(8129,  0,      0,       0,     'Priest - Mana Burn'),
-(58381, 0.257143,0,      0,     'Priest - Mind Flay Triggered'),
-(49821, 0.14286,0,       0,     'Priest - Mind Sear Trigger'),
-(47666, 0.229,  0,       0,     'Priest - Penance dmg effect'),
-(47750, 0.537,  0,       0,     'Priest - Penance heal effect'),
-(17,    0.8068, 0,       0,     'Priest - Power Word: Shield'),
-(33110, 0.8068, 0,       0,     'Priest - Prayer of Mending Heal Proc'),
-(33619, 0,      0,       0,     'Priest - Reflective Shield'),
-(139,   0,      0.376,   0,     'Priest - Renew'),
-(32379, 0.4296, 0,       0,     'Priest - Shadow Word: Death'),
-(589,   0,      0.1829,  0,     'Priest - Shadow Word: Pain'),
-(34433, 0.65,   0,       0,     'Priest - Shadowfiend'),
-(585,   0.714,  0,       0,     'Priest - Smite'),
-(34914, 0,      0.4,     0,     'Priest - Vampiric Touch'),
-(64085, 0,      0,       0,     'Priest - Vampiric Touch Dispel'),
+(27813, 0,      0,       0,     0,     'Priest - Blessed Recovery'),
+(2944,  0,      0.1849,  0,     0,     'Priest - Devouring Plague'),
+(63544, 0,      0,       0,     0,     'Priest - Empowered Renew Triggered'),
+(14914, 0.5711, 0.024,   0,     0,     'Priest - Holy Fire'),
+(15237, 0.1606, 0,       0,     0,     'Priest - Holy Nova Damage'),
+(23455, 0.3035, 0,       0,     0,     'Priest - Holy Nova Heal'),
+(63675, 0,      0,       0,     0,     'Priest - Improved Devouring Plague Triggered'),
+(8129,  0,      0,       0,     0,     'Priest - Mana Burn'),
+(58381, 0.257143,0,      0,     0,     'Priest - Mind Flay Triggered'),
+(49821, 0.2857, 0,       0,     0,     'Priest - Mind Sear Trigger'),
+(47666, 0.229,  0,       0,     0,     'Priest - Penance dmg effect'),
+(47750, 0.537,  0,       0,     0,     'Priest - Penance heal effect'),
+(33619, 0,      0,       0,     0,     'Priest - Reflective Shield'),
+(34433, 0.65,   0,       0,     0,     'Priest - Shadowfiend'),
+(585,   0.714,  0,       0,     0,     'Priest - Smite'),
+(34914, 0,      0.4,     0,     0,     'Priest - Vampiric Touch'),
+(64085, 1.2,    0,       0,     0,     'Priest - Vampiric Touch Dispel'),
+/* Rogue */
+(2818,  0,      0,       0,     0.03,  'Rogue - Deadly Poison'),
+(703,   0,      0,       0,     0.07,  'Rogue - Garrote'),
 /* Shaman */
-(974,   0.4762, 0,       0,     'Shaman - Earth Shield'),
-(379,   0,      0,       0,     'Shaman - Earth Shield Triggered'),
-(1064,  1.34,   0,       0,     'Shaman - Chain Heal'),
-(421,   0.57,   0,       0,     'Shaman - Chain Lightning'),
-(8042,  0.3858, 0,       0,     'Shaman - Earth Shock'),
-(8050,  0.2142, 0.1,     0,     'Shaman - Flame Shock'),
-(8026,  0.1,    0,       0,     'Shaman - Flametongue Weapon Proc'),
-(8056,  0.3858, 0,       0,     'Shaman - Frost Shock'),
-(8034,  0.1,    0,       0,     'Shaman - Frostbrand Attack Rank 1'),
-(52042, 0.045,  0,       0,     'Shaman - Healing Stream Totem Triggered Heal'),
-(331,   1.6106, 0,       0,     'Shaman - Healing Wave'),
-(51505, 0.5714, 0,       0,     'Shaman - Lava Burst'),
-(8004,  0.8082, 0,       0,     'Shaman - Lesser Healing Wave'),
-(403,   0.7143, 0,       0,     'Shaman - Lightning Bolt'),
-(26364, 0.33,   0,       0,     'Shaman - Lightning Shield Proc'),
-(8188,  0.1,    0,       0,     'Shaman - Magma Totam Passive'),
-(61295, 0.4,    0.18,    0,     'Shaman - Riptide'),
-(3606,  0.1667, 0,       0,     'Shaman - Searing Totem Attack'),
+(974,   0.4762, 0,       0,     0,     'Shaman - Earth Shield'),
+(379,   0,      0,       0,     0,     'Shaman - Earth Shield Triggered'),
+(8042,  0.3858, 0,       0,     0,     'Shaman - Earth Shock'),
+(8050,  0.2142, 0.1,     0,     0,     'Shaman - Flame Shock'),
+(10444, 0,      0,       0,     0,     'Shaman - Flametongue Attack'),
+(8026,  0.1,    0,       0,     0,     'Shaman - Flametongue Weapon Proc'),
+(8056,  0.3858, 0,       0,     0,     'Shaman - Frost Shock'),
+(8034,  0.1,    0,       0,     0,     'Shaman - Frostbrand Attack Rank 1'),
+(52042, 0.045,  0,       0,     0,     'Shaman - Healing Stream Totem Triggered Heal'),
+(331,   1.6106, 0,       0,     0,     'Shaman - Healing Wave'),
+(403,   0.7143, 0,       0,     0,     'Shaman - Lightning Bolt'),
+(26364, 0.33,   0,       0,     0,     'Shaman - Lightning Shield Proc'),
+(8188,  0.1,    0,       0,     0,     'Shaman - Magma Totam Passive'),
+(61295, 0.4,    0.18,    0,     0,     'Shaman - Riptide'),
+(3606,  0.1667, 0,       0,     0,     'Shaman - Searing Totem Attack'),
 /* Warlock */
-(17962, 0,      0,       0,     'Warlock - Conflagrate'),
-(172,   0,      0.2,     0,     'Warlock - Corruption'),
-(980,   0,      0.1,     0,     'Warlock - Curse of Agony'),
-(603,   0,      2,       0,     'Warlock - Curse of Doom'),
-(18220, 0.96,   0,       0,     'Warlock - Dark Pact'),
-(5138,  0,      0,       0,     'Warlock - Drain Mana'),
-(1120,  0,      0.4286,  0,     'Warlock - Drain Soul'),
-(28176, 0,      0,       0,     'Warlock - Fel Armor'),
-(18790, 0,      0,       0,     'Warlock - Fel Stamina'),
-(48181, 0.4729, 0,       0,     'Warlock - Haunt'),
-(755 ,  0,      0.4485,  0,     'Warlock - Health Funnel'),
-(1949,  0,      0.0946,  0,     'Warlock - Hellfire'),
-(5857,  0.1428, 0,       0,     'Warlock - Hellfire Effect on Enemy'),
-(348,   0.2,    0.2,     0,     'Warlock - Immolate'),
-(42223, 0.285714,0,      0,     'Warlock - Rain of Fire Triggered'),
-(27243, 0.2129, 0.25,    0,     'Warlock - Seed of Corruption'),
-(6229,  0.3,    0,       0,     'Warlock - Shadow Ward'),
-(47960, 0,      0.06666, 0,     'Warlock - Shadowflame DoT'),
-(47897, 0.1064, 0,       0,     'Warlock - Shadowflame Direct'),
-(63106, 0,      0,       0,     'Warlock - Siphon Life Triggered'),
-(6353,  1.15,   0,       0,     'Warlock - Soul Fire'),
-(30294, 0,      0,       0,     'Warlock - Soul Leech'),
-(31117, 1.8,    0,       0,     'Warlock - Unstable Affliction Dispell'),
+(17962, 0,      0,       0,     0,     'Warlock - Conflagrate'),
+(172,   0,      0.2,     0,     0,     'Warlock - Corruption'),
+(980,   0,      0.1,     0,     0,     'Warlock - Curse of Agony'),
+(603,   0,      2,       0,     0,     'Warlock - Curse of Doom'),
+(18220, 0.96,   0,       0,     0,     'Warlock - Dark Pact'),
+(5138,  0,      0,       0,     0,     'Warlock - Drain Mana'),
+(1120,  0,      0.4286,  0,     0,     'Warlock - Drain Soul'),
+(28176, 0,      0,       0,     0,     'Warlock - Fel Armor'),
+(18790, 0,      0,       0,     0,     'Warlock - Fel Stamina'),
+(54181, 0,      0,       0,     0,     'Warlock - Fel Synergy'),
+(48181, 0.4729, 0,       0,     0,     'Warlock - Haunt'),
+(755 ,  0,      0.4485,  0,     0,     'Warlock - Health Funnel'),
+(1949,  0,      0.0946,  0,     0,     'Warlock - Hellfire'),
+(5857,  0.1428, 0,       0,     0,     'Warlock - Hellfire Effect on Enemy'),
+(348,   0.2,    0.2,     0,     0,     'Warlock - Immolate'),
+(42223, 0.285714,0,      0,     0,     'Warlock - Rain of Fire Triggered'),
+(27243, 0.2129, 0.25,    0,     0,     'Warlock - Seed of Corruption'),
+(6229,  0.3,    0,       0,     0,     'Warlock - Shadow Ward'),
+(47960, 0,      0.06666, 0,     0,     'Warlock - Shadowflame DoT'),
+(47897, 0.1064, 0,       0,     0,     'Warlock - Shadowflame Direct'),
+(63106, 0,      0,       0,     0,     'Warlock - Siphon Life Triggered'),
+(6353,  1.15,   0,       0,     0,     'Warlock - Soul Fire'),
+(30294, 0,      0,       0,     0,     'Warlock - Soul Leech'),
+(31117, 1.8,    0,       0,     0,     'Warlock - Unstable Affliction Dispell'),
 /* Item */
-(56131, 0,      0,       0,     'Item - Glyph of Dispel Magic'),
-(56160, 0,      0,       0,     'Item - Glyph of Power Word: Shield'),
-(46567, 0,      0,       0,     'Item - Goblin Rocket Launcher'),
-(31024, 0,      0,       0,     'Item - Living Ruby Pedant'),
-(17712, 0,      0,       0,     'Item - Lifestone Healing'),
-(5707,  0,      0,       0,     'Item - Lifestone Regeneration'),
-(38395, 0,      0,       0,     'Item - Siphon Essence'),
-(40293, 0,      0,       0,     'Item - Siphon Essence'),
-(71824, 0,      0,       0,     'Item - Shaman T9 Elemental 4P Bonus');
+(56131, 0,      0,       0,     0,     'Item - Glyph of Dispel Magic'),
+(56160, 0,      0,       0,     0,     'Item - Glyph of Power Word: Shield'),
+(46567, 0,      0,       0,     0,     'Item - Goblin Rocket Launcher'),
+(31024, 0,      0,       0,     0,     'Item - Living Ruby Pedant'),
+(17712, 0,      0,       0,     0,     'Item - Lifestone Healing'),
+(5707,  0,      0,       0,     0,     'Item - Lifestone Regeneration'),
+(38395, 0,      0,       0,     0,     'Item - Siphon Essence'),
+(40293, 0,      0,       0,     0,     'Item - Siphon Essence'),
+(71824, 0,      0,       0,     0,     'Item - Shaman T9 Elemental 4P Bonus');
 /*!40000 ALTER TABLE `spell_bonus_data` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -14304,9 +14567,19 @@ CREATE TABLE `spell_chain` (
 LOCK TABLES `spell_chain` WRITE;
 /*!40000 ALTER TABLE `spell_chain` DISABLE KEYS */;
 INSERT INTO spell_chain VALUES
-/*------------------
---(0) Not associated with skills
-------------------*/
+-- ------------------
+-- (0) Not associated with skills
+-- ------------------
+/* Deadly Poison Triggered */
+(2818,0,2818,1,0),
+(2819,2818,2818,2,0),
+(11353,2819,2818,3,0),
+(11354,11353,2818,4,0),
+(25349,11354,2818,5,0),
+(26968,25349,2818,6,0),
+(27187,26968,2818,7,0),
+(57969,27187,2818,8,0),
+(57970,57969,2818,9,0),
 /* Flametongue Weapon Proc */
 (8026,0,8026,1,0),
 (8028,8026,8026,2,0),
@@ -14357,6 +14630,9 @@ INSERT INTO spell_chain VALUES
 (58700,25530,3606,8,0),
 (58701,58700,3606,9,0),
 (58702,58701,3606,10,0),
+/* Shadowflame Triggered DoT */
+(47960,0,47960,1,0),
+(61291,47960,47960,2,0),
 /* Wound Poison */
 (13218,0,13218,1,0),
 (13222,13218,13218,2,0),
@@ -14365,10 +14641,10 @@ INSERT INTO spell_chain VALUES
 (27189,13224,13218,5,0),
 (57974,27189,13218,6,0),
 (57975,57974,13218,7,0),
-/*------------------
---(6) Frost
-------------------*/
-/*Blizzard*/
+-- ------------------
+-- (6) Frost
+-- ------------------
+/* Blizzard */
 (10,0,10,1,0),
 (6141,10,10,2,0),
 (8427,6141,10,3,0),
@@ -14388,7 +14664,7 @@ INSERT INTO spell_chain VALUES
 (42198,42213,42208,7,0),
 (42937,42198,42208,8,0),
 (42938,42937,42208,9,0),
-/*ConeofCold*/
+/* ConeofCold */
 (120,0,120,1,0),
 (8492,120,120,2,0),
 (10159,8492,120,3,0),
@@ -14397,18 +14673,18 @@ INSERT INTO spell_chain VALUES
 (27087,10161,120,6,0),
 (42930,27087,120,7,0),
 (42931,42930,120,8,0),
-/*FrostArmor*/
+/* FrostArmor */
 (168,0,168,1,0),
 (7300,168,168,2,0),
 (7301,7300,168,3,0),
-/*FrostNova*/
+/* FrostNova */
 (122,0,122,1,0),
 (865,122,122,2,0),
 (6131,865,122,3,0),
 (10230,6131,122,4,0),
 (27088,10230,122,5,0),
 (42917,27088,122,6,0),
-/*FrostWard*/
+/* FrostWard */
 (6143,0,6143,1,0),
 (8461,6143,6143,2,0),
 (8462,8461,6143,3,0),
@@ -14416,7 +14692,7 @@ INSERT INTO spell_chain VALUES
 (28609,10177,6143,5,0),
 (32796,28609,6143,6,0),
 (43012,32796,6143,7,0),
-/*Frostbolt*/
+/* Frostbolt */
 (116,0,116,1,0),
 (205,116,116,2,0),
 (837,205,116,3,0),
@@ -14433,14 +14709,14 @@ INSERT INTO spell_chain VALUES
 (38697,27072,116,14,0),
 (42841,38697,116,15,0),
 (42842,42841,116,16,0),
-/*IceArmor*/
+/* IceArmor */
 (7302,0,7302,1,0),
 (7320,7302,7302,2,0),
 (10219,7320,7302,3,0),
 (10220,10219,7302,4,0),
 (27124,10220,7302,5,0),
 (43008,27124,7302,6,0),
-/*IceBarrier*/
+/* IceBarrier */
 (11426,0,11426,1,0),
 (13031,11426,11426,2,0),
 (13032,13031,11426,3,0),
@@ -14449,13 +14725,13 @@ INSERT INTO spell_chain VALUES
 (33405,27134,11426,6,0),
 (43038,33405,11426,7,0),
 (43039,43038,11426,8,0),
-/*IceLance*/
+/* IceLance */
 (30455,0,30455,1,0),
 (42913,30455,30455,2,0),
 (42914,42913,30455,3,0),
-/*------------------
---(8)Fire
-------------------*/
+-- ------------------
+-- (8)Fire
+-- ------------------
 /*Blast Wave*/
 (11113,0,11113,1,0),
 (13018,11113,11113,2,0),
@@ -14466,14 +14742,14 @@ INSERT INTO spell_chain VALUES
 (33933,27133,11113,7,0),
 (42944,33933,11113,8,0),
 (42945,42944,11113,9,0),
-/*Dragon's Breath*/
+/* Dragon's Breath */
 (31661,0,31661,1,0),
 (33041,31661,31661,2,0),
 (33042,33041,31661,3,0),
 (33043,33042,31661,4,0),
 (42949,33043,31661,5,0),
 (42950,42949,31661,6,0),
-/*Fire Blast*/
+/* Fire Blast */
 (2136,0,2136,1,0),
 (2137,2136,2136,2,0),
 (2138,2137,2136,3,0),
@@ -14485,7 +14761,7 @@ INSERT INTO spell_chain VALUES
 (27079,27078,2136,9,0),
 (42872,27079,2136,10,0),
 (42873,42872,2136,11,0),
-/*Fire Ward*/
+/* Fire Ward */
 (543,0,543,1,0),
 (8457,543,543,2,0),
 (8458,8457,543,3,0),
@@ -14493,7 +14769,7 @@ INSERT INTO spell_chain VALUES
 (10225,10223,543,5,0),
 (27128,10225,543,6,0),
 (43010,27128,543,7,0),
-/*Fireball*/
+/* Fireball */
 (133,0,133,1,0),
 (143,133,133,2,0),
 (145,143,133,3,0),
@@ -14510,10 +14786,7 @@ INSERT INTO spell_chain VALUES
 (38692,27070,133,14,0),
 (42832,38692,133,15,0),
 (42833,42832,133,16,0),
-/*Fiery Payback*/
-(64353,0,64353,1,0),
-(64357,64353,64353,2,0),
-/*Flamestrike*/
+/* Flamestrike */
 (2120,0,2120,1,0),
 (2121,2120,2120,2,0),
 (8422,2121,2120,3,0),
@@ -14523,14 +14796,14 @@ INSERT INTO spell_chain VALUES
 (27086,10216,2120,7,0),
 (42925,27086,2120,8,0),
 (42926,42925,2120,9,0),
-/*Frostfire Bolt*/
+/* Frostfire Bolt */
 (44614,0,44614,1,0),
 (47610,44614,44614,2,0),
-/*Living Bomb*/
+/* Living Bomb */
 (44457,0,44457,1,0),
 (55359,44457,44457,2,0),
 (55360,55359,44457,3,0),
-/*Molten Armor*/
+/* Molten Armor */
 (30482,0,30482,1,0),
 (43045,30482,30482,2,0),
 (43046,43045,30482,3,0),
@@ -14538,7 +14811,7 @@ INSERT INTO spell_chain VALUES
 (34913,0,34913,1,0),
 (43043,34913,34913,2,0),
 (43044,43043,34913,3,0),
-/*Pyroblast*/
+/* Pyroblast */
 (11366,0,11366,1,0),
 (12505,11366,11366,2,0),
 (12522,12505,11366,3,0),
@@ -14551,7 +14824,7 @@ INSERT INTO spell_chain VALUES
 (33938,27132,11366,10,0),
 (42890,33938,11366,11,0),
 (42891,42890,11366,12,0),
-/*Scorch*/
+/* Scorch */
 (2948,0,2948,1,0),
 (8444,2948,2948,2,0),
 (8445,8444,2948,3,0),
@@ -14563,136 +14836,13 @@ INSERT INTO spell_chain VALUES
 (27074,27073,2948,9,0),
 (42858,27074,2948,10,0),
 (42859,42858,2948,11,0),
-/*------------------
---(26)Arms
-------------------*/
-/*Charge*/
-(100,0,100,1,0),
-(6178,100,100,2,0),
-(11578,6178,100,3,0),
-/*HeroicStrike*/
-(78,0,78,1,0),
-(284,78,78,2,0),
-(285,284,78,3,0),
-(1608,285,78,4,0),
-(11564,1608,78,5,0),
-(11565,11564,78,6,0),
-(11566,11565,78,7,0),
-(11567,11566,78,8,0),
-(25286,11567,78,9,0),
-(29707,25286,78,10,0),
-(30324,29707,78,11,0),
-(47449,30324,78,12,0),
-(47450,47449,78,13,0),
-/*MortalStrike*/
-(12294,0,12294,1,0),
-(21551,12294,12294,2,0),
-(21552,21551,12294,3,0),
-(21553,21552,12294,4,0),
-(25248,21553,12294,5,0),
-(30330,25248,12294,6,0),
-(47485,30330,12294,7,0),
-(47486,47485,12294,8,0),
-/*Rend*/
-(772,0,772,1,0),
-(6546,772,772,2,0),
-(6547,6546,772,3,0),
-(6548,6547,772,4,0),
-(11572,6548,772,5,0),
-(11573,11572,772,6,0),
-(11574,11573,772,7,0),
-(25208,11574,772,8,0),
-(46845,25208,772,9,0),
-(47465,46845,772,10,0),
-/*Taste for Blood*/
-(56636,0,56636,1,0),
-(56637,56636,56636,2,0),
-(56638,56637,56636,3,0),
-/*Thunder Clap*/
-(6343,0,6343,1,0),
-(8198,6343,6343,2,0),
-(8204,8198,6343,3,0),
-(8205,8204,6343,4,0),
-(11580,8205,6343,5,0),
-(11581,11580,6343,6,0),
-(25264,11581,6343,7,0),
-(47501,25264,6343,8,0),
-(47502,47501,6343,9,0),
-/*------------------
--- (38) Combat (Rogue)
-------------------*/
-/*Backstab*/
-(53,0,53,1,0),
-(2589,53,53,2,0),
-(2590,2589,53,3,0),
-(2591,2590,53,4,0),
-(8721,2591,53,5,0),
-(11279,8721,53,6,0),
-(11280,11279,53,7,0),
-(11281,11280,53,8,0),
-(25300,11281,53,9,0),
-(26863,25300,53,10,0),
-(48656,26863,53,11,0),
-(48657,48656,53,12,0),
-/*Evasion*/
-(5277,0,5277,1,0),
-(26669,5277,5277,2,0),
-/*Feint*/
-(1966,0,1966,1,0),
-(6768,1966,1966,2,0),
-(8637,6768,1966,3,0),
-(11303,8637,1966,4,0),
-(25302,11303,1966,5,0),
-(27448,25302,1966,6,0),
-(48658,27448,1966,7,0),
-(48659,48658,1966,8,0),
-/*Sinister Strike*/
-(1752,0,1752,1,0),
-(1757,1752,1752,2,0),
-(1758,1757,1752,3,0),
-(1759,1758,1752,4,0),
-(1760,1759,1752,5,0),
-(8621,1760,1752,6,0),
-(11293,8621,1752,7,0),
-(11294,11293,1752,8,0),
-(26861,11294,1752,9,0),
-(26862,26861,1752,10,0),
-(48637,26862,1752,11,0),
-(48638,48637,1752,12,0),
-/*Sprint*/
-(2983,0,2983,1,0),
-(8696,2983,2983,2,0),
-(11305,8696,2983,3,0),
-/*------------------
---(39)Subtlety
-------------------*/
-/*Hemorrhage*/
-(16511,0,16511,1,0),
-(17347,16511,16511,2,0),
-(17348,17347,16511,3,0),
-(26864,17348,16511,4,0),
-(48660,26864,16511,5,0),
-/*Sap*/
-(6770,0,6770,1,0),
-(2070,6770,6770,2,0),
-(11297,2070,6770,3,0),
-(51724,11297,6770,4,0),
-/*Stealth*/
-(1784,0,1784,1,0),
-(1785,1784,1784,2,0),
-(1786,1785,1784,3,0),
-(1787,1786,1784,4,0),
-/*Vanish*/
-(1856,0,1856,1,0),
-(1857,1856,1856,2,0),
-(26889,1857,1856,3,0),
-/*------------------
+-- ------------------
 -- (50) Beast Mastery
-------------------*/
-/*Aspect of the Dragonhawk*/
+-- ------------------
+/* Aspect of the Dragonhawk */
 (61846,0,61846,1,0),
 (61847,61846,61846,2,0),
-/*Aspect of the Hawk*/
+/* Aspect of the Hawk */
 (13165,0,13165,1,0),
 (14318,13165,13165,2,0),
 (14319,14318,13165,3,0),
@@ -14701,12 +14851,12 @@ INSERT INTO spell_chain VALUES
 (14322,14321,13165,6,0),
 (25296,14322,13165,7,0),
 (27044,25296,13165,8,0),
-/*Aspect of the Wild*/
+/* Aspect of the Wild */
 (20043,0,20043,1,0),
 (20190,20043,20043,2,0),
 (27045,20190,20043,3,0),
 (49071,27045,20043,4,0),
-/*MendPet*/
+/* MendPet */
 (136,0,136,1,0),
 (3111,136,136,2,0),
 (3661,3111,136,3,0),
@@ -14717,13 +14867,13 @@ INSERT INTO spell_chain VALUES
 (27046,13544,136,8,0),
 (48989,27046,136,9,0),
 (48990,48989,136,10,0),
-/*Scare Beast*/
+/* Scare Beast */
 (1513,0,1513,1,0),
 (14326,1513,1513,2,0),
 (14327,14326,1513,3,0),
-/*------------------
---(51)Survival
-------------------*/
+-- ------------------
+-- (51)Survival
+-- ------------------
 /*Black Arrow*/
 (3674,0,3674,1,0),
 (63668,3674,3674,2,0),
@@ -14731,38 +14881,37 @@ INSERT INTO spell_chain VALUES
 (63670,63669,3674,4,0),
 (63671,63670,3674,5,0),
 (63672,63671,3674,6,0),
-/*Counterattack*/
+/* Counterattack */
 (19306,0,19306,1,0),
 (20909,19306,19306,2,0),
 (20910,20909,19306,3,0),
 (27067,20910,19306,4,0),
 (48998,27067,19306,5,0),
 (48999,48998,19306,6,0),
-/*Entrapment*/
-(19184,0,19184,1,0),
-(19387,19184,19184,2,0),
-(19388,19387,19184,3,0),
-/*Explosive Shot*/
+/* Explosive Shot */
 (53301,0,53301,1,0),
 (60051,53301,53301,2,0),
 (60052,60051,53301,3,0),
 (60053,60052,53301,4,0),
-/*Explosive Trap*/
+/* Explosive Trap */
 (13813,0,13813,1,0),
 (14316,13813,13813,2,0),
 (14317,14316,13813,3,0),
 (27025,14317,13813,4,0),
 (49066,27025,13813,5,0),
 (49067,49066,13813,6,0),
-/*Freezing Trap*/
+/* Explosive Trap Effect */
+(13812,0,13812,1,0),
+(14314,13812,13812,2,0),
+(14315,14314,13812,3,0),
+(27026,14315,13812,4,0),
+(49064,27026,13812,5,0),
+(49065,49064,13812,6,0),
+/* Freezing Trap */
 (1499,0,1499,1,0),
 (14310,1499,1499,2,0),
 (14311,14310,1499,3,0),
-/*Hunting Party*/
-(53290,0,53290,1,0),
-(53291,53290,53290,2,0),
-(53292,53291,53290,3,0),
-/*Immolation Trap*/
+/* Immolation Trap */
 (13795,0,13795,1,0),
 (14302,13795,13795,2,0),
 (14303,14302,13795,3,0),
@@ -14771,20 +14920,23 @@ INSERT INTO spell_chain VALUES
 (27023,14305,13795,6,0),
 (49055,27023,13795,7,0),
 (49056,49055,13795,8,0),
-/**Master Tactician*/
-(34506,0,34506,1,0),
-(34507,34506,34506,2,0),
-(34508,34507,34506,3,0),
-(34838,34508,34506,4,0),
-(34839,34838,34506,5,0),
-/*Mongoose Bite*/
+/* Immolation Trap Triggered */
+(13797,0,13797,1,0),
+(14298,13797,13797,2,0),
+(14299,14298,13797,3,0),
+(14300,14299,13797,4,0),
+(14301,14300,13797,5,0),
+(27024,14301,13797,6,0),
+(49053,27024,13797,7,0),
+(49054,49053,13797,8,0),
+/* Mongoose Bite */
 (1495,0,1495,1,0),
 (14269,1495,1495,2,0),
 (14270,14269,1495,3,0),
 (14271,14270,1495,4,0),
 (36916,14271,1495,5,0),
 (53339,36916,1495,6,0),
-/*Raptor Strike*/
+/* Raptor Strike */
 (2973,0,2973,1,0),
 (14260,2973,2973,2,0),
 (14261,14260,2973,3,0),
@@ -14796,28 +14948,25 @@ INSERT INTO spell_chain VALUES
 (27014,14266,2973,9,0),
 (48995,27014,2973,10,0),
 (48996,48995,2973,11,0),
-/*WyvernSting*/
+/* WyvernSting */
 (19386,0,19386,1,0),
 (24132,19386,19386,2,0),
 (24133,24132,19386,3,0),
 (27068,24133,19386,4,0),
 (49011,27068,19386,5,0),
 (49012,49011,19386,6,0),
-/*------------------
+-- ------------------
 -- (56) Holy (Priest)
-------------------*/
-/*Binding Heal*/
+-- ------------------
+/* Binding Heal */
 (32546,0,32546,1,0),
 (48119,32546,32546,2,0),
 (48120,48119,32546,3,0),
-/*Body and Soul*/
-(64127,0,64127,1,0),
-(64129,64127,64127,2,0),
-/*Blessed Recovery Proc*/
+/* Blessed Recovery Proc */
 (27813,0,27813,1,0),
 (27817,27813,27813,2,0),
 (27818,27817,27813,3,0),
-/*Circle of Healing*/
+/* Circle of Healing */
 (34861,0,34861,1,0),
 (34863,34861,34861,2,0),
 (34864,34863,34861,3,0),
@@ -14825,7 +14974,7 @@ INSERT INTO spell_chain VALUES
 (34866,34865,34861,5,0),
 (48088,34866,34861,6,0),
 (48089,48088,34861,7,0),
-/*Desperate Prayer*/
+/* Desperate Prayer */
 (19236,0,19236,1,0),
 (19238,19236,19236,2,0),
 (19240,19238,19236,3,0),
@@ -14835,11 +14984,7 @@ INSERT INTO spell_chain VALUES
 (25437,19243,19236,7,0),
 (48172,25437,19236,8,0),
 (48173,48172,19236,9,0),
-/*Empowered Renew*/
-(63534,0,63534,1,0),
-(63542,63534,63534,2,0),
-(63543,63542,63534,3,0),
-/*Flash Heal*/
+/* Flash Heal */
 (2061,0,2061,1,0),
 (9472,2061,2061,2,0),
 (9473,9472,2061,3,0),
@@ -14851,7 +14996,7 @@ INSERT INTO spell_chain VALUES
 (25235,25233,2061,9,0),
 (48070,25235,2061,10,0),
 (48071,48070,2061,11,0),
-/*Greater Heal*/
+/* Greater Heal */
 (2060,0,2060,1,0),
 (10963,2060,2060,2,0),
 (10964,10963,2060,3,0),
@@ -14861,12 +15006,12 @@ INSERT INTO spell_chain VALUES
 (25213,25210,2060,7,0),
 (48062,25213,2060,8,0),
 (48063,48062,2060,9,0),
-/*Heal*/
+/* Heal */
 (2054,0,2054,1,0),
 (2055,2054,2054,2,0),
 (6063,2055,2054,3,0),
 (6064,6063,2054,4,0),
-/*Holy Fire*/
+/* Holy Fire */
 (14914,0,14914,1,0),
 (15262,14914,14914,2,0),
 (15263,15262,14914,3,0),
@@ -14878,7 +15023,7 @@ INSERT INTO spell_chain VALUES
 (25384,15261,14914,9,0),
 (48134,25384,14914,10,0),
 (48135,48134,14914,11,0),
-/*Holy Nova*/
+/* Holy Nova */
 (15237,0,15237,1,0),
 (15430,15237,15237,2,0),
 (15431,15430,15237,3,0),
@@ -14896,18 +15041,18 @@ INSERT INTO spell_chain VALUES
 (27804,27803,23455,5,0),
 (27805,27804,23455,6,0),
 (25329,27805,23455,7,0),
-/*Lesser Heal*/
+/* Lesser Heal */
 (2050,0,2050,1,0),
 (2052,2050,2050,2,0),
 (2053,2052,2050,3,0),
-/*Lightwell*/
+/* Lightwell */
 (724,0,724,1,0),
 (27870,724,724,2,0),
 (27871,27870,724,3,0),
 (28275,27871,724,4,0),
 (48086,28275,724,5,0),
 (48087,48086,724,6,0),
-/*Prayer of Healing*/
+/* Prayer of Healing */
 (596,0,596,1,0),
 (996,596,596,2,0),
 (10960,996,596,3,0),
@@ -14915,11 +15060,11 @@ INSERT INTO spell_chain VALUES
 (25316,10961,596,5,0),
 (25308,25316,596,6,0),
 (48072,25308,596,7,0),
-/*Prayer of Mending*/
+/* Prayer of Mending */
 (33076,0,33076,1,0),
 (48112,33076,33076,2,0),
 (48113,48112,33076,3,0),
-/*Renew*/
+/* Renew */
 (139,0,139,1,0),
 (6074,139,139,2,0),
 (6075,6074,139,3,0),
@@ -14934,7 +15079,7 @@ INSERT INTO spell_chain VALUES
 (25222,25221,139,12,0),
 (48067,25222,139,13,0),
 (48068,48067,139,14,0),
-/*Resurrection*/
+/* Resurrection */
 (2006,0,2006,1,0),
 (2010,2006,2006,2,0),
 (10880,2010,2006,3,0),
@@ -14942,11 +15087,7 @@ INSERT INTO spell_chain VALUES
 (20770,10881,2006,5,0),
 (25435,20770,2006,6,0),
 (48171,25435,2006,7,0),
-/*Serendipity*/
-(63730,0,63730,1,0),
-(63733,63730,63730,2,0),
-(63737,63733,63730,3,0),
-/*Smite*/
+/* Smite */
 (585,0,585,1,0),
 (591,585,585,2,0),
 (598,591,585,3,0),
@@ -14959,10 +15100,10 @@ INSERT INTO spell_chain VALUES
 (25364,25363,585,10,0),
 (48122,25364,585,11,0),
 (48123,48122,585,12,0),
-/*------------------
+-- ------------------
 -- (78) Shadow Magic
-------------------*/
-/*Devouring Plague*/
+-- ------------------
+/* Devouring Plague */
 (2944,0,2944,1,0),
 (19276,2944,2944,2,0),
 (19277,19276,2944,3,0),
@@ -14972,14 +15113,7 @@ INSERT INTO spell_chain VALUES
 (25467,19280,2944,7,0),
 (48299,25467,2944,8,0),
 (48300,48299,2944,9,0),
-/*Improved Devouring Plague*/
-(63625,0,63625,1,0),
-(63626,63625,63625,2,0),
-(63627,63626,63625,3,0),
-/*Improved Shadowform*/
-(47569,0,47569,1,0),
-(47570,47569,47569,2,0),
-/*Mind Blast*/
+/* Mind Blast */
 (8092,0,8092,1,0),
 (8102,8092,8092,2,0),
 (8103,8102,8092,3,0),
@@ -14993,7 +15127,7 @@ INSERT INTO spell_chain VALUES
 (25375,25372,8092,11,0),
 (48126,25375,8092,12,0),
 (48127,48126,8092,13,0),
-/*Mind Flay*/
+/* Mind Flay */
 (15407,0,15407,1,0),
 (17311,15407,15407,2,0),
 (17312,17311,15407,3,0),
@@ -15003,36 +15137,36 @@ INSERT INTO spell_chain VALUES
 (25387,18807,15407,7,0),
 (48155,25387,15407,8,0),
 (48156,48155,15407,9,0),
-/*Mind Sear*/
+/* Mind Sear */
 (48045,0,48045,1,0),
 (53023,48045,48045,2,0),
 /* Mind Sear Trigger */
 (49821,0,49821,1,0),
 (53022,49821,49821,2,0),
-/*MindVision*/
+/* MindVision */
 (2096,0,2096,1,0),
 (10909,2096,2096,2,0),
-/*Prayer of Shadow Protection*/
+/* Prayer of Shadow Protection */
 (27683,0,27683,1,0),
 (39374,27683,27683,2,0),
 (48170,39374,27683,3,0),
-/*PsychicScream*/
+/* PsychicScream */
 (8122,0,8122,1,0),
 (8124,8122,8122,2,0),
 (10888,8124,8122,3,0),
 (10890,10888,8122,4,0),
-/*Shadow Protection*/
+/* Shadow Protection */
 (976,0,976,1,0),
 (10957,976,976,2,0),
 (10958,10957,976,3,0),
 (25433,10958,976,4,0),
 (48169,25433,976,5,0),
-/*ShadowWord:Death*/
+/* ShadowWord:Death */
 (32379,0,32379,1,0),
 (32996,32379,32379,2,0),
 (48157,32996,32379,3,0),
 (48158,48157,32379,4,0),
-/*ShadowWord:Pain*/
+/* ShadowWord:Pain */
 (589,0,589,1,0),
 (594,589,589,2,0),
 (970,594,589,3,0),
@@ -15045,169 +15179,16 @@ INSERT INTO spell_chain VALUES
 (25368,25367,589,10,0),
 (48124,25368,589,11,0),
 (48125,48124,589,12,0),
-/*Vampiric Touch*/
+/* Vampiric Touch */
 (34914,0,34914,1,0),
 (34916,34914,34914,2,0),
 (34917,34916,34914,3,0),
 (48159,34917,34914,4,0),
 (48160,48159,34914,5,0),
-/*------------------
--- (129) First Aid
-------------------*/
-/*First Aid*/
-(3273,0,3273,1,0),
-(3274,3273,3273,2,0),
-(7924,3274,3273,3,0),
-(10846,7924,3273,4,0),
-(27028,10846,3273,5,0),
-(45542,27028,3273,6,0),
-/*------------------
--- (134) Feral Combat (Druid)
-------------------*/
-/*Bash*/
-(5211,0,5211,1,0),
-(6798,5211,5211,2,0),
-(8983,6798,5211,3,0),
-/*Bear Form*/
-(5487,0,5487,1,0),
-(9634,5487,5487,2,0),
-/*Claw*/
-(1082,0,1082,1,0),
-(3029,1082,1082,2,0),
-(5201,3029,1082,3,0),
-(9849,5201,1082,4,0),
-(9850,9849,1082,5,0),
-(27000,9850,1082,6,0),
-(48569,27000,1082,7,0),
-(48570,48569,1082,8,0),
-/*Cower*/
-(8998,0,8998,1,0),
-(9000,8998,8998,2,0),
-(9892,9000,8998,3,0),
-(31709,9892,8998,4,0),
-(27004,31709,8998,5,0),
-(48575,27004,8998,6,0),
-/*Dash*/
-(1850,0,1850,1,0),
-(9821,1850,1850,2,0),
-(33357,9821,1850,3,0),
-/*Demoralizing Roar*/
-(99,0,99,1,0),
-(1735,99,99,2,0),
-(9490,1735,99,3,0),
-(9747,9490,99,4,0),
-(9898,9747,99,5,0),
-(26998,9898,99,6,0),
-(48559,26998,99,7,0),
-(48560,48559,99,8,0),
-/*Ferocious Bite*/
-(22568,0,22568,1,0),
-(22827,22568,22568,2,0),
-(22828,22827,22568,3,0),
-(22829,22828,22568,4,0),
-(31018,22829,22568,5,0),
-(24248,31018,22568,6,0),
-(48576,24248,22568,7,0),
-(48577,48576,22568,8,0),
-/*Flight Form*/
-(33943,0,33943,1,0),
-(40120,33943,33943,2,0),
-/*Lacerate*/
-(33745,0,33745,1,0),
-(48567,33745,33745,2,0),
-(48568,48567,33745,3,0),
-/*Maim*/
-(22570,0,22570,1,0),
-(49802,22570,22570,2,0),
-/*Mangle-Bear*/
-(33878,0,33878,1,0),
-(33986,33878,33878,2,0),
-(33987,33986,33878,3,0),
-(48563,33987,33878,4,0),
-(48564,48563,33878,5,0),
-/*Mangle-Cat*/
-(33876,0,33876,1,0),
-(33982,33876,33876,2,0),
-(33983,33982,33876,3,0),
-(48565,33983,33876,4,0),
-(48566,48565,33876,5,0),
-/*Maul*/
-(6807,0,6807,1,0),
-(6808,6807,6807,2,0),
-(6809,6808,6807,3,0),
-(8972,6809,6807,4,0),
-(9745,8972,6807,5,0),
-(9880,9745,6807,6,0),
-(9881,9880,6807,7,0),
-(26996,9881,6807,8,0),
-(48479,26996,6807,9,0),
-(48480,48479,6807,10,0),
-/*Pounce*/
-(9005,0,9005,1,0),
-(9823,9005,9005,2,0),
-(9827,9823,9005,3,0),
-(27006,9827,9005,4,0),
-(49803,27006,9005,5,0),
-/*Prowl*/
-(5215,0,5215,1,0),
-(6783,5215,5215,2,0),
-(9913,6783,5215,3,0),
-/*Rake*/
-(1822,0,1822,1,0),
-(1823,1822,1822,2,0),
-(1824,1823,1822,3,0),
-(9904,1824,1822,4,0),
-(27003,9904,1822,5,0),
-(48573,27003,1822,6,0),
-(48574,48573,1822,7,0),
-/*Ravage*/
-(6785,0,6785,1,0),
-(6787,6785,6785,2,0),
-(9866,6787,6785,3,0),
-(9867,9866,6785,4,0),
-(27005,9867,6785,5,0),
-(48578,27005,6785,6,0),
-(48579,48578,6785,7,0),
-/*Rip*/
-(1079,0,1079,1,0),
-(9492,1079,1079,2,0),
-(9493,9492,1079,3,0),
-(9752,9493,1079,4,0),
-(9894,9752,1079,5,0),
-(9896,9894,1079,6,0),
-(27008,9896,1079,7,0),
-(49799,27008,1079,8,0),
-(49800,49799,1079,9,0),
-/*Shred*/
-(5221,0,5221,1,0),
-(6800,5221,5221,2,0),
-(8992,6800,5221,3,0),
-(9829,8992,5221,4,0),
-(9830,9829,5221,5,0),
-(27001,9830,5221,6,0),
-(27002,27001,5221,7,0),
-(48571,27002,5221,8,0),
-(48572,48571,5221,9,0),
-/*Swipe*/
-(779,0,779,1,0),
-(780,779,779,2,0),
-(769,780,779,3,0),
-(9754,769,779,4,0),
-(9908,9754,779,5,0),
-(26997,9908,779,6,0),
-(48561,26997,779,7,0),
-(48562,48561,779,8,0),
-/*Tiger's Fury*/
-(5217,0,5217,1,0),
-(6793,5217,5217,2,0),
-(9845,6793,5217,3,0),
-(9846,9845,5217,4,0),
-(50212,9846,5217,5,0),
-(50213,50212,5217,6,0),
-/*------------------
---(163)Marksmanship
-------------------*/
-/*Aimed Shot*/
+-- ------------------
+-- (163)Marksmanship
+-- ------------------
+/* Aimed Shot */
 (19434,0,19434,1,0),
 (20900,19434,19434,2,0),
 (20901,20900,19434,3,0),
@@ -15217,7 +15198,7 @@ INSERT INTO spell_chain VALUES
 (27065,20904,19434,7,0),
 (49049,27065,19434,8,0),
 (49050,49049,19434,9,0),
-/*Arcane Shot*/
+/* Arcane Shot */
 (3044,0,3044,1,0),
 (14281,3044,3044,2,0),
 (14282,14281,3044,3,0),
@@ -15229,20 +15210,17 @@ INSERT INTO spell_chain VALUES
 (27019,14287,3044,9,0),
 (49044,27019,3044,10,0),
 (49045,49044,3044,11,0),
-/*Concussive Barrage*/
-(35100,0,35100,1,0),
-(35102,35100,35100,2,0),
-/*Hunter's Mark*/
+/* Hunter's Mark */
 (1130,0,1130,1,0),
 (14323,1130,1130,2,0),
 (14324,14323,1130,3,0),
 (14325,14324,1130,4,0),
 (53338,14325,1130,5,0),
-/*Kill Shot*/
+/* Kill Shot */
 (53351,0,53351,1,0),
 (61005,53351,53351,2,0),
 (61006,61005,53351,3,0),
-/*Multi-Shot*/
+/* Multi-Shot */
 (2643,0,2643,1,0),
 (14288,2643,2643,2,0),
 (14289,14288,2643,3,0),
@@ -15251,7 +15229,7 @@ INSERT INTO spell_chain VALUES
 (27021,25294,2643,6,0),
 (49047,27021,2643,7,0),
 (49048,49047,2643,8,0),
-/*SerpentSting*/
+/* SerpentSting */
 (1978,0,1978,1,0),
 (13549,1978,1978,2,0),
 (13550,13549,1978,3,0),
@@ -15264,80 +15242,52 @@ INSERT INTO spell_chain VALUES
 (27016,25295,1978,10,0),
 (49000,27016,1978,11,0),
 (49001,49000,1978,12,0),
-/*SteadyShot*/
+/* SteadyShot */
 (56641,0,56641,1,0),
 (34120,56641,56641,2,0),
 (49051,34120,56641,3,0),
 (49052,49051,56641,4,0),
-/*Volley*/
+/* Volley */
 (1510,0,1510,1,0),
 (14294,1510,1510,2,0),
 (14295,14294,1510,3,0),
 (27022,14295,1510,4,0),
 (58431,27022,1510,5,0),
 (58434,58431,1510,6,0),
-/*------------------
+/* Volley Triggered */
+(42243,0,42243,1,0),
+(42244,42243,42243,2,0),
+(42245,42244,42243,3,0),
+(42234,42245,42243,4,0),
+(58432,42234,42243,5,0),
+(58433,58432,42243,6,0),
+-- ------------------
 -- (164) Blacksmithing
-------------------*/
-/*Blacksmithing*/
-(2018,0,2018,1,0),
-(3100,2018,2018,2,0),
-(3538,3100,2018,3,0),
-(9785,3538,2018,4,0),
+-- ------------------
+/* Blacksmithing */
 (9787,9785,2018,5,0),
 (9788,9785,2018,5,0),
-(29844,9785,2018,5,0),
 (17039,9787,2018,6,0),
 (17040,9787,2018,6,0),
 (17041,9787,2018,6,0),
-(51300,29844,2018,6,0),
-/*------------------
+-- ------------------
 -- (165) Leatherworking
-------------------*/
-/*Leatherworking*/
-(2108,0,2108,1,0),
-(3104,2108,2108,2,0),
-(3811,3104,2108,3,0),
-(10662,3811,2108,4,0),
+-- ------------------
+/* Leatherworking */
 (10656,10662,2108,5,0),
 (10658,10662,2108,5,0),
 (10660,10662,2108,5,0),
-(32549,10662,2108,5,0),
-(51302,32549,2108,6,0),
-/*------------------
+-- ------------------
 -- (171) Alchemy
-------------------*/
+-- ------------------
 /* Alchemy */
-(2259,0,2259,1,0),
-(3101,2259,2259,2,0),
-(3464,3101,2259,3,0),
-(11611,3464,2259,4,0),
-(28596,11611,2259,5,0),
 (28672,11611,2259,5,0),
 (28675,11611,2259,5,0),
 (28677,11611,2259,5,0),
-(51304,28596,2259,6,0),
-/*------------------
--- (182) Herbalizm
-------------------*/
-/*Herb Gathering*/
-(2366,0,2366,1,0),
-(2368,2366,2366,2,0),
-(3570,2368,2366,3,0),
-(11993,3570,2366,4,0),
-(28695,11993,2366,5,0),
-(50300,28695,2366,6,0),
-/*Lifeblood*/
-(55428,0,55428,1,0),
-(55480,55428,55428,2,0),
-(55500,55480,55428,3,0),
-(55501,55500,55428,4,0),
-(55502,55501,55428,5,0),
-(55503,55502,55428,6,0),
-/*------------------
+-- ------------------
 -- (184) Retribution (Paladin)
-------------------*/
-/*Blessingof Might*/
+-- ------------------
+/* Blessingof Might */
 (19740,0,19740,1,0),
 (19834,19740,19740,2,0),
 (19835,19834,19740,3,0),
@@ -15348,348 +15298,36 @@ INSERT INTO spell_chain VALUES
 (27140,25291,19740,8,0),
 (48931,27140,19740,9,0),
 (48932,48931,19740,10,0),
-/*Greater Blessing of Might*/
+/* Greater Blessing of Might */
 (25782,0,25782,1,19838),
 (25916,25782,25782,2,25291),
 (27141,25916,25782,3,27140),
 (48933,27141,25782,4,48931),
 (48934,48933,25782,5,48932),
-/*Hammer of Wrath*/
+/* Hammer of Wrath */
 (24275,0,24275,1,0),
 (24274,24275,24275,2,0),
 (24239,24274,24275,3,0),
 (27180,24239,24275,4,0),
 (48805,27180,24275,5,0),
 (48806,48805,24275,6,0),
-/*Heart of the Crusader*/
-(20335, 0, 20335, 1, 0),
-(20336, 20335, 20335, 2, 0),
-(20337, 20336, 20335, 3, 0),
-/*Retribution Aura*/
-(7294,0,7294,1,0),
-(10298,7294,7294,2,0),
-(10299,10298,7294,3,0),
-(10300,10299,7294,4,0),
-(10301,10300,7294,5,0),
-(27150,10301,7294,6,0),
-(54043,27150,7294,7,0),
-/*Righteous Vengeance*/
-(53380,0,53380,1,0),
-(53381,53380,53380,2,0),
-(53382,53381,53380,3,0),
-/*The Art of War*/
-(53486,0,53486,1,0),
-(53488,53486,53486,2,0),
-/*------------------
--- (185) Cooking
-------------------*/
-/*Cooking*/
-(2550,0,2550,1,0),
-(3102,2550,2550,2,0),
-(3413,3102,2550,3,0),
-(18260,3413,2550,4,0),
-(33359,18260,2550,5,0),
-(51296,33359,2550,6,0),
-/*------------------
--- (186) Mining
-------------------*/
-/*Mining*/
-(2575,0,2575,1,0),
-(2576,2575,2575,2,0),
-(3564,2576,2575,3,0),
-(10248,3564,2575,4,0),
-(29354,10248,2575,5,0),
-(50310,29354,2575,6,0),
-/*Toughness*/
-(53120,0,53120,1,0),
-(53121,53120,53120,2,0),
-(53122,53121,53120,3,0),
-(53123,53122,53120,4,0),
-(53124,53123,53120,5,0),
-(53040,53124,53120,6,0),
-/*------------------
--- (188) Pet - Imp
-------------------*/
-/*Blood Pact*/
-(6307,0,6307,1,0),
-(7804,6307,6307,2,0),
-(7805,7804,6307,3,0),
-(11766,7805,6307,4,0),
-(11767,11766,6307,5,0),
-(27268,11767,6307,6,0),
-(47982,27268,6307,7,0),
-/*FireShield*/
-(2947,0,2947,1,0),
-(8316,2947,2947,2,0),
-(8317,8316,2947,3,0),
-(11770,8317,2947,4,0),
-(11771,11770,2947,5,0),
-(27269,11771,2947,6,0),
-(47983,27269,2947,7,0),
-/*Firebolt*/
-(3110,0,3110,1,0),
-(7799,3110,3110,2,0),
-(7800,7799,3110,3,0),
-(7801,7800,3110,4,0),
-(7802,7801,3110,5,0),
-(11762,7802,3110,6,0),
-(11763,11762,3110,7,0),
-(27267,11763,3110,8,0),
-(47964,27267,3110,9,0),
-/*------------------
---(189)Pet-Felhunter
-------------------*/
-/*Devour Magic*/
-(19505,0,19505,1,0),
-(19731,19505,19505,2,0),
-(19734,19731,19505,3,0),
-(19736,19734,19505,4,0),
-(27276,19736,19505,5,0),
-(27277,27276,19505,6,0),
-(48011,27277,19505,7,0),
-/*Fel Intelligence*/
-(54424,0,54424,1,0),
-(57564,54424,54424,2,0),
-(57565,57564,54424,3,0),
-(57566,57565,54424,4,0),
-(57567,57566,54424,5,0),
-/*Shadow Bite*/
-(54049,0,54049,1,0),
-(54050,54049,54049,2,0),
-(54051,54050,54049,3,0),
-(54052,54051,54049,4,0),
-(54053,54052,54049,5,0),
-/*Spell Lock*/
-(19244,0,19244,1,0),
-(19647,19244,19244,2,0),
-/*------------------
+-- ------------------
 -- (197) Tailoring
-------------------*/
-/*Tailoring*/
-(3908,0,3908,1,0),
-(3909,3908,3908,2,0),
-(3910,3909,3908,3,0),
-(12180,3910,3908,4,0),
-(26790,12180,3908,5,0),
+-- ------------------
+/* Tailoring */
 (26797,12180,3908,5,0),
 (26798,12180,3908,5,0),
 (26801,12180,3908,5,0),
-(51309,26790,3908,6,0),
-/*------------------
+-- ------------------
 -- (202) Engineering
-------------------*/
-/*Engineering*/
-(4036,0,4036,1,0),
-(4037,4036,4036,2,0),
-(4038,4037,4036,3,0),
-(12656,4038,4036,4,0),
+-- ------------------
+/* Engineering */
 (20219,12656,4036,5,0),
 (20222,12656,4036,5,0),
-(30350,12656,4036,5,0),
-(51306,30350,4036,6,0),
-/*------------------
---(203)Pet-Spider
---(208)Pet-Wolf
---(212)Pet-Crocolisk
---(251)Pet-Turtle
---(653)Pet-Bat
---(766)Pet-WarpStalker
---(767)Pet-Ravager
-------------------*/
-/*Bite*/
-(17253,0,17253,1,0),
-(17255,17253,17253,2,0),
-(17256,17255,17253,3,0),
-(17257,17256,17253,4,0),
-(17258,17257,17253,5,0),
-(17259,17258,17253,6,0),
-(17260,17259,17253,7,0),
-(17261,17260,17253,8,0),
-(27050,17261,17253,9,0),
-(52473,27050,17253,10,0),
-(52474,52473,17253,11,0),
-/*------------------
--- (204) Pet - Voidwalker
-------------------*/
-/*Consume Shadows*/
-(17767,0,17767,1,0),
-(17850,17767,17767,2,0),
-(17851,17850,17767,3,0),
-(17852,17851,17767,4,0),
-(17853,17852,17767,5,0),
-(17854,17853,17767,6,0),
-(27272,17854,17767,7,0),
-(47987,27272,17767,8,0),
-(47988,47987,17767,9,0),
-/*Sacrifice*/
-(7812,0,7812,1,0),
-(19438,7812,7812,2,0),
-(19440,19438,7812,3,0),
-(19441,19440,7812,4,0),
-(19442,19441,7812,5,0),
-(19443,19442,7812,6,0),
-(27273,19443,7812,7,0),
-(47985,27273,7812,8,0),
-(47986,47985,7812,9,0),
-/*Suffering*/
-(17735,0,17735,1,0),
-(17750,17735,17735,2,0),
-(17751,17750,17735,3,0),
-(17752,17751,17735,4,0),
-(27271,17752,17735,5,0),
-(33701,27271,17735,6,0),
-(47989,33701,17735,7,0),
-(47990,47989,17735,8,0),
-/*Torment*/
-(3716,0,3716,1,0),
-(7809,3716,3716,2,0),
-(7810,7809,3716,3,0),
-(7811,7810,3716,4,0),
-(11774,7811,3716,5,0),
-(11775,11774,3716,6,0),
-(27270,11775,3716,7,0),
-(47984,27270,3716,8,0),
-/*------------------
---(205)Pet-Succubus
-------------------*/
-/*LashofPain*/
-(7814,0,7814,1,0),
-(7815,7814,7814,2,0),
-(7816,7815,7814,3,0),
-(11778,7816,7814,4,0),
-(11779,11778,7814,5,0),
-(11780,11779,7814,6,0),
-(27274,11780,7814,7,0),
-(47991,27274,7814,8,0),
-(47992,47991,7814,9,0),
-/*SoothingKiss*/
-(6360,0,6360,1,0),
-(7813,6360,6360,2,0),
-(11784,7813,6360,3,0),
-(11785,11784,6360,4,0),
-(27275,11785,6360,5,0),
-/*------------------
--- (208) Pet - Wolf
-------------------*/
-/* Furious Howl */
-(24604,0,24604,1,0),
-(64491,24604,24604,2,0),
-(64492,64491,24604,3,0),
-(64493,64492,24604,4,0),
-(64494,64493,24604,5,0),
-(64495,64494,24604,6,0),
-/*------------------
--- (209) Pet - Cat
-------------------*/
-/*Prowl*/
-(24450,0,24450,1,0),
-(24452,24450,24450,2,0),
-(24453,24452,24450,3,0),
-/*Rake*/
-(59881,0,59881,1,0),
-(59882,59881,59881,2,0),
-(59883,59882,59881,3,0),
-(59884,59883,59881,4,0),
-(59885,59884,59881,5,0),
-(59886,59885,59881,6,0),
-/*------------------
---(210)Pet-Bear
-------------------*/
-/*Swipe*/
-(50256,0,50256,1,0),
-(53526,50256,50256,2,0),
-(53528,53526,50256,3,0),
-(53529,53528,50256,4,0),
-(53532,53529,50256,5,0),
-(53533,53532,50256,6,0),
-/*------------------
---(211)Pet-Boar
-------------------*/
-/*Gore*/
-(35290,0,35290,1,0),
-(35291,35290,35290,2,0),
-(35292,35291,35290,3,0),
-(35293,35292,35290,4,0),
-(35294,35293,35290,5,0),
-(35295,35294,35290,6,0),
-/*------------------
---(213)Pet-CarrionBird
-------------------*/
-/*DemoralizingScreech*/
-(24423,0,24423,1,0),
-(24577,24423,24423,2,0),
-(24578,24577,24423,3,0),
-(24579,24578,24423,4,0),
-(27051,24579,24423,5,0),
-(55487,27051,24423,6,0),
-/*------------------
---(214)Pet - Crab
-------------------*/
-/* Sonic Blast */
-(50245,0,50245,1,0),
-(53544,50245,50245,2,0),
-(53545,53544,50245,3,0),
-(53546,53545,50245,4,0),
-(53547,53546,50245,5,0),
-(53548,53547,50245,6,0),
-/*------------------
---(215)Pet-Gorilla
---(786)Pet-ExoticRhino
---(775)Pet-Moth
-------------------*/
-/*Smack*/
-(49966,0,49966,1,0),
-(49967,49966,49966,2,0),
-(49968,49967,49966,3,0),
-(49969,49968,49966,4,0),
-(49970,49969,49966,5,0),
-(49971,49970,49966,6,0),
-(49972,49971,49966,7,0),
-(49973,49972,49966,8,0),
-(49974,49973,49966,9,0),
-(52475,49974,49966,10,0),
-(52476,52475,49966,11,0),
-/*------------------
---(217)Pet-Raptor
-------------------*/
-/*SavageRend*/
-(50498,0,50498,1,0),
-(53578,50498,50498,2,0),
-(53579,53578,50498,3,0),
-(53580,53579,50498,4,0),
-(53581,53580,50498,5,0),
-(53582,53581,50498,6,0),
-/*------------------
---(214)Pet-Crab
---(218)Pet-Tallstrider
---(783)Pet-ExoticSilithid
-------------------*/
-/*Claw*/
-(16827,0,16827,1,0),
-(16828,16827,16827,2,0),
-(16829,16828,16827,3,0),
-(16830,16829,16827,4,0),
-(16831,16830,16827,5,0),
-(16832,16831,16827,6,0),
-(3010,16832,16827,7,0),
-(3009,3010,16827,8,0),
-(27049,3009,16827,9,0),
-(52471,27049,16827,10,0),
-(52472,52471,16827,11,0),
-/*------------------
---(236)Pet-Scorpid
-------------------*/
-/*Scorpid Poison*/
-(24640,0,24640,1,0),
-(24583,24640,24640,2,0),
-(24586,24583,24640,3,0),
-(24587,24586,24640,4,0),
-(27060,24587,24640,5,0),
-(55728,27060,24640,6,0),
-/*------------------
---(237)Arcane
-------------------*/
-/*Amplify Magic*/
+-- ------------------
+-- (237)Arcane
+-- ------------------
+/* Amplify Magic */
 (1008,0,1008,1,0),
 (8455,1008,1008,2,0),
 (10169,8455,1008,3,0),
@@ -15697,20 +15335,20 @@ INSERT INTO spell_chain VALUES
 (27130,10170,1008,5,0),
 (33946,27130,1008,6,0),
 (43017,33946,1008,7,0),
-/*Arcane Barrage*/
+/* Arcane Barrage */
 (44425,0,44425,1,0),
 (44780,44425,44425,2,0),
 (44781,44780,44425,3,0),
-/*Arcane Blast*/
+/* Arcane Blast */
 (30451,0,30451,1,0),
 (42894,30451,30451,2,0),
 (42896,42894,30451,3,0),
 (42897,42896,30451,4,0),
-/*Arcane Brilliance*/
+/* Arcane Brilliance */
 (23028,0,23028,1,0),
 (27127,23028,23028,2,0),
 (43002,27127,23028,3,0),
-/*Arcane Explosion*/
+/* Arcane Explosion */
 (1449,0,1449,1,0),
 (8437,1449,1449,2,0),
 (8438,8437,1449,3,0),
@@ -15721,7 +15359,7 @@ INSERT INTO spell_chain VALUES
 (27082,27080,1449,8,0),
 (42920,27082,1449,9,0),
 (42921,42920,1449,10,0),
-/*Arcane Intellect*/
+/* Arcane Intellect */
 (1459,0,1459,1,0),
 (1460,1459,1459,2,0),
 (1461,1460,1459,3,0),
@@ -15729,7 +15367,7 @@ INSERT INTO spell_chain VALUES
 (10157,10156,1459,5,0),
 (27126,10157,1459,6,0),
 (42995,27126,1459,7,0),
-/*Arcane Missiles*/
+/* Arcane Missiles */
 (5143,0,5143,1,0),
 (5144,5143,5143,2,0),
 (5145,5144,5143,3,0),
@@ -15757,7 +15395,7 @@ INSERT INTO spell_chain VALUES
 (38703,38700,7268,11,0),
 (42844,38703,7268,12,0),
 (42845,42844,7268,13,0),
-/*Conjure Food*/
+/* Conjure Food */
 (587,0,587,1,0),
 (597,587,587,2,0),
 (990,597,587,3,0),
@@ -15766,17 +15404,17 @@ INSERT INTO spell_chain VALUES
 (10145,10144,587,6,0),
 (28612,10145,587,7,0),
 (33717,28612,587,8,0),
-/*Conjure Mana Gem*/
+/* Conjure Mana Gem */
 (759,0,759,1,0),
 (3552,759,759,2,0),
 (10053,3552,759,3,0),
 (10054,10053,759,4,0),
 (27101,10054,759,5,0),
 (42985,27101,759,6,0),
-/*ConjureRefreshment*/
+/* ConjureRefreshment */
 (42955,0,42955,1,0),
 (42956,42955,42955,2,0),
-/*ConjureWater*/
+/* ConjureWater */
 (5504,0,5504,1,0),
 (5505,5504,5504,2,0),
 (5506,5505,5504,3,0),
@@ -15786,7 +15424,11 @@ INSERT INTO spell_chain VALUES
 (10140,10139,5504,7,0),
 (37420,10140,5504,8,0),
 (27090,37420,5504,9,0),
-/*DampenMagic*/
+/* Dalaran Intellect */
+(61024,0,61024,1,27126),
+/* Dalaran Brilliance */
+(61316,0,61316,1,27127),
+/* DampenMagic */
 (604,0,604,1,0),
 (8450,604,604,2,0),
 (8451,8450,604,3,0),
@@ -15794,14 +15436,14 @@ INSERT INTO spell_chain VALUES
 (10174,10173,604,5,0),
 (33944,10174,604,6,0),
 (43015,33944,604,7,0),
-/*MageArmor*/
+/* MageArmor */
 (6117,0,6117,1,0),
 (22782,6117,6117,2,0),
 (22783,22782,6117,3,0),
 (27125,22783,6117,4,0),
 (43023,27125,6117,5,0),
 (43024,43023,6117,6,0),
-/*ManaShield*/
+/* ManaShield */
 (1463,0,1463,1,0),
 (8494,1463,1463,2,0),
 (8495,8494,1463,3,0),
@@ -15811,307 +15453,55 @@ INSERT INTO spell_chain VALUES
 (27131,10193,1463,7,0),
 (43019,27131,1463,8,0),
 (43020,43019,1463,9,0),
-/*Polymorph*/
+/* Polymorph */
 (118,0,118,1,0),
 (12824,118,118,2,0),
 (12825,12824,118,3,0),
 (12826,12825,118,4,0),
-/*RitualofRefreshment*/
+/* RitualofRefreshment */
 (43987,0,43987,1,0),
 (58659,43987,43987,2,0),
-/*------------------
---(253)Assassination
-------------------*/
-/*Ambush*/
-(8676,0,8676,1,0),
-(8724,8676,8676,2,0),
-(8725,8724,8676,3,0),
-(11267,8725,8676,4,0),
-(11268,11267,8676,5,0),
-(11269,11268,8676,6,0),
-(27441,11269,8676,7,0),
-(48689,27441,8676,8,0),
-(48690,48689,8676,9,0),
-(48691,48690,8676,10,0),
-/*DeadlyThrow*/
-(26679,0,26679,1,0),
-(48673,26679,26679,2,0),
-(48674,48673,26679,3,0),
-/*Envenom*/
-(32645,0,32645,1,0),
-(32684,32645,32645,2,0),
-(57992,32684,32645,3,0),
-(57993,57992,32645,4,0),
-/*Eviscerate*/
-(2098,0,2098,1,0),
-(6760,2098,2098,2,0),
-(6761,6760,2098,3,0),
-(6762,6761,2098,4,0),
-(8623,6762,2098,5,0),
-(8624,8623,2098,6,0),
-(11299,8624,2098,7,0),
-(11300,11299,2098,8,0),
-(31016,11300,2098,9,0),
-(26865,31016,2098,10,0),
-(48667,26865,2098,11,0),
-(48668,48667,2098,12,0),
-/*ExposeArmor*/
-(8647,0,8647,1,0),
-(8649,8647,8647,2,0),
-(8650,8649,8647,3,0),
-(11197,8650,8647,4,0),
-(11198,11197,8647,5,0),
-(26866,11198,8647,6,0),
-(48669,26866,8647,7,0),
-/*Garrote*/
-(703,0,703,1,0),
-(8631,703,703,2,0),
-(8632,8631,703,3,0),
-(8633,8632,703,4,0),
-(11289,8633,703,5,0),
-(11290,11289,703,6,0),
-(26839,11290,703,7,0),
-(26884,26839,703,8,0),
-(48675,26884,703,9,0),
-(48676,48675,703,10,0),
-/*KidneyShot*/
-(408,0,408,1,0),
-(8643,408,408,2,0),
-/*Mutilate*/
-(1329,0,1329,1,0),
-(34411,1329,1329,2,0),
-(34412,34411,1329,3,0),
-(34413,34412,1329,4,0),
-(48663,34413,1329,5,0),
-(48666,48663,1329,6,0),
-/*Quick Recovery*/
-(31244,0,31244,1,0),
-(31245,31244,31244,2,0),
-/*Rupture*/
-(1943,0,1943,1,0),
-(8639,1943,1943,2,0),
-(8640,8639,1943,3,0),
-(11273,8640,1943,4,0),
-(11274,11273,1943,5,0),
-(11275,11274,1943,6,0),
-(26867,11275,1943,7,0),
-(48671,26867,1943,8,0),
-(48672,48671,1943,9,0),
-/*SliceandDice*/
-(5171,0,5171,1,0),
-(6774,5171,5171,2,0),
-/*------------------
---(256)Fury
-------------------*/
-/*BattleShout*/
-(6673,0,6673,1,0),
-(5242,6673,6673,2,0),
-(6192,5242,6673,3,0),
-(11549,6192,6673,4,0),
-(11550,11549,6673,5,0),
-(11551,11550,6673,6,0),
-(25289,11551,6673,7,0),
-(2048,25289,6673,8,0),
-(47436,2048,6673,9,0),
-/*Bloodsurge*/
-(46913,0,46913,1,0),
-(46914,46913,46913,2,0),
-(46915,46914,46913,3,0),
-/*Cleave*/
-(845,0,845,1,0),
-(7369,845,845,2,0),
-(11608,7369,845,3,0),
-(11609,11608,845,4,0),
-(20569,11609,845,5,0),
-(25231,20569,845,6,0),
-(47519,25231,845,7,0),
-(47520,47519,845,8,0),
-/*CommandingShout*/
-(469,0,469,1,0),
-(47439,469,469,2,0),
-(47440,47439,469,3,0),
-/*DemoralizingShout*/
-(1160,0,1160,1,0),
-(6190,1160,1160,2,0),
-(11554,6190,1160,3,0),
-(11555,11554,1160,4,0),
-(11556,11555,1160,5,0),
-(25202,11556,1160,6,0),
-(25203,25202,1160,7,0),
-(47437,25203,1160,8,0),
-/*Execute*/
-(5308,0,5308,1,0),
-(20658,5308,5308,2,0),
-(20660,20658,5308,3,0),
-(20661,20660,5308,4,0),
-(20662,20661,5308,5,0),
-(25234,20662,5308,6,0),
-(25236,25234,5308,7,0),
-(47470,25236,5308,8,0),
-(47471,47470,5308,9,0),
-/*Slam*/
-(1464,0,1464,1,0),
-(8820,1464,1464,2,0),
-(11604,8820,1464,3,0),
-(11605,11604,1464,4,0),
-(25241,11605,1464,5,0),
-(25242,25241,1464,6,0),
-(47474,25242,1464,7,0),
-(47475,47474,1464,8,0),
-/*------------------
---(257) Protection (Warrior)
-------------------*/
-/*Devastate*/
-(20243,0,20243,1,0),
-(30016,20243,20243,2,0),
-(30022,30016,20243,3,0),
-(47497,30022,20243,4,0),
-(47498,47497,20243,5,0),
-/*Revenge*/
-(6572,0,6572,1,0),
-(6574,6572,6572,2,0),
-(7379,6574,6572,3,0),
-(11600,7379,6572,4,0),
-(11601,11600,6572,5,0),
-(25288,11601,6572,6,0),
-(25269,25288,6572,7,0),
-(30357,25269,6572,8,0),
-(57823,30357,6572,9,0),
-/*ShieldSlam*/
-(23922,0,23922,1,0),
-(23923,23922,23922,2,0),
-(23924,23923,23922,3,0),
-(23925,23924,23922,4,0),
-(25258,23925,23922,5,0),
-(30356,25258,23922,6,0),
-(47487,30356,23922,7,0),
-(47488,47487,23922,8,0),
-/*------------------
+-- ------------------
 -- (267) Protection (Paladin)
-------------------*/
-/*Avenger'sShield*/
+-- ------------------
+/* Avenger'sShield */
 (31935,0,31935,1,0),
 (32699,31935,31935,2,0),
 (32700,32699,31935,3,0),
 (48826,32700,31935,4,0),
 (48827,48826,31935,5,0),
-/*Divine Guardian*/
-(53527,0,53527,1,0),
-(53530,53527,53527,2, 0),
-/*Divinity*/
-(63646,0,63646,1,0),
-(63647,63646,63646,2,0),
-(63648,63647,63646,3,0),
-(63649,63648,63646,4,0),
-(63650,63649,63646,5,0),
-/*Devotion Aura*/
-(465,0,465,1,0),
-(10290,465,465,2,0),
-(643,10290,465,3,0),
-(10291,643,465,4,0),
-(1032,10291,465,5,0),
-(10292,1032,465,6,0),
-(10293,10292,465,7,0),
-(27149,10293,465,8,0),
-(48941,27149,465,9,0),
-(48942,48941,465,10,0),
-/*Fire Resistance Aura*/
-(19891,0,19891,1,0),
-(19899,19891,19891,2,0),
-(19900,19899,19891,3,0),
-(27153,19900,19891,4,0),
-(48947,27153,19891,5,0),
-/*Frost Resistance Aura*/
-(19888,0,19888,1,0),
-(19897,19888,19888,2,0),
-(19898,19897,19888,3,0),
-(27152,19898,19888,4,0),
-(48945,27152,19888,5,0),
-/*Greater Blessing of Kings*/
+/* Greater Blessing of Kings */
 (20217,0,20217,1,0),
 (25898,20217,20217,2,0),
-/*Greater Blessing of Sanctuary*/
+/* Greater Blessing of Sanctuary */
 (20911,0,20911,1,0),
 (25899,20911,20911,2,0),
-/*HammerofJustice*/
+/* HammerofJustice */
 (853,0,853,1,0),
 (5588,853,853,2,0),
 (5589,5588,853,3,0),
 (10308,5589,853,4,0),
-/*HandofProtection*/
+/* HandofProtection */
 (1022,0,1022,1,0),
 (5599,1022,1022,2,0),
 (10278,5599,1022,3,0),
-/*Holy Shield*/
+/* Holy Shield */
 (20925,0,20925,1,0),
 (20927,20925,20925,2,0),
 (20928,20927,20925,3,0),
 (27179,20928,20925,4,0),
 (48951,27179,20925,5,0),
 (48952,48951,20925,6,0),
-/*Shadow Resistance Aura*/
-(19876,0,19876,1,0),
-(19895,19876,19876,2,0),
-(19896,19895,19876,3,0),
-(27151,19896,19876,4,0),
-(48943,27151,19876,5,0),
-/*Shield of Righteousness*/
+/* Shield of Righteousness */
 (53600,0,53600,1,0),
 (61411,53600,53600,2,0),
-/*Spiritual Attunement*/
-(31785,0,31785,1,0),
-(33776,31785,31785,2,0),
-/*------------------
---(270)Pet-GenericHunter
-------------------*/
-/*Cower*/
-(1742,0,1742,1,0),
-(1753,1742,1742,2,0),
-(1754,1753,1742,3,0),
-(1755,1754,1742,4,0),
-(1756,1755,1742,5,0),
-(16697,1756,1742,6,0),
-(27048,16697,1742,7,0),
-/*Great Resistance*/
-(53427,0,53427,1,0),
-(53429,53427,53427,2,0),
-(53430,53429,53427,3,0),
-/*Growl*/
-(2649,0,2649,1,0),
-(14916,2649,2649,2,0),
-(14917,14916,2649,3,0),
-(14918,14917,2649,4,0),
-(14919,14918,2649,5,0),
-(14920,14919,2649,6,0),
-(14921,14920,2649,7,0),
-(27047,14921,2649,8,0),
-(61676,27047,2649,9,0),
-/*Shark Attack*/
-(62759,0,62759,1,0),
-(62760,62759,62759,2,0),
-/*Silverback*/
-(62764,0,62764,1,0),
-(62765,62764,62764,2,0),
-/*Wild Hunt*/
-(62758,0,62758,1,0),
-(62762,62758,62758,2,0),
-/*------------------
--- (333) Enchanting
-------------------*/
-/*Enchanting*/
-(7411,0,7411,1,0),
-(7412,7411,7411,2,0),
-(7413,7412,7411,3,0),
-(13920,7413,7411,4,0),
-(28029,13920,7411,5,0),
-(51313,28029,7411,6,0),
-/*------------------
---(354)Demonology
-------------------*/
-/*Banish*/
+-- ------------------
+-- (354)Demonology
+-- ------------------
+/* Banish */
 (710,0,710,1,0),
 (18647,710,710,2,0),
-/*CreateFirestone*/
+/* CreateFirestone */
 (6366,0,6366,1,0),
 (17951,6366,6366,2,0),
 (17952,17951,6366,3,0),
@@ -16119,7 +15509,7 @@ INSERT INTO spell_chain VALUES
 (27250,17953,6366,5,0),
 (60219,27250,6366,6,0),
 (60220,60219,6366,7,0),
-/*CreateHealthstone*/
+/* CreateHealthstone */
 (6201,0,6201,1,0),
 (6202,6201,6201,2,0),
 (5699,6202,6201,3,0),
@@ -16128,7 +15518,7 @@ INSERT INTO spell_chain VALUES
 (27230,11730,6201,6,0),
 (47871,27230,6201,7,0),
 (47878,47871,6201,8,0),
-/*CreateSoulstone*/
+/* CreateSoulstone */
 (693,0,693,1,0),
 (20752,693,693,2,0),
 (20755,20752,693,3,0),
@@ -16136,17 +15526,14 @@ INSERT INTO spell_chain VALUES
 (20757,20756,693,5,0),
 (27238,20757,693,6,0),
 (47884,27238,693,7,0),
-/*CreateSpellstone*/
+/* CreateSpellstone */
 (2362,0,2362,1,0),
 (17727,2362,2362,2,0),
 (17728,17727,2362,3,0),
 (28172,17728,2362,4,0),
 (47886,28172,2362,5,0),
 (47888,47886,2362,6,0),
-/*Decimation*/
-(63156,0,63156,1,0),
-(63158,63156,63156,2,0),
-/*DemonArmor*/
+/* DemonArmor */
 (706,0,706,1,0),
 (1086,706,706,2,0),
 (11733,1086,706,3,0),
@@ -16155,20 +15542,20 @@ INSERT INTO spell_chain VALUES
 (27260,11735,706,6,0),
 (47793,27260,706,7,0),
 (47889,47793,706,8,0),
-/*DemonSkin*/
+/* DemonSkin */
 (687,0,687,1,0),
 (696,687,687,2,0),
-/*EnslaveDemon*/
+/* EnslaveDemon */
 (1098,0,1098,1,0),
 (11725,1098,1098,2,0),
 (11726,11725,1098,3,0),
 (61191,11726,1098,4,0),
-/*FelArmor*/
+/* FelArmor */
 (28176,0,28176,1,0),
 (28189,28176,28176,2,0),
 (47892,28189,28176,3,0),
 (47893,47892,28176,4,0),
-/*HealthFunnel*/
+/* HealthFunnel */
 (755,0,755,1,0),
 (3698,755,755,2,0),
 (3699,3698,755,3,0),
@@ -16178,24 +15565,20 @@ INSERT INTO spell_chain VALUES
 (11695,11694,755,7,0),
 (27259,11695,755,8,0),
 (47856,27259,755,9,0),
-/*Nemesis*/
-(63117,0,63117,1,0),
-(63121,63117,63117,2,0),
-(63123,63121,63117,3,0),
-/*RitualofSouls*/
+/* RitualofSouls */
 (29893,0,29893,1,0),
 (58887,29893,29893,2,0),
-/*ShadowWard*/
+/* ShadowWard */
 (6229,0,6229,1,0),
 (11739,6229,6229,2,0),
 (11740,11739,6229,3,0),
 (28610,11740,6229,4,0),
 (47890,28610,6229,5,0),
 (47891,47890,6229,6,0),
-/*------------------
---(355)Affliction
-------------------*/
-/*Corruption*/
+-- ------------------
+-- (355)Affliction
+-- ------------------
+/* Corruption */
 (172,0,172,1,0),
 (6222,172,172,2,0),
 (6223,6222,172,3,0),
@@ -16206,7 +15589,7 @@ INSERT INTO spell_chain VALUES
 (27216,25311,172,8,0),
 (47812,27216,172,9,0),
 (47813,47812,172,10,0),
-/*Curse of Agony*/
+/* Curse of Agony */
 (980,0,980,1,0),
 (1014,980,980,2,0),
 (6217,1014,980,3,0),
@@ -16216,20 +15599,20 @@ INSERT INTO spell_chain VALUES
 (27218,11713,980,7,0),
 (47863,27218,980,8,0),
 (47864,47863,980,9,0),
-/*Curse of Doom*/
+/* Curse of Doom */
 (603,0,603,1,0),
 (30910,603,603,2,0),
 (47867,30910,603,3,0),
-/*Curse of the Elements*/
+/* Curse of the Elements */
 (1490,0,1490,1,0),
 (11721,1490,1490,2,0),
 (11722,11721,1490,3,0),
 (27228,11722,1490,4,0),
 (47865,27228,1490,5,0),
-/*Curse of Tongues*/
+/* Curse of Tongues */
 (1714,0,1714,1,0),
 (11719,1714,1714,2,0),
-/*Curse of Weakness*/
+/* Curse of Weakness */
 (702,0,702,1,0),
 (1108,702,702,2,0),
 (6205,1108,702,3,0),
@@ -16239,20 +15622,20 @@ INSERT INTO spell_chain VALUES
 (27224,11708,702,7,0),
 (30909,27224,702,8,0),
 (50511,30909,702,9,0),
-/*Dark Pact*/
+/* Dark Pact */
 (18220,0,    18220,1,0),
 (18937,18220,18220,2,0),
 (18938,18937,18220,3,0),
 (27265,18938,18220,4,0),
 (59092,27265,18220,5,0),
-/*Death Coil*/
+/* Death Coil */
 (6789,0,6789,1,0),
 (17925,6789,6789,2,0),
 (17926,17925,6789,3,0),
 (27223,17926,6789,4,0),
 (47859,27223,6789,5,0),
 (47860,47859,6789,6,0),
-/*Drain Life*/
+/* Drain Life */
 (689,0,689,1,0),
 (699,689,689,2,0),
 (709,699,689,3,0),
@@ -16262,62 +15645,46 @@ INSERT INTO spell_chain VALUES
 (27219,11700,689,7,0),
 (27220,27219,689,8,0),
 (47857,27220,689,9,0),
-/*Drain Soul*/
+/* Drain Soul */
 (1120,0,1120,1,0),
 (8288,1120,1120,2,0),
 (8289,8288,1120,3,0),
 (11675,8289,1120,4,0),
 (27217,11675,1120,5,0),
 (47855,27217,1120,6,0),
-/*Fear*/
+/* Fear */
 (5782,0,5782,1,0),
 (6213,5782,5782,2,0),
 (6215,6213,5782,3,0),
-/*Haunt*/
+/* Haunt */
 (48181,0,48181,1,0),
 (59161,48181,48181,2,0),
 (59163,59161,48181,3,0),
 (59164,59163,48181,4,0),
-/*Howl of Terror*/
+/* Howl of Terror */
 (5484,0,5484,1,0),
 (17928,5484,5484,2,0),
-/*Seed of Corruption*/
+/* Seed of Corruption */
 (27243,0,27243,1,0),
 (47835,27243,27243,2,0),
 (47836,47835,27243,3,0),
-/* Shadow embrace */
-(32385,0,32385,1,0),
-(32387,32385,32385,2,0),
-(32392,32387,32385,3,0),
-(32393,32392,32385,4,0),
-(32394,32393,32385,5,0),
-/*Unstable Affliction*/
+/* Unstable Affliction */
 (30108,0,30108,1,0),
 (30404,30108,30108,2,0),
 (30405,30404,30108,3,0),
 (47841,30405,30108,4,0),
 (47843,47841,30108,5,0),
-/*------------------
--- (356) Fishing
-------------------*/
-/*Fishing*/
-(7620,0,7620,1,0),
-(7731,7620,7620,2,0),
-(7732,7731,7620,3,0),
-(18248,7732,7620,4,0),
-(33095,18248,7620,5,0),
-(51294,33095,7620,6,0),
-/*------------------
---(373) Enhancement
-------------------*/
-/*Fire Resistance Totem*/
+-- ------------------
+-- (373) Enhancement
+-- ------------------
+/* Fire Resistance Totem */
 (8184,0,8184,1,0),
 (10537,8184,8184,2,0),
 (10538,10537,8184,3,0),
 (25563,10538,8184,4,0),
 (58737,25563,8184,5,0),
 (58739,58737,8184,6,0),
-/*Flametongue Totem*/
+/* Flametongue Totem */
 (8227,0,8227,1,0),
 (8249,8227,8227,2,0),
 (10526,8249,8227,3,0),
@@ -16326,7 +15693,7 @@ INSERT INTO spell_chain VALUES
 (58649,25557,8227,6,0),
 (58652,58649,8227,7,0),
 (58656,58652,8227,8,0),
-/*Flametongue Weapon*/
+/* Flametongue Weapon */
 (8024,0,8024,1,0),
 (8027,8024,8024,2,0),
 (8030,8027,8024,3,0),
@@ -16337,14 +15704,14 @@ INSERT INTO spell_chain VALUES
 (58785,25489,8024,8,0),
 (58789,58785,8024,9,0),
 (58790,58789,8024,10,0),
-/*Frost Resistance Totem*/
+/* Frost Resistance Totem */
 (8181,0,8181,1,0),
 (10478,8181,8181,2,0),
 (10479,10478,8181,3,0),
 (25560,10479,8181,4,0),
 (58741,25560,8181,5,0),
 (58745,58741,8181,6,0),
-/*Frostbrand Weapon*/
+/* Frostbrand Weapon */
 (8033,0,8033,1,0),
 (8038,8033,8033,2,0),
 (10456,8038,8033,3,0),
@@ -16354,13 +15721,7 @@ INSERT INTO spell_chain VALUES
 (58794,25500,8033,7,0),
 (58795,58794,8033,8,0),
 (58796,58795,8033,9,0),
-/*Frozen Power*/
-(63373,0,63373,1,0),
-(63374,63373,63373,2,0),
-/*Improved Stormstrike*/
-(51521,0,51521,1,0),
-(51522,51521,51521,2,0),
-/*Life Tap*/
+/* Life Tap */
 (1454,0,1454,1,0),
 (1455,1454,1454,2,0),
 (1456,1455,1454,3,0),
@@ -16369,7 +15730,7 @@ INSERT INTO spell_chain VALUES
 (11689,11688,1454,6,0),
 (27222,11689,1454,7,0),
 (57946,27222,1454,8,0),
-/*Lightning Shield*/
+/* Lightning Shield */
 (324,0,324,1,0),
 (325,324,324,2,0),
 (905,325,324,3,0),
@@ -16393,25 +15754,19 @@ INSERT INTO spell_chain VALUES
 (26372,26371,26364,9,0),
 (49278,26372,26364,10,0),
 (49279,49278,26364,11,0),
-/*Maelstrom Weapon*/
-(51528,0,51528,1,0),
-(51529,51528,51528,2,0),
-(51530,51529,51528,3,0),
-(51531,51530,51528,4,0),
-(51532,51531,51528,5,0),
-/*Nature Resistance Totem*/
+/* Nature Resistance Totem */
 (10595,0,10595,1,0),
 (10600,10595,10595,2,0),
 (10601,10600,10595,3,0),
 (25574,10601,10595,4,0),
 (58746,25574,10595,5,0),
 (58749,58746,10595,6,0),
-/*Rockbiter Weapon*/
+/* Rockbiter Weapon */
 (8017,0,8017,1,0),
 (8018,8017,8017,2,0),
 (8019,8018,8017,3,0),
 (10399,8019,8017,4,0),
-/*Stoneskin Totem*/
+/* Stoneskin Totem */
 (8071,0,8071,1,0),
 (8154,8071,8071,2,0),
 (8155,8154,8071,3,0),
@@ -16422,7 +15777,7 @@ INSERT INTO spell_chain VALUES
 (25509,25508,8071,8,0),
 (58751,25509,8071,9,0),
 (58753,58751,8071,10,0),
-/*Strength of Earth Totem*/
+/* Strength of Earth Totem */
 (8075,0,8075,1,0),
 (8160,8075,8075,2,0),
 (8161,8160,8075,3,0),
@@ -16431,7 +15786,7 @@ INSERT INTO spell_chain VALUES
 (25528,25361,8075,6,0),
 (57622,25528,8075,7,0),
 (58643,57622,8075,8,0),
-/*WindfuryWeapon*/
+/* WindfuryWeapon */
 (8232,0,8232,1,0),
 (8235,8232,8232,2,0),
 (10486,8235,8232,3,0),
@@ -16440,10 +15795,10 @@ INSERT INTO spell_chain VALUES
 (58801,25505,8232,6,0),
 (58803,58801,8232,7,0),
 (58804,58803,8232,8,0),
-/*------------------
+-- ------------------
 -- (374) Restoration (Shaman)
-------------------*/
-/*AncestralSpirit*/
+-- ------------------
+/* AncestralSpirit */
 (2008,0,2008,1,0),
 (20609,2008,2008,2,0),
 (20610,20609,2008,3,0),
@@ -16451,7 +15806,7 @@ INSERT INTO spell_chain VALUES
 (20777,20776,2008,5,0),
 (25590,20777,2008,6,0),
 (49277,25590,2008,7,0),
-/*ChainHeal*/
+/* ChainHeal */
 (1064,0,1064,1,0),
 (10622,1064,1064,2,0),
 (10623,10622,1064,3,0),
@@ -16459,20 +15814,20 @@ INSERT INTO spell_chain VALUES
 (25423,25422,1064,5,0),
 (55458,25423,1064,6,0),
 (55459,55458,1064,7,0),
-/*EarthShield*/
+/* EarthShield */
 (974,0,974,1,0),
 (32593,974,974,2,0),
 (32594,32593,974,3,0),
 (49283,32594,974,4,0),
 (49284,49283,974,5,0),
-/*EarthlivingWeapon*/
+/* EarthlivingWeapon */
 (51730,0,51730,1,0),
 (51988,51730,51730,2,0),
 (51991,51988,51730,3,0),
 (51992,51991,51730,4,0),
 (51993,51992,51730,5,0),
 (51994,51993,51730,6,0),
-/*HealingStreamTotem*/
+/* HealingStreamTotem */
 (5394,0,5394,1,0),
 (6375,5394,5394,2,0),
 (6377,6375,5394,3,0),
@@ -16482,7 +15837,7 @@ INSERT INTO spell_chain VALUES
 (58755,25567,5394,7,0),
 (58756,58755,5394,8,0),
 (58757,58756,5394,9,0),
-/*HealingWave*/
+/* HealingWave */
 (331,0,331,1,0),
 (332,331,331,2,0),
 (547,332,331,3,0),
@@ -16497,7 +15852,7 @@ INSERT INTO spell_chain VALUES
 (25396,25391,331,12,0),
 (49272,25396,331,13,0),
 (49273,49272,331,14,0),
-/*LesserHealingWave*/
+/* LesserHealingWave */
 (8004,0,8004,1,0),
 (8008,8004,8004,2,0),
 (8010,8008,8004,3,0),
@@ -16507,7 +15862,7 @@ INSERT INTO spell_chain VALUES
 (25420,10468,8004,7,0),
 (49275,25420,8004,8,0),
 (49276,49275,8004,9,0),
-/*Mana Spring Totem*/
+/* Mana Spring Totem */
 (5675,0,5675,1,0),
 (10495,5675,5675,2,0),
 (10496,10495,5675,3,0),
@@ -16516,12 +15871,12 @@ INSERT INTO spell_chain VALUES
 (58771,25570,5675,6,0),
 (58773,58771,5675,7,0),
 (58774,58773,5675,8,0),
-/*Riptide*/
+/* Riptide */
 (61295,0,61295,1,0),
 (61299,61295,61295,2,0),
 (61300,61299,61295,3,0),
 (61301,61300,61295,4,0),
-/*Water Shield*/
+/* Water Shield */
 (52127,0,52127,1,0),
 (52129,52127,52127,2,0),
 (52131,52129,52127,3,0),
@@ -16531,13 +15886,10 @@ INSERT INTO spell_chain VALUES
 (24398,52138,52127,7,0),
 (33736,24398,52127,8,0),
 (57960,33736,52127,9,0),
-/*------------------
+-- ------------------
 -- (375) Elemental Combat
-------------------*/
-/*Booming Echoes*/
-(63370,0,63370,1,0),
-(63372,63370,63370,2,0),
-/*Chain Lightning*/
+-- ------------------
+/* Chain Lightning */
 (421,0,421,1,0),
 (930,421,421,2,0),
 (2860,930,421,3,0),
@@ -16546,7 +15898,7 @@ INSERT INTO spell_chain VALUES
 (25442,25439,421,6,0),
 (49270,25442,421,7,0),
 (49271,49270,421,8,0),
-/*Earth Shock*/
+/* Earth Shock */
 (8042,0,8042,1,0),
 (8044,8042,8042,2,0),
 (8045,8044,8042,3,0),
@@ -16557,7 +15909,7 @@ INSERT INTO spell_chain VALUES
 (25454,10414,8042,8,0),
 (49230,25454,8042,9,0),
 (49231,49230,8042,10,0),
-/*Fire Nova*/
+/* Fire Nova */
 (1535,0,1535,1,0),
 (8498,1535,1535,2,0),
 (8499,8498,1535,3,0),
@@ -16567,7 +15919,7 @@ INSERT INTO spell_chain VALUES
 (25547,25546,1535,7,0),
 (61649,25547,1535,8,0),
 (61657,61649,1535,9,0),
-/*Flame Shock*/
+/* Flame Shock */
 (8050,0,8050,1,0),
 (8052,8050,8050,2,0),
 (8053,8052,8050,3,0),
@@ -16577,7 +15929,7 @@ INSERT INTO spell_chain VALUES
 (25457,29228,8050,7,0),
 (49232,25457,8050,8,0),
 (49233,49232,8050,9,0),
-/*Frost Shock*/
+/* Frost Shock */
 (8056,0,8056,1,0),
 (8058,8056,8056,2,0),
 (10472,8058,8056,3,0),
@@ -16585,10 +15937,10 @@ INSERT INTO spell_chain VALUES
 (25464,10473,8056,5,0),
 (49235,25464,8056,6,0),
 (49236,49235,8056,7,0),
-/*Lava Burst*/
+/* Lava Burst */
 (51505,0,51505,1,0),
 (60043,51505,51505,2,0),
-/*Lightning Bolt*/
+/* Lightning Bolt */
 (403,0,403,1,0),
 (529,403,403,2,0),
 (548,529,403,3,0),
@@ -16603,7 +15955,7 @@ INSERT INTO spell_chain VALUES
 (25449,25448,403,12,0),
 (49237,25449,403,13,0),
 (49238,49237,403,14,0),
-/*Magma Totem*/
+/* Magma Totem */
 (8190,0,8190,1,0),
 (10585,8190,8190,2,0),
 (10586,10585,8190,3,0),
@@ -16611,10 +15963,10 @@ INSERT INTO spell_chain VALUES
 (25552,10587,8190,5,0),
 (58731,25552,8190,6,0),
 (58734,58731,8190,7,0),
-/*Purge*/
+/* Purge */
 (370,0,370,1,0),
 (8012,370,370,2,0),
-/*Searing Totem*/
+/* Searing Totem */
 (3599,0,3599,1,0),
 (6363,3599,3599,2,0),
 (6364,6363,3599,3,0),
@@ -16625,7 +15977,7 @@ INSERT INTO spell_chain VALUES
 (58699,25533,3599,8,0),
 (58703,58699,3599,9,0),
 (58704,58703,3599,10,0),
-/*Stoneclaw Totem*/
+/* Stoneclaw Totem */
 (5730,0,5730,1,0),
 (6390,5730,5730,2,0),
 (6391,6390,5730,3,0),
@@ -16636,42 +15988,25 @@ INSERT INTO spell_chain VALUES
 (58580,25525,5730,8,0),
 (58581,58580,5730,9,0),
 (58582,58581,5730,10,0),
-/*Totem of Wrath*/
+/* Totem of Wrath */
 (30706,0,30706,1,0),
 (57720,30706,30706,2,0),
 (57721,57720,30706,3,0),
 (57722,57721,30706,4,0),
-/*Thunderstorm*/
+/* Thunderstorm */
 (51490,0,51490,1,0),
 (59156,51490,51490,2,0),
 (59158,59156,51490,3,0),
 (59159,59158,51490,4,0),
-/*------------------
--- (393) Skinning
-------------------*/
-/*Skinning*/
-(8613,0,8613,1,0),
-(8617,8613,8613,2,0),
-(8618,8617,8613,3,0),
-(10768,8618,8613,4,0),
-(32678,10768,8613,5,0),
-(50305,32678,8613,6,0),
-/*Master of Anatomy*/
-(53125,0,53125,1,0),
-(53662,53125,53125,2,0),
-(53663,53662,53125,3,0),
-(53664,53663,53125,4,0),
-(53665,53664,53125,5,0),
-(53666,53665,53125,6,0),
-/*------------------
---(573)Restoration
-------------------*/
-/*GiftoftheWild*/
+-- ------------------
+-- (573)Restoration
+-- ------------------
+/* GiftoftheWild */
 (21849,0,21849,1,0),
 (21850,21849,21849,2,0),
 (26991,21850,21849,3,0),
 (48470,26991,21849,4,0),
-/*HealingTouch*/
+/* HealingTouch */
 (5185,0,5185,1,0),
 (5186,5185,5185,2,0),
 (5187,5186,5185,3,0),
@@ -16687,14 +16022,11 @@ INSERT INTO spell_chain VALUES
 (26979,26978,5185,13,0),
 (48377,26979,5185,14,0),
 (48378,48377,5185,15,0),
-/*Improved Barkskin*/
-(63410,0,63410,1,0),
-(63411,63410,63410,2,0),
-/*Lifebloom*/
+/* Lifebloom */
 (33763,0,33763,1,0),
 (48450,33763,33763,2,0),
 (48451,48450,33763,3,0),
-/*MarkoftheWild*/
+/* MarkoftheWild */
 (1126,0,1126,1,0),
 (5232,1126,1126,2,0),
 (6756,5232,1126,3,0),
@@ -16704,9 +16036,7 @@ INSERT INTO spell_chain VALUES
 (9885,9884,1126,7,0),
 (26990,9885,1126,8,0),
 (48469,26990,1126,9,0),
-/*Nourish*/
-(50464,0,50464,1,0),
-/*Rebirth*/
+/* Rebirth */
 (20484,0,20484,1,0),
 (20739,20484,20484,2,0),
 (20742,20739,20484,3,0),
@@ -16714,7 +16044,7 @@ INSERT INTO spell_chain VALUES
 (20748,20747,20484,5,0),
 (26994,20748,20484,6,0),
 (48477,26994,20484,7,0),
-/*Regrowth*/
+/* Regrowth */
 (8936,0,8936,1,0),
 (8938,8936,8936,2,0),
 (8939,8938,8936,3,0),
@@ -16727,7 +16057,7 @@ INSERT INTO spell_chain VALUES
 (26980,9858,8936,10,0),
 (48442,26980,8936,11,0),
 (48443,48442,8936,12,0),
-/*Rejuvenation*/
+/* Rejuvenation */
 (774,0,774,1,0),
 (1058,774,774,2,0),
 (1430,1058,774,3,0),
@@ -16743,11 +16073,7 @@ INSERT INTO spell_chain VALUES
 (26982,26981,774,13,0),
 (48440,26982,774,14,0),
 (48441,48440,774,15,0),
-/*Revitalize*/
-(48539,0,48539,1,0),
-(48544,48539,48539,2,0),
-(48545,48544,48539,3,0),
-/*Revive*/
+/* Revive */
 (50769,0,50769,1,0),
 (50768,50769,50769,2,0),
 (50767,50768,50769,3,0),
@@ -16755,7 +16081,7 @@ INSERT INTO spell_chain VALUES
 (50765,50766,50769,5,0),
 (50764,50765,50769,6,0),
 (50763,50764,50769,7,0),
-/*Tranquility*/
+/* Tranquility */
 (740,0,740,1,0),
 (8918,740,740,2,0),
 (9862,8918,740,3,0),
@@ -16763,15 +16089,23 @@ INSERT INTO spell_chain VALUES
 (26983,9863,740,5,0),
 (48446,26983,740,6,0),
 (48447,48446,740,7,0),
-/*Wild Growth*/
+/* Tranquility Triggered */
+(44203,    0,44203,1,0),
+(44205,44203,44203,2,0),
+(44206,44205,44203,3,0),
+(44207,44206,44203,4,0),
+(44208,44207,44203,5,0),
+(48444,44208,44203,6,0),
+(48445,48444,44203,7,0),
+/* Wild Growth */
 (48438,0,48438,1,0),
 (53248,48438,48438,2,0),
 (53249,53248,48438,3,0),
 (53251,53249,48438,4,0),
-/*------------------
---(574)Balance
-------------------*/
-/*EntanglingRoots*/
+-- ------------------
+-- (574)Balance
+-- ------------------
+/* EntanglingRoots */
 (339,0,339,1,0),
 (1062,339,339,2,0),
 (5195,1062,339,3,0),
@@ -16780,7 +16114,7 @@ INSERT INTO spell_chain VALUES
 (9853,9852,339,6,0),
 (26989,9853,339,7,0),
 (53308,26989,339,8,0),
-/*Nature'sGrasp*/
+/* Nature'sGrasp */
 (16689,0,16689,1,339),
 (16810,16689,16689,2,1062),
 (16811,16810,16689,3,5195),
@@ -16789,17 +16123,23 @@ INSERT INTO spell_chain VALUES
 (17329,16813,16689,6,9853),
 (27009,17329,16689,7,26989),
 (53312,27009,16689,8,53308),
-/*Hibernate*/
+/* Hibernate */
 (2637,0,2637,1,0),
 (18657,2637,2637,2,0),
 (18658,18657,2637,3,0),
-/*Hurricane*/
+/* Hurricane */
 (16914,0,16914,1,0),
 (17401,16914,16914,2,0),
 (17402,17401,16914,3,0),
 (27012,17402,16914,4,0),
 (48467,27012,16914,5,0),
-/*Insect Swarm*/
+/* Hurricane Triggered */
+(42231,    0,42231,1,0),
+(42232,42231,42231,2,0),
+(42233,42232,42231,3,0),
+(42230,42233,42231,4,0),
+(48466,42230,42231,5,0),
+/* Insect Swarm */
 (5570,0,5570,1,0),
 (24974,5570,5570,2,0),
 (24975,24974,5570,3,0),
@@ -16807,7 +16147,7 @@ INSERT INTO spell_chain VALUES
 (24977,24976,5570,5,0),
 (27013,24977,5570,6,0),
 (48468,27013,5570,7,0),
-/*Moonfire*/
+/* Moonfire */
 (8921,0,8921,1,0),
 (8924,8921,8921,2,0),
 (8925,8924,8921,3,0),
@@ -16822,27 +16162,27 @@ INSERT INTO spell_chain VALUES
 (26988,26987,8921,12,0),
 (48462,26988,8921,13,0),
 (48463,48462,8921,14,0),
-/*Soothe Animal*/
+/* Soothe Animal */
 (2908,0,2908,1,0),
 (8955,2908,2908,2,0),
 (9901,8955,2908,3,0),
 (26995,9901,2908,4,0),
-/*Starfall*/
+/* Starfall */
 (48505,0,48505,1,0),
 (53199,48505,48505,2,0),
 (53200,53199,48505,3,0),
 (53201,53200,48505,4,0),
-/*Starfall AOE*/
+/* Starfall AOE */
 (50294,0,50294,1,0),
 (53188,50294,50294,2,0),
 (53189,53188,50294,3,0),
 (53190,53189,50294,4,0),
-/*Starfall Direct*/
+/* Starfall Direct */
 (50288,0,50288,1,0),
 (53191,50288,50288,2,0),
 (53194,53191,50288,3,0),
 (53195,53194,50288,4,0),
-/*Starfire*/
+/* Starfire */
 (2912,0,2912,1,0),
 (8949,2912,2912,2,0),
 (8950,8949,2912,3,0),
@@ -16853,7 +16193,7 @@ INSERT INTO spell_chain VALUES
 (26986,25298,2912,8,0),
 (48464,26986,2912,9,0),
 (48465,48464,2912,10,0),
-/*Thorns*/
+/* Thorns */
 (467,0,467,1,0),
 (782,467,467,2,0),
 (1075,782,467,3,0),
@@ -16862,19 +16202,19 @@ INSERT INTO spell_chain VALUES
 (9910,9756,467,6,0),
 (26992,9910,467,7,0),
 (53307,26992,467,8,0),
-/*Typhoon*/
+/* Typhoon */
 (50516,0,50516,1,0),
 (53223,50516,50516,2,0),
 (53225,53223,50516,3,0),
 (53226,53225,50516,4,0),
 (61384,53226,50516,5,0),
-/*Typhoon Triggered*/
+/* Typhoon Triggered */
 (61391,0,61391,1,0),
 (61390,61391,61391,2,0),
 (61388,61390,61391,3,0),
 (61387,61388,61391,4,0),
 (53227,61387,61391,5,0),
-/*Wrath*/
+/* Wrath */
 (5176,0,5176,1,0),
 (5177,5176,5176,2,0),
 (5178,5177,5176,3,0),
@@ -16887,15 +16227,15 @@ INSERT INTO spell_chain VALUES
 (26985,26984,5176,10,0),
 (48459,26985,5176,11,0),
 (48461,48459,5176,12,0),
-/*------------------
---(593)Destruction
-------------------*/
-/*Chaos Bolt*/
+-- ------------------
+-- (593)Destruction
+-- ------------------
+/* Chaos Bolt */
 (50796,0,50796,1,0),
 (59170,50796,50796,2,0),
 (59171,59170,50796,3,0),
 (59172,59171,50796,4,0),
-/*Hellfire*/
+/* Hellfire */
 (1949,0,1949,1,0),
 (11683,1949,1949,2,0),
 (11684,11683,1949,3,0),
@@ -16907,7 +16247,7 @@ INSERT INTO spell_chain VALUES
 (11682,11681,5857,3,0),
 (27214,11682,5857,4,0),
 (47822,27214,5857,5,0),
-/*Immolate*/
+/* Immolate */
 (348,0,348,1,0),
 (707,348,348,2,0),
 (1094,707,348,3,0),
@@ -16919,16 +16259,12 @@ INSERT INTO spell_chain VALUES
 (27215,25309,348,9,0),
 (47810,27215,348,10,0),
 (47811,47810,348,11,0),
-/*Incinerate*/
+/* Incinerate */
 (29722,0,29722,1,0),
 (32231,29722,29722,2,0),
 (47837,32231,29722,3,0),
 (47838,47837,29722,4,0),
-/*Molten Skin*/
-(63349,0,63349,1,0),
-(63350,63349,63349,2,0),
-(63351,63350,63349,3,0),
-/*Rain of Fire*/
+/* Rain of Fire */
 (5740,0,5740,1,0),
 (6219,5740,5740,2,0),
 (11677,6219,5740,3,0),
@@ -16944,7 +16280,7 @@ INSERT INTO spell_chain VALUES
 (42218,42226,42223,5,0),
 (47817,42218,42223,6,0),
 (47818,47817,42223,7,0),
-/*Searing Pain*/
+/* Searing Pain */
 (5676,0,5676,1,0),
 (17919,5676,5676,2,0),
 (17920,17919,5676,3,0),
@@ -16955,7 +16291,7 @@ INSERT INTO spell_chain VALUES
 (30459,27210,5676,8,0),
 (47814,30459,5676,9,0),
 (47815,47814,5676,10,0),
-/*Shadow Bolt*/
+/* Shadow Bolt */
 (686,0,686,1,0),
 (695,686,686,2,0),
 (705,695,686,3,0),
@@ -16969,7 +16305,7 @@ INSERT INTO spell_chain VALUES
 (27209,25307,686,11,0),
 (47808,27209,686,12,0),
 (47809,47808,686,13,0),
-/*Shadowburn*/
+/* Shadowburn */
 (17877,0,17877,1,0),
 (18867,17877,17877,2,0),
 (18868,18867,17877,3,0),
@@ -16980,26 +16316,26 @@ INSERT INTO spell_chain VALUES
 (30546,27263,17877,8,0),
 (47826,30546,17877,9,0),
 (47827,47826,17877,10,0),
-/*Shadowflame*/
+/* Shadowflame */
 (47897,0,47897,1,0),
 (61290,47897,47897,2,0),
-/*Shadowfury*/
+/* Shadowfury */
 (30283,0,30283,1,0),
 (30413,30283,30283,2,0),
 (30414,30413,30283,3,0),
 (47846,30414,30283,4,0),
 (47847,47846,30283,5,0),
-/*SoulFire*/
+/* SoulFire */
 (6353,0,6353,1,0),
 (17924,6353,6353,2,0),
 (27211,17924,6353,3,0),
 (30545,27211,6353,4,0),
 (47824,30545,6353,5,0),
 (47825,47824,6353,6,0),
-/*------------------
---(594) Holy (Paladin)
-------------------*/
-/*Blessing of Wisdom*/
+-- ------------------
+-- (594) Holy (Paladin)
+-- ------------------
+/* Blessing of Wisdom */
 (19742,0,19742,1,0),
 (19850,19742,19742,2,0),
 (19852,19850,19742,3,0),
@@ -17009,7 +16345,7 @@ INSERT INTO spell_chain VALUES
 (27142,25290,19742,7,0),
 (48935,27142,19742,8,0),
 (48936,48935,19742,9,0),
-/*Consecration*/
+/* Consecration */
 (26573,0,26573,1,0),
 (20116,26573,26573,2,0),
 (20922,20116,26573,3,0),
@@ -17018,7 +16354,7 @@ INSERT INTO spell_chain VALUES
 (27173,20924,26573,6,0),
 (48818,27173,26573,7,0),
 (48819,48818,26573,8,0),
-/*Exorcism*/
+/* Exorcism */
 (879,0,879,1,0),
 (5614,879,879,2,0),
 (5615,5614,879,3,0),
@@ -17028,7 +16364,7 @@ INSERT INTO spell_chain VALUES
 (27138,10314,879,7,0),
 (48800,27138,879,8,0),
 (48801,48800,879,9,0),
-/*Flash of Light*/
+/* Flash of Light */
 (19750,0,19750,1,0),
 (19939,19750,19750,2,0),
 (19940,19939,19750,3,0),
@@ -17038,13 +16374,13 @@ INSERT INTO spell_chain VALUES
 (27137,19943,19750,7,0),
 (48784,27137,19750,8,0),
 (48785,48784,19750,9,0),
-/*Greater Blessing of Wisdom*/
+/* Greater Blessing of Wisdom */
 (25894,0,25894,1,19854),
 (25918,25894,25894,2,25290),
 (27143,25918,25894,3,27142),
 (48937,27143,25894,4,48935),
 (48938,48937,25894,5,48936),
-/*Holy Light*/
+/* Holy Light */
 (635,0,635,1,0),
 (639,635,635,2,0),
 (647,639,635,3,0),
@@ -17058,7 +16394,7 @@ INSERT INTO spell_chain VALUES
 (27136,27135,635,11,0),
 (48781,27136,635,12,0),
 (48782,48781,635,13,0),
-/*Holy Shock*/
+/* Holy Shock */
 (20473,0,20473,1,0),
 (20929,20473,20473,2,0),
 (20930,20929,20473,3,0),
@@ -17082,19 +16418,13 @@ INSERT INTO spell_chain VALUES
 (33074,27175,25914,5,0),
 (48820,33074,25914,6,0),
 (48821,48820,25914,7,0),
-/*Holy Wrath*/
+/* Holy Wrath */
 (2812,0,2812,1,0),
 (10318,2812,2812,2,0),
 (27139,10318,2812,3,0),
 (48816,27139,2812,4,0),
 (48817,48816,2812,5,0),
-/*Lay on Hands*/
-(633,0,633,1,0),
-(2800,633,633,2,0),
-(10310,2800,633,3,0),
-(27154,10310,633,4,0),
-(48788,27154,633,5,0),
-/*Redemption*/
+/* Redemption */
 (7328,0,7328,1,0),
 (10322,7328,7328,2,0),
 (10324,10322,7328,3,0),
@@ -17102,24 +16432,20 @@ INSERT INTO spell_chain VALUES
 (20773,20772,7328,5,0),
 (48949,20773,7328,6,0),
 (48950,48949,7328,7,0),
-/*------------------
---(613)Discipline
-------------------*/
-/*DispelMagic*/
+-- ------------------
+-- (613)Discipline
+-- ------------------
+/* DispelMagic */
 (527,0,527,1,0),
 (988,527,527,2,0),
-/*DivineSpirit*/
+/* DivineSpirit */
 (14752,0,14752,1,0),
 (14818,14752,14752,2,0),
 (14819,14818,14752,3,0),
 (27841,14819,14752,4,0),
 (25312,27841,14752,5,0),
 (48073,25312,14752,6,0),
-/*Improved Flash Heal*/
-(63504,0,63504,1,0),
-(63505,63504,63504,2,0),
-(63506,63505,63504,3,0),
-/*InnerFire*/
+/* InnerFire */
 (588,0,588,1,0),
 (7128,588,588,2,0),
 (602,7128,588,3,0),
@@ -17129,22 +16455,22 @@ INSERT INTO spell_chain VALUES
 (25431,10952,588,7,0),
 (48040,25431,588,8,0),
 (48168,48040,588,9,0),
-/*Penance*/
+/* Penance */
 (47540,0,47540,1,0),
 (53005,47540,47540,2,0),
 (53006,53005,47540,3,0),
 (53007,53006,47540,4,0),
-/*Penance (damage)*/
+/* Penance (damage) */
 (47666,0,47666,1,0),
 (52998,47666,47666,2,0),
 (52999,52998,47666,3,0),
 (53000,52999,47666,4,0),
-/*Penance (healing)*/
+/* Penance (healing) */
 (47750,0,47750,1,0),
 (52983,47750,47750,2,0),
 (52984,52983,47750,3,0),
 (52985,52984,47750,4,0),
-/*PowerWord:Fortitude*/
+/* PowerWord:Fortitude */
 (1243,0,1243,1,0),
 (1244,1243,1243,2,0),
 (1245,1244,1243,3,0),
@@ -17153,7 +16479,7 @@ INSERT INTO spell_chain VALUES
 (10938,10937,1243,6,0),
 (25389,10938,1243,7,0),
 (48161,25389,1243,8,0),
-/*PowerWord:Shield*/
+/* PowerWord:Shield */
 (17,0,17,1,0),
 (592,17,17,2,0),
 (600,592,17,3,0),
@@ -17168,393 +16494,46 @@ INSERT INTO spell_chain VALUES
 (25218,25217,17,12,0),
 (48065,25218,17,13,0),
 (48066,48065,17,14,0),
-/*PrayerofFortitude*/
+/* PrayerofFortitude */
 (21562,0,21562,1,0),
 (21564,21562,21562,2,0),
 (25392,21564,21562,3,0),
 (48162,25392,21562,4,0),
-/*Prayer of Spirit*/
+/* Prayer of Spirit */
 (27681,14752,14752,2,0),
 (32999,27681,14752,3,0),
 (48074,32999,14752,4,0),
-/*Rapture*/
-(47535,0,47535,1,0),
-(47536,47535,47535,2,0),
-(47537,47536,47535,3,0),
-/*ShackleUndead*/
+/* ShackleUndead */
 (9484,0,9484,1,0),
 (9485,9484,9484,2,0),
 (10955,9485,9484,3,0),
-/*------------------
---(654)Pet - Bat
-------------------*/
-/* Pin */
-(50519,0,50519,1,0),
-(53564,50519,50519,2,0),
-(53565,53564,50519,3,0),
-(53566,53565,50519,4,0),
-(53567,53566,50519,5,0),
-(53568,53567,50519,6,0),
-/*------------------
---(654)Pet-Hyena
-------------------*/
-/*TendonRip*/
-(50271,0,50271,1,0),
-(53571,50271,50271,2,0),
-(53572,53571,50271,3,0),
-(53573,53572,50271,4,0),
-(53574,53573,50271,5,0),
-(53575,53574,50271,6,0),
-/*------------------
---(655)Pet-BirdofPrey
-------------------*/
-/*Snatch*/
-(50541,0,50541,1,0),
-(53537,50541,50541,2,0),
-(53538,53537,50541,3,0),
-(53540,53538,50541,4,0),
-(53542,53540,50541,5,0),
-(53543,53542,50541,6,0),
-/*------------------
---(656)Pet-WindSerpent
-------------------*/
-/*LightningBreath*/
-(24844,0,24844,1,0),
-(25008,24844,24844,2,0),
-(25009,25008,24844,3,0),
-(25010,25009,24844,4,0),
-(25011,25010,24844,5,0),
-(25012,25011,24844,6,0),
-/*------------------
--- (755) Jewelcrafting
-------------------*/
-/*Jewelcrafting*/
-(25229,0,25229,1,0),
-(25230,25229,25229,2,0),
-(28894,25230,25229,3,0),
-(28895,28894,25229,4,0),
-(28897,28895,25229,5,0),
-(51311,28897,25229,6,0),
-/*------------------
---(761)Pet-Felguard
-------------------*/
-/*Anguish*/
-(33698,0,33698,1,0),
-(33699,33698,33698,2,0),
-(33700,33699,33698,3,0),
-(47993,33700,33698,4,0),
-/*Cleave*/
-(30213,0,30213,1,0),
-(30219,30213,30213,2,0),
-(30223,30219,30213,3,0),
-(47994,30223,30213,4,0),
-/*Intercept*/
-(30151,0,30151,1,0),
-(30194,30151,30151,2,0),
-(30198,30194,30151,3,0),
-(47996,30198,30151,4,0),
-/*------------------
--- (762) Riding
-------------------*/
-/*Riding*/
-(33388,0,33388,1,0),
-(33391,33388,33388,2,0),
-(34090,33391,33388,3,0),
-(34091,34090,33388,4,0),
-/*------------------
---(763)Pet-Dragonhawk
-------------------*/
-/*FireBreath*/
-(34889,0,34889,1,0),
-(35323,34889,34889,2,0),
-(55482,35323,34889,3,0),
-(55483,55482,34889,4,0),
-(55484,55483,34889,5,0),
-(55485,55484,34889,6,0),
-/*------------------
---(764)Pet-NetherRay
---(765)Pet-Sporebat
-------------------*/
-/*SporeCloud*/
-(50274,0,50274,1,0),
-(53593,50274,50274,2,0),
-(53594,53593,50274,3,0),
-(53596,53594,50274,4,0),
-(53597,53596,50274,5,0),
-(53598,53597,50274,6,0),
-/*------------------
---(767)Pet - Ravager
-------------------*/
-/*Ravage*/
-(50518,0,50518,1,0),
-(53558,50518,50518,2,0),
-(53559,53558,50518,3,0),
-(53560,53559,50518,4,0),
-(53561,53560,50518,5,0),
-(53562,53561,50518,6,0),
-/*------------------
---(768)Pet-Serpent
-------------------*/
-/*PoisonSpit*/
-(35387,0,35387,1,0),
-(35389,35387,35387,2,0),
-(35392,35389,35387,3,0),
-(55555,35392,35387,4,0),
-(55556,55555,35387,5,0),
-(55557,55556,35387,6,0),
-/*------------------
---(770)Blood
-------------------*/
-/*Blood Boil*/
-(48721,0,48721,1,0),
-(49939,48721,48721,2,0),
-(49940,49939,48721,3,0),
-(49941,49940,48721,4,0),
-/*BloodStrike*/
-(45902,0,45902,1,0),
-(49926,45902,45902,2,0),
-(49927,49926,45902,3,0),
-(49928,49927,45902,4,0),
-(49929,49928,45902,5,0),
-(49930,49929,45902,6,0),
-/*Death Coil*/
+-- ------------------
+-- (770)Blood
+-- ------------------
+/* Death Coil */
 (62900,0,62900,1,0),
 (62901,62900,62900,2,0),
 (62902,62901,62900,3,0),
 (62903,62902,62900,4,0),
 (62904,62903,62900,5,0),
-/*Heart Strike*/
-(55050,0,55050,1,0),
-(55258,55050,55050,2,0),
-(55259,55258,55050,3,0),
-(55260,55259,55050,4,0),
-(55261,55260,55050,5,0),
-(55262,55261,55050,6,0),
-/*Improved Blood Presence*/
-(50365,0,50365,1,0),
-(50371,50365,50365,2,0),
-/*Improved Death Strike*/
-(62905,0,62905,1,0),
-(62908,62905,62905,2,0),
-/*Improved Rune Tap*/
-(48985,0,48985,1,0),
-(49488,48985,48985,2,0),
-(49489,49488,48985,3,0),
-/*Pestilence*/
-(50842,0,50842,1,0),
-(51426,50842,50842,2,0),
-(51427,51426,50842,3,0),
-(51428,51427,50842,4,0),
-(51429,51428,50842,5,0),
-/*Strangulate*/
-(47476,0,47476,1,0),
-(49913,47476,47476,2,0),
-(49914,49913,47476,3,0),
-(49915,49914,47476,4,0),
-(49916,49915,47476,5,0),
-/*Vendetta*/
-(49015,0,49015,1,0),
-(50154,49015,49015,2,0),
-(55136,50154,49015,3,0),
-/*------------------
---(771)Frost
-------------------*/
-/*FrostStrike*/
-(49143,0,49143,1,0),
-(51416,49143,49143,2,0),
-(51417,51416,49143,3,0),
-(51418,51417,49143,4,0),
-(51419,51418,49143,5,0),
-(55268,51419,49143,6,0),
-/*HornofWinter*/
+-- ------------------
+-- (771)Frost
+-- ------------------
+/* HornofWinter */
 (57330,0,57330,1,0),
 (57623,57330,57330,2,0),
-/*Howling Blast*/
+/* Howling Blast */
 (49184,0,49184,1,0),
 (51409,49184,49184,2,0),
 (51410,51409,49184,3,0),
 (51411,51410,49184,4,0),
-/*IcyTalons*/
-(50880,0,50880,1,0),
-(50884,50880,50880,2,0),
-(50885,50884,50880,3,0),
-(50886,50885,50880,4,0),
-(50887,50886,50880,5,0),
-/*IcyTouch*/
-(45477,0,45477,1,0),
-(49896,45477,45477,2,0),
-(49903,49896,45477,3,0),
-(49904,49903,45477,4,0),
-(49909,49904,45477,5,0),
-/*Improved Frost Presence*/
-(50384,0,50384,1,0),
-(50385,50384,50384,2,0),
-/*Improved Icy Touch*/
-(49175,0,49175,1,0),
-(50031,49175,49175,2,0),
-(51456,50031,49175,3,0),
-/*Obliterate*/
-(49020,0,49020,1,0),
-(51423,49020,49020,2,0),
-(51424,51423,49020,3,0),
-(51425,51424,49020,4,0),
-/*Rime*/
-(49188,0,49188,1,0),
-(56822,49188,49188,2,0),
-(59057,56822,49188,3,0),
-/*Threat of Thassarian*/
-(65661,0,65661,1,0),
-(66191,65661,65661,2,0),
-(66192,66191,65661,3,0),
-/*------------------
---(772)Unholy
-------------------*/
-/*CorpseExplosion*/
-(49158,0,49158,1,0),
-(51325,49158,49158,2,0),
-(51326,51325,49158,3,0),
-(51327,51326,49158,4,0),
-(51328,51327,49158,5,0),
-/*DeathandDecay*/
-(43265,0,43265,1,0),
-(49936,43265,43265,2,0),
-(49937,49936,43265,3,0),
-(49938,49937,43265,4,0),
-/*Death Coil*/
-(47541,0,47541,1,0),
-(49892,47541,47541,2,0),
-(49893,49892,47541,3,0),
-(49894,49893,47541,4,0),
-(49895,49894,47541,5,0),
-/*DeathStrike*/
-(49998,0,49998,1,0),
-(49999,49998,49998,2,0),
-(45463,49999,49998,3,0),
-(49923,45463,49998,4,0),
-(49924,49923,49998,5,0),
-/* Desecration */
-(55666,0,55666,1,0),
-(55667,55666,55666,2,0),
-/*Improved Unholy Presence*/
-(50391,0,50391,1,0),
-(50392,50391,50391,2,0),
-/*Magic Suppression*/
-(49224,0,49224,1,0),
-(49610,49224,49224,2,0),
-(49611,49610,49224,3,0),
-/*Outbreak*/
-(49013,0,49013,1,0),
-(55236,49013,49013,2,0),
-(55237,55236,49013,3,0),
-/*PlagueStrike*/
-(45462,0,45462,1,0),
-(49917,45462,45462,2,0),
-(49918,49917,45462,3,0),
-(49919,49918,45462,4,0),
-(49920,49919,45462,5,0),
-(49921,49920,45462,6,0),
-/*ScourgeStrike*/
-(55090,0,55090,1,0),
-(55265,55090,55090,2,0),
-(55270,55265,55090,3,0),
-(55271,55270,55090,4,0),
-/*------------------
--- (773) Inscription
-------------------*/
-/*Inscription*/
-(45357,0,45357,1,0),
-(45358,45357,45357,2,0),
-(45359,45358,45357,3,0),
-(45360,45359,45357,4,0),
-(45361,45360,45357,5,0),
-(45363,45361,45357,6,0),
-/*------------------
+-- ------------------
 -- (777) Mounts
-------------------*/
+-- ------------------
 (13819,0,13819,1,0),
 (23214,13819,13819,2,33391),
 (34769,0,34769,1,0),
-(34767,34769,34769,2,33391),
-/*------------------
---(780)Pet-Exotic Chimaera
-------------------*/
-/*Froststorm Breath*/
-(54644,0,54644,1,0),
-(55488,54644,54644,2,0),
-(55489,55488,54644,3,0),
-(55490,55489,54644,4,0),
-(55491,55490,54644,5,0),
-(55492,55491,54644,6,0),
-/*------------------
---(781)Pet-Exotic Devlisaur
-------------------*/
-/*Monstrous Bite*/
-(54680,0,54680,1,0),
-(55495,54680,54680,2,0),
-(55496,55495,54680,3,0),
-(55497,55496,54680,4,0),
-(55498,55497,54680,5,0),
-(55499,55498,54680,6,0),
-/*------------------
---(784)Pet-Exotic Worm
-------------------*/
-/*AcidSpit*/
-(55749,0,55749,1,0),
-(55750,55749,55749,2,0),
-(55751,55750,55749,3,0),
-(55752,55751,55749,4,0),
-(55753,55752,55749,5,0),
-(55754,55753,55749,6,0),
-/*------------------
---(785)Pet-Wasp
-------------------*/
-/*Sting*/
-(56626,0,56626,1,0),
-(56627,56626,56626,2,0),
-(56628,56627,56626,3,0),
-(56629,56628,56626,4,0),
-(56630,56629,56626,5,0),
-(56631,56630,56626,6,0),
-/*------------------
---(787)Pet-Exotic Core Hound
-------------------*/
-/*Lava Breath*/
-(58604,0,58604,1,0),
-(58607,58604,58604,2,0),
-(58608,58607,58604,3,0),
-(58609,58608,58604,4,0),
-(58610,58609,58604,5,0),
-(58611,58610,58604,6,0),
-/*------------------
---(788)Pet-Exotic Spirit Beast
-------------------*/
-/*Spirit Strike*/
-(61193,0,61193,1,0),
-(61194,61193,61193,2,0),
-(61195,61194,61193,3,0),
-(61196,61195,61193,4,0),
-(61197,61196,61193,5,0),
-(61198,61197,61193,6,0),
-/*------------------
---(-) Not listed in skill abilities
-------------------*/
-/*Hurricane*/
-(42231,    0,42231,1,0),
-(42232,42231,42231,2,0),
-(42233,42232,42231,3,0),
-(42230,42233,42231,4,0),
-(48466,42230,42231,5,0),
-/*Shadowflame Triggered DoT*/
-(47960,0,47960,1,0),
-(61291,47960,47960,2,0),
-/*Tranquility*/
-(44203,    0,44203,1,0),
-(44205,44203,44203,2,0),
-(44206,44205,44203,3,0),
-(44207,44206,44203,4,0),
-(44208,44207,44203,5,0),
-(48444,44208,44203,6,0),
-(48445,48444,44203,7,0);
+(34767,34769,34769,2,33391);
 /*!40000 ALTER TABLE `spell_chain` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -17732,6 +16711,9 @@ CREATE TABLE `spell_learn_spell` (
 LOCK TABLES `spell_learn_spell` WRITE;
 /*!40000 ALTER TABLE `spell_learn_spell` DISABLE KEYS */;
 INSERT INTO `spell_learn_spell` VALUES
+(20271,21084,1),
+(53407,21084,1),
+(53408,21084,1),
 (5784,33388,1),
 (13819,33388,1),
 (17002,24867,0),
@@ -17849,21 +16831,26 @@ UNLOCK TABLES;
 --
 -- Table structure for table `spell_proc_event`
 --
-
 DROP TABLE IF EXISTS `spell_proc_event`;
 CREATE TABLE `spell_proc_event` (
-  `entry` mediumint(8) unsigned NOT NULL default '0',
-  `SchoolMask` tinyint(4) NOT NULL default '0',
-  `SpellFamilyName` smallint(5) unsigned NOT NULL default '0',
-  `SpellFamilyMask0` int(10) unsigned NOT NULL default '0',
-  `SpellFamilyMask1` int(10) unsigned NOT NULL default '0',
-  `SpellFamilyMask2` int(10) unsigned NOT NULL default '0',
-  `procFlags` int(10) unsigned NOT NULL default '0',
-  `procEx` int(10) unsigned NOT NULL default '0',
-  `ppmRate` float NOT NULL default '0',
-  `CustomChance` float NOT NULL default '0',
-  `Cooldown` int(10) unsigned NOT NULL default '0',
-  PRIMARY KEY  (`entry`)
+  `entry` mediumint(8) unsigned NOT NULL DEFAULT '0',
+  `SchoolMask` tinyint(4) unsigned NOT NULL DEFAULT '0',
+  `SpellFamilyName` smallint(5) unsigned NOT NULL DEFAULT '0',
+  `SpellFamilyMaskA0` int(10) unsigned NOT NULL DEFAULT '0',
+  `SpellFamilyMaskA1` int(10) unsigned NOT NULL DEFAULT '0',
+  `SpellFamilyMaskA2` int(10) unsigned NOT NULL DEFAULT '0',
+  `SpellFamilyMaskB0` int(10) unsigned NOT NULL DEFAULT '0',
+  `SpellFamilyMaskB1` int(10) unsigned NOT NULL DEFAULT '0',
+  `SpellFamilyMaskB2` int(10) unsigned NOT NULL DEFAULT '0',
+  `SpellFamilyMaskC0` int(10) unsigned NOT NULL DEFAULT '0',
+  `SpellFamilyMaskC1` int(10) unsigned NOT NULL DEFAULT '0',
+  `SpellFamilyMaskC2` int(10) unsigned NOT NULL DEFAULT '0',
+  `procFlags` int(10) unsigned NOT NULL DEFAULT '0',
+  `procEx` int(10) unsigned NOT NULL DEFAULT '0',
+  `ppmRate` float NOT NULL DEFAULT '0',
+  `CustomChance` float NOT NULL DEFAULT '0',
+  `Cooldown` int(10) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`entry`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 --
@@ -17873,821 +16860,622 @@ CREATE TABLE `spell_proc_event` (
 LOCK TABLES `spell_proc_event` WRITE;
 /*!40000 ALTER TABLE `spell_proc_event` DISABLE KEYS */;
 INSERT INTO `spell_proc_event` VALUES
-(  324, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
-(  974, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
-( 1463, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000400, 0.000000, 0.000000,  0),
-( 3232, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-( 5952, 0x00000000,  8, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-( 6346, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000100, 0.000000, 0.000000,  0),
-( 7383, 0x00000001,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000100, 0.000000, 0.000000,  0),
-( 7434, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-( 8178, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-( 9452, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
-( 9782, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-( 9784, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-( 9799, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(11095, 0x00000000,  3, 0x00000010, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(11119, 0x00000004,  3, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(11120, 0x00000004,  3, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(11129, 0x00000004,  3, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(11180, 0x00000010,  3, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(11185, 0x00000000,  3, 0x00000080, 0x00000000, 0x00000000, 0x00050000, 0x00000000, 0.000000, 0.000000,  0),
-(11255, 0x00000000,  3, 0x00004000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(12169, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(12281, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  6),
-(12289, 0x00000000,  4, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(12298, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(12311, 0x00000000,  4, 0x00000800, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(12317, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(12319, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(12322, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 2.000000, 0.000000,  0),
-(12487, 0x00000000,  3, 0x00000080, 0x00000000, 0x00000000, 0x00050000, 0x00000000, 0.000000, 0.000000,  0),
-(12488, 0x00000000,  3, 0x00000080, 0x00000000, 0x00000000, 0x00050000, 0x00000000, 0.000000, 0.000000,  0),
-(12598, 0x00000000,  3, 0x00004000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(12668, 0x00000000,  4, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(12724, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(12725, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(12726, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(12727, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(12797, 0x00000000,  4, 0x00000400, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(12799, 0x00000000,  4, 0x00000400, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(12812, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  6),
-(12813, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  6),
-(12814, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  6),
-(12815, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  6),
-(12834, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(12846, 0x00000004,  3, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(12847, 0x00000004,  3, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(12848, 0x00000004,  3, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(12849, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(12867, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(12872, 0x00000000,  3, 0x00000010, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(12873, 0x00000000,  3, 0x00000010, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(12958, 0x00000000,  4, 0x00000800, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(12966, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(12967, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(12968, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(12969, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(12970, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(12971, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(12972, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(12973, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(12974, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(12999, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 4.000000, 0.000000,  0),
-(13000, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 6.000000, 0.000000,  0),
-(13001, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 8.000000, 0.000000,  0),
-(13002, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,10.000000, 0.000000,  0),
-(13045, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(13046, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(13047, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(13048, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(13163, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000010, 0.000000, 0.000000,  0),
-(13165, 0x00000000,  9, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(13754, 0x00000000,  8, 0x00000010, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(13867, 0x00000000,  8, 0x00000010, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(13983, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000018, 0.000000, 0.000000,  0),
-(14070, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000018, 0.000000, 0.000000,  0),
-(14071, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000018, 0.000000, 0.000000,  0),
-(14156, 0x00000000,  8, 0x003E0000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(14160, 0x00000000,  8, 0x003E0000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(14161, 0x00000000,  8, 0x003E0000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(14186, 0x00000000,  8, 0x40800508, 0x00000002, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(14190, 0x00000000,  8, 0x40800508, 0x00000002, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(14193, 0x00000000,  8, 0x40800508, 0x00000002, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(14194, 0x00000000,  8, 0x40800508, 0x00000002, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(14195, 0x00000000,  8, 0x40800508, 0x00000002, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(14531, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(14774, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(14892, 0x00000000,  6, 0x10001E00, 0x00010004, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(15088, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(15128, 0x00000004,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(15277, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 6.000000, 0.000000,  0),
-(15286, 0x00000020,  6, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(15337, 0x00000000,  6, 0x00002000, 0x00000002, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(15338, 0x00000000,  6, 0x00002000, 0x00000002, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(15346, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 6.000000, 0.000000,  0),
-(15362, 0x00000000,  6, 0x10001E00, 0x00010004, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(15363, 0x00000000,  6, 0x10001E00, 0x00010004, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(15600, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1.000000, 0.000000,  0),
-(16164, 0x00000000, 11, 0x901000C3, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(16176, 0x00000000, 11, 0x000001C0, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(16180, 0x00000000, 11, 0x000000C0, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(16196, 0x00000000, 11, 0x000000C0, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(16198, 0x00000000, 11, 0x000000C0, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(16235, 0x00000000, 11, 0x000001C0, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(16240, 0x00000000, 11, 0x000001C0, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(16256, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(16257, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(16277, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(16278, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(16279, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(16280, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(16281, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(16282, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(16283, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(16284, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(16487, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(16489, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(16492, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(16550, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(16620, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 30),
-(16624, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(16850, 0x00000000,  7, 0x00000004, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(16864, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 2.000000, 0.000000,  0),
-(16880, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(16923, 0x00000000,  7, 0x00000004, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(16924, 0x00000000,  7, 0x00000004, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(16952, 0x00000000,  7, 0x00039000, 0x00000400, 0x00040000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(16954, 0x00000000,  7, 0x00039000, 0x00000400, 0x00040000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(16958, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(16961, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(17106, 0x00000000,  7, 0x00080000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(17107, 0x00000000,  7, 0x00080000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(17108, 0x00000000,  7, 0x00080000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(17364, 0x00000008,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(17495, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(17793, 0x00000000,  5, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(17796, 0x00000000,  5, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(17801, 0x00000000,  5, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(17802, 0x00000000,  5, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(17803, 0x00000000,  5, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(18073, 0x00000000,  5, 0x00000100, 0x00800000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(18094, 0x00000000,  5, 0x0000000A, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(18095, 0x00000000,  5, 0x0000000A, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(18096, 0x00000000,  5, 0x00000100, 0x00800000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(18119, 0x00000000,  5, 0x00000000, 0x00800000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(18120, 0x00000000,  5, 0x00000000, 0x00800000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(18820, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(19184, 0x00000000,  9, 0x00000010, 0x00002000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(19572, 0x00000000,  9, 0x00800000, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000,  0),
-(19573, 0x00000000,  9, 0x00800000, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000,  0),
-(20049, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(20056, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(20057, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(20128, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(20131, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(20132, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(20164, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 5.000000, 0.000000,  0),
-(20165, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,20.000000, 0.000000,  0),
-(20166, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,15.000000, 0.000000,  0),
-(20182, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(20210, 0x00000000, 10, 0xC0000000, 0x00010000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(20212, 0x00000000, 10, 0xC0000000, 0x00010000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(20213, 0x00000000, 10, 0xC0000000, 0x00010000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(20214, 0x00000000, 10, 0xC0000000, 0x00010000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(20215, 0x00000000, 10, 0xC0000000, 0x00010000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(20234, 0x00000000, 10, 0x00008000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(20235, 0x00000000, 10, 0x00008000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(20335, 0x00000000, 10, 0x00800000, 0x00000000, 0x00000008, 0x00000100, 0x00000000, 0.000000, 100.000000,0),
-(20375, 0x00000001,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  1),
-(20500, 0x00000000,  4, 0x10000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(20501, 0x00000000,  4, 0x10000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(20705, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(20784, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(20911, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000070, 0.000000, 0.000000,  0),
-(20925, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(21084, 0x00000001,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(21185, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
-(21882, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(21890, 0x00000000,  4, 0x2A764EEF, 0x0000036C, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(22007, 0x00000000,  3, 0x00200021, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(22618, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(22648, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(23547, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000020, 0.000000, 0.000000,  0),
-(23548, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(23551, 0x00000000, 11, 0x000000C0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(23552, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
-(23572, 0x00000000, 11, 0x000000C0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(23578, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 2.000000, 0.000000,  0),
-(23581, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 2.000000, 0.000000,  0),
-(23602, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(23686, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 2.000000, 0.000000,  0),
-(23688, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(23689, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 4.000000, 0.000000,  0),
-(23695, 0x00000000,  4, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(23721, 0x00000000,  9, 0x00000800, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(23920, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000800, 0.000000, 0.000000,  0),
-(24353, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(24389, 0x00000000,  3, 0x00C00017, 0x00000040, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(24658, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00014110, 0x00000000, 0.000000, 0.000000,  0),
-(24905, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002,15.000000, 0.000000,  0),
-(24932, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  6),
-(25050, 0x00000004,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(25669, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1.000000, 0.000000,  0),
-(25988, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(26016, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 2.000000, 0.000000,  0),
-(26107, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000064, 0.000000, 0.000000,  0),
-(26119, 0x00000000, 10, 0x90100003, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(26128, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000008, 0.000000, 0.000000,  0),
-(26135, 0x00000000, 10, 0x00800000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(26480, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
-(26605, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(27419, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
-(27498, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
-(27521, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(27656, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
-(27774, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(27787, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
-(27811, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(27815, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(27816, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(28592, 0x00000010,  3, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(28593, 0x00000010,  3, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(28716, 0x00000000,  7, 0x00000010, 0x00000000, 0x00000000, 0x00048000, 0x00000000, 0.000000, 0.000000,  0),
-(28719, 0x00000000,  7, 0x00000020, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(28744, 0x00000000,  7, 0x00000040, 0x00000000, 0x00000000, 0x00044000, 0x00000000, 0.000000, 0.000000,  0),
-(28752, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(28789, 0x00000000, 10, 0xC0000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(28802, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(28809, 0x00000000,  6, 0x00001000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(28812, 0x00000000,  8, 0x02000006, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(28816, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
-(28823, 0x00000000, 11, 0x000000C0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(28847, 0x00000000,  7, 0x00000020, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(28849, 0x00000000, 11, 0x00000080, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(29074, 0x00000014,  3, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(29075, 0x00000014,  3, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(29076, 0x00000014,  3, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(29150, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
-(29179, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(29180, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(29385, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 7.000000, 0.000000,  0),
-(29441, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000008, 0.000000, 0.000000,  1),
-(29444, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000008, 0.000000, 0.000000,  1),
-(29455, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(29501, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
-(29593, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000070, 0.000000, 0.000000,  0),
-(29594, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000070, 0.000000, 0.000000,  0),
-(29624, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
-(29625, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
-(29626, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
-(29632, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
-(29633, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
-(29634, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
-(29635, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
-(29636, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
-(29637, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
-(29801, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(29834, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(29838, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(29977, 0x00000000,  3, 0x00C00017, 0x00000040, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(30003, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000800, 0.000000, 0.000000,  0),
-(30160, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(30293, 0x00000000,  5, 0x00000181, 0x008200C0, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(30295, 0x00000000,  5, 0x00000181, 0x008200C0, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(30296, 0x00000000,  5, 0x00000181, 0x008200C0, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(30299, 0x0000007E,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(30301, 0x0000007E,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(30302, 0x0000007E,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(30675, 0x00000000, 11, 0x00000003, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(30678, 0x00000000, 11, 0x00000003, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(30679, 0x00000000, 11, 0x00000003, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(30701, 0x0000001C,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(30705, 0x0000001C,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(30802, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(30803, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(30804, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(30805, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(30808, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(30809, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(30823, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 10.500000, 0.000000, 0),
-(30881, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  5),
-(30883, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  5),
-(30884, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  5),
-(30885, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  5),
-(30886, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  5),
-(30937, 0x00000020,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(31124, 0x00000000,  8, 0x2000000E, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(31126, 0x00000000,  8, 0x2000000E, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(31244, 0x00000000,  8, 0x003E0000, 0x00000009, 0x00000000, 0x00000000, 0x00002034, 0.000000, 0.000000,  0),
-(31394, 0x00000020,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(31569, 0x00000000,  3, 0x00010000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(31570, 0x00000000,  3, 0x00010000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(31785, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00008800, 0x00000000, 0.000000, 0.000000,  0),
-(31794, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(31801, 0x00000001,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(31833, 0x00000000, 10, 0x80000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(31835, 0x00000000, 10, 0x80000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(31836, 0x00000000, 10, 0x80000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(31871, 0x00000000, 10, 0x00000010, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000,  0),
-(31872, 0x00000000, 10, 0x00000010, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000,  0),
-(31876, 0x00000000, 10, 0x00800000, 0x00000000, 0x00000008, 0x00004110, 0x00000000, 0.000000, 0.000000,  0),
-(31877, 0x00000000, 10, 0x00800000, 0x00000000, 0x00000008, 0x00004110, 0x00000000, 0.000000, 0.000000,  0),
-(31878, 0x00000000, 10, 0x00800000, 0x00000000, 0x00000008, 0x00004110, 0x00000000, 0.000000, 0.000000,  0),
-(31904, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(32385, 0x00000000,  5, 0x00000001, 0x00040000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(32409, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(32587, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(32642, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(32734, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
-(32748, 0x00000000,  8, 0x00000000, 0x00000001, 0x00000000, 0x00000140, 0x00000000, 0.000000, 0.000000,  0),
-(32776, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(32777, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(32837, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000, 45),
-(32844, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 2.000000, 0.000000,  0),
-(32885, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(33076, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x000A02A8, 0x00000000, 0.000000, 0.000000,  0),
-(33089, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(33127, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 7.000000, 0.000000,  0),
-(33142, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(33145, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(33146, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(33150, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(33151, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(33154, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(33191, 0x00000000,  6, 0x00808000, 0x00000400, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(33192, 0x00000000,  6, 0x00808000, 0x00000400, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(33193, 0x00000000,  6, 0x00808000, 0x00000400, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(33297, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(33299, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(33510, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 5.000000, 0.000000,  0),
-(33648, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(33719, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000800, 0.000000, 0.000000,  0),
-(33746, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
-(33757, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
-(33759, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
-(33881, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(33882, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(33883, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(33953, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000, 45),
-(34074, 0x00000000,  9, 0x0007FA43, 0x00881081, 0x00000201, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(34080, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000008, 0.000000, 0.000000,  0),
-(34138, 0x00000000, 11, 0x00000080, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(34139, 0x00000000, 10, 0x40000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(34258, 0x00000000, 10, 0x00000400, 0x00000008, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(34262, 0x00000000, 10, 0x00800000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(34320, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 45),
-(34355, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
-(34457, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(34497, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(34498, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(34499, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(34500, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(34502, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(34503, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(34506, 0x00000000,  9, 0x0007FA01, 0x00801081, 0x08000201, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(34584, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 30),
-(34586, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1.500000, 0.000000,  0),
-(34598, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(34749, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000008, 0.000000, 0.000000,  0),
-(34753, 0x00000000,  6, 0x00001800, 0x00000004, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(34774, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1.500000, 0.000000, 20),
-(34783, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000800, 0.000000, 0.000000,  0),
-(34827, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
-(34859, 0x00000000,  6, 0x00001800, 0x00000004, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(34860, 0x00000000,  6, 0x00001800, 0x00000004, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(34914, 0x00000000,  6, 0x00002000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(34935, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  8),
-(34938, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  8),
-(34939, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  8),
-(34950, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(34954, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(35077, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 60),
-(35080, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1.000000, 0.000000, 60),
-(35083, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 60),
-(35086, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 60),
-(35100, 0x00000000,  9, 0x00001000, 0x00000000, 0x00000001, 0x00000100, 0x00000000, 0.000000, 0.000000,  0),
-(35121, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(36096, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000800, 0.000000, 0.000000,  0),
-(36111, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(36541, 0x00000004,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(37165, 0x00000000,  8, 0x00200400, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(37168, 0x00000000,  8, 0x003E0000, 0x00000009, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(37170, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1.000000, 0.000000,  0),
-(37173, 0x00000000,  8, 0x2CBC0598, 0x00000106, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 30),
-(37189, 0x00000000, 10, 0xC0000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 60),
-(37193, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(37195, 0x00000000, 10, 0x00800000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(37197, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000, 45),
-(37213, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(37214, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(37227, 0x00000000, 11, 0x000001C0, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 60),
-(37237, 0x00000000, 11, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(37247, 0x00000008,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000, 45),
-(37377, 0x00000020,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(37379, 0x00000020,  5, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(37384, 0x00000000,  5, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(37443, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(37514, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000020, 0.000000, 0.000000,  0),
-(37516, 0x00000000,  4, 0x00000400, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(37519, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000030, 0.000000, 0.000000,  0),
-(37523, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(37528, 0x00000000,  4, 0x00000004, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(37536, 0x00000000,  4, 0x00010000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(37568, 0x00000000,  6, 0x00000800, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(37594, 0x00000000,  6, 0x00001000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(37600, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(37601, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(37603, 0x00000000,  6, 0x00008000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(37655, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 60),
-(37657, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  3),
-(38026, 0x00000001,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000100, 0.000000, 0.000000,  0),
-(38031, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(38290, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1.600000, 0.000000,  0),
-(38299, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 12),
-(38326, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(38327, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(38334, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 60),
-(38347, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 45),
-(38350, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(38394, 0x00000000,  5, 0x00000006, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(38857, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(39027, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
-(39372, 0x00000030,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(39437, 0x00000004,  5, 0x00001364, 0x000000C0, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(39442, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000001, 0.000000, 0.000000,  0),
-(39443, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(39530, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(39958, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.700000, 0.000000, 40),
-(40407, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 6.000000, 0.000000,  0),
-(40438, 0x00000000,  6, 0x00008040, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(40442, 0x00000000,  7, 0x00000014, 0x00000440, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(40444, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(40458, 0x00000000,  4, 0x02000000, 0x00000601, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(40463, 0x00000000, 11, 0x00000081, 0x00000010, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(40470, 0x00000000, 10, 0xC0800000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(40475, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
-(40478, 0x00000000,  5, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(40482, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(40485, 0x00000000,  9, 0x00000000, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(40899, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
-(41034, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000400, 0.000000, 0.000000,  0),
-(41260, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
-(41262, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
-(41381, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000100, 0.000000, 0.000000,  0),
-(41393, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000020, 0.000000, 0.000000,  0),
-(41434, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 2.000000, 0.000000, 45),
-(41469, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 7.000000, 0.000000,  0),
-(41635, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x000A02A8, 0x00000000, 0.000000, 0.000000,  0),
-(41989, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.500000, 0.000000,  0),
-(42083, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 45),
-(42135, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 90),
-(42136, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 90),
-(42368, 0x00000000, 10, 0x40000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(42370, 0x00000000, 11, 0x00000040, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(42770, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(43338, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(43443, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000800, 0.000000, 0.000000,  0),
-(43726, 0x00000000, 10, 0x40000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(43728, 0x00000000, 11, 0x00000080, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(43737, 0x00000000,  7, 0x00000000, 0x00000440, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
-(43739, 0x00000000,  7, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(43741, 0x00000000, 10, 0x80000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(43745, 0x00000000, 10, 0x00000000, 0x00000200, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(43748, 0x00000000, 11, 0x90100000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(43750, 0x00000000, 11, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(43819, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(44394, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000400, 0.000000, 0.000000,  0),
-(44395, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000400, 0.000000, 0.000000,  0),
-(44396, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000400, 0.000000, 0.000000,  0),
-(44404, 0x00000000,  3, 0x20000021, 0x00009000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(44442, 0x00000000,  3, 0x00800000, 0x00000040, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  1),
-(44443, 0x00000000,  3, 0x00800000, 0x00000040, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  1),
-(44445, 0x00000000,  3, 0x00000013, 0x00001000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(44446, 0x00000000,  3, 0x00000013, 0x00001000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(44448, 0x00000000,  3, 0x00000013, 0x00001000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(44449, 0x00000000,  3, 0x20E21277, 0x00019048, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(44469, 0x00000000,  3, 0x20E21277, 0x00019048, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(44470, 0x00000000,  3, 0x20E21277, 0x00019048, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(44471, 0x00000000,  3, 0x20E21277, 0x00019048, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(44472, 0x00000000,  3, 0x20E21277, 0x00019048, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(44546, 0x00000000,  3, 0x020002A0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(44548, 0x00000000,  3, 0x020002A0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(44549, 0x00000000,  3, 0x020002A0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(44835, 0x00000000,  7, 0x00000000, 0x00000080, 0x00000000, 0x00000010, 0x00000000, 0.000000, 0.000000,  0),
-(45054, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 15),
-(45057, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 30),
-(45234, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(45243, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(45244, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(45354, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(45355, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(45481, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(45482, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(45483, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(45484, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000, 45),
-(46025, 0x00000020,  6, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(46092, 0x00000000, 10, 0x40000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(46098, 0x00000000, 11, 0x00000080, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(46569, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(46662, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 20),
-(46832, 0x00000000,  7, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(46854, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(46855, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(46867, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(46913, 0x00000000,  4, 0x00000040, 0x00000404, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(46916, 0x00000000,  4, 0x00000000, 0x00000400, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(46951, 0x00000000,  4, 0x00000400, 0x00000040, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(46952, 0x00000000,  0, 0x00000400, 0x00000040, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(46953, 0x00000000,  0, 0x00000400, 0x00000040, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(47195, 0x00000000,  5, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 30),
-(47196, 0x00000000,  5, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 30),
-(47197, 0x00000000,  5, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 30),
-(47201, 0x00000000,  5, 0x00000008, 0x00040000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(47202, 0x00000000,  5, 0x00000008, 0x00040000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(47203, 0x00000000,  5, 0x00000008, 0x00040000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(47204, 0x00000000,  5, 0x00000008, 0x00040000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(47205, 0x00000000,  5, 0x00000008, 0x00040000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(47245, 0x00000020,  5, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(47246, 0x00000020,  5, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(47247, 0x00000020,  5, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(47258, 0x00000000,  5, 0x00000000, 0x00800000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(47259, 0x00000000,  5, 0x00000000, 0x00800000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(47260, 0x00000000,  5, 0x00000000, 0x00800000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(47263, 0x00000020,  5, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 20),
-(47264, 0x00000020,  5, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 20),
-(47265, 0x00000020,  5, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 20),
-(47509, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(47511, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(47515, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(47516, 0x00000000,  6, 0x00001800, 0x00010000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(47517, 0x00000000,  6, 0x00001800, 0x00010000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(47569, 0x00000000,  6, 0x00004000, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000,  0),
-(47580, 0x00000000,  6, 0x00000000, 0x00000000, 0x00000040, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(47581, 0x00000000,  6, 0x00000000, 0x00000000, 0x00000040, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(47582, 0x00000000,  6, 0x00000000, 0x00000000, 0x00000040, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(48110, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x000A02A8, 0x00000000, 0.000000, 0.000000,  0),
-(48111, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x000A02A8, 0x00000000, 0.000000, 0.000000,  0),
-(48483, 0x00000000,  7, 0x00008800, 0x00000440, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(48484, 0x00000000,  7, 0x00008800, 0x00000440, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(48485, 0x00000000,  7, 0x00008800, 0x00000440, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(48496, 0x00000000,  7, 0x00000060, 0x02000002, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(48499, 0x00000000,  7, 0x00000060, 0x02000002, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(48500, 0x00000000,  7, 0x00000060, 0x02000002, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(48506, 0x00000000,  7, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(48510, 0x00000000,  7, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(48511, 0x00000000,  7, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(48516, 0x00000000,  7, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 30),
-(48521, 0x00000000,  7, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 30),
-(48525, 0x00000000,  7, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 30),
-(48539, 0x00000000,  7, 0x00000010, 0x04000000, 0x00000000, 0x00040000, 0x00000000, 0.000000, 0.000000,  0),
-(48833, 0x00000000,  7, 0x00000000, 0x00000440, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(48835, 0x00000000, 10, 0x00000000, 0x00000008, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(48837, 0x00000000, 11, 0x90100000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(48988, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(49018, 0x00000000, 15, 0x01400000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(49137, 0x00000000, 15, 0x00000000, 0x00004000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(49188, 0x00000000, 15, 0x00000000, 0x00020000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(49208, 0x00000000, 15, 0x00440000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(49222, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
-(49503, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(49504, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(49529, 0x00000000, 15, 0x01400000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(49530, 0x00000000, 15, 0x01400000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(49622, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 60),
-(49657, 0x00000000, 15, 0x00000000, 0x00004000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(50781, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  6),
-(50880, 0x00000010, 15, 0x00000000, 0x00000800, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(51123, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(51127, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(51128, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(51129, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(51130, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(51346, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
-(51349, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
-(51352, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
-(51359, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
-(51414, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(51466, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(51470, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(51474, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(51478, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(51479, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(51483, 0x00000001, 11, 0x20000000, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000,  0),
-(51485, 0x00000001, 11, 0x20000000, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000,  0),
-(51486, 0x00000001, 11, 0x20000000, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000,  0),
-(51521, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  1),
-(51528, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,12.500000, 0.000000,  0),
-(51556, 0x00000000, 11, 0x000000C0, 0x00000000, 0x00000010, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(51557, 0x00000000, 11, 0x000000C0, 0x00000000, 0x00000010, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(51558, 0x00000000, 11, 0x000000C0, 0x00000000, 0x00000010, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(51562, 0x00000000, 11, 0x00000100, 0x00000000, 0x00000010, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(51563, 0x00000000, 11, 0x00000100, 0x00000000, 0x00000010, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(51564, 0x00000000, 11, 0x00000100, 0x00000000, 0x00000010, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(51565, 0x00000000, 11, 0x00000100, 0x00000000, 0x00000010, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(51566, 0x00000000, 11, 0x00000100, 0x00000000, 0x00000010, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(51625, 0x00000000,  8, 0x1000A000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(51626, 0x00000000,  8, 0x1000A000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(51627, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000070, 0.000000, 0.000000,  0),
-(51628, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000070, 0.000000, 0.000000,  0),
-(51629, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000070, 0.000000, 0.000000,  0),
-(51634, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(51635, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(51636, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(51664, 0x00000000,  8, 0x00020000, 0x00000008, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(51665, 0x00000000,  8, 0x00020000, 0x00000008, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(51667, 0x00000000,  8, 0x00020000, 0x00000008, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(51668, 0x00000000,  8, 0x00020000, 0x00000008, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(51669, 0x00000000,  8, 0x00020000, 0x00000008, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(51672, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000010, 0.000000, 0.000000,  1),
-(51674, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000010, 0.000000, 0.000000,  1),
-(51679, 0x00000000,  8, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(51692, 0x00000000,  8, 0x00000200, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(51696, 0x00000000,  8, 0x00000200, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(51698, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  1),
-(51700, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  1),
-(51701, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  1),
-(51940, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000,20.000000,  0),
-(51989, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000,20.000000,  0),
-(52004, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000,20.000000,  0),
-(52005, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000,20.000000,  0),
-(52007, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000,20.000000,  0),
-(52008, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000,20.000000,  0),
-(52020, 0x00000000,  7, 0x00008000, 0x00100000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(52127, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
-(52420, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 30),
-(52423, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000020, 0.000000, 0.000000,  0),
-(53527, 0x00000000, 10, 0x00000000, 0x00000000, 0x00000004, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(52795, 0x00000000,  6, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(52797, 0x00000000,  6, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(52798, 0x00000000,  6, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(52799, 0x00000000,  6, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(52800, 0x00000000,  6, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(52898, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(53137, 0x00000000, 15, 0x01400000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(53138, 0x00000000, 15, 0x01400000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(53215, 0x00000000,  9, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(53216, 0x00000000,  9, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(53217, 0x00000000,  9, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(53221, 0x00000000,  9, 0x00000000, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(53222, 0x00000000,  9, 0x00000000, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(53224, 0x00000000,  9, 0x00000000, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(53228, 0x00000000,  9, 0x00000020, 0x01000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(53232, 0x00000000,  9, 0x00000020, 0x01000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(53234, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(53237, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(53238, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(53256, 0x00000000,  9, 0x00000800, 0x00800001, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(53259, 0x00000000,  9, 0x00000800, 0x00800001, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(53260, 0x00000000,  9, 0x00000800, 0x00800001, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(53290, 0x00000000,  9, 0x00000800, 0x00000001, 0x00000200, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(53380, 0x00000000, 10, 0x00800000, 0x00028000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(53397, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(53486, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(53501, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(53502, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(53503, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(53551, 0x00000000, 10, 0x00001000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(53552, 0x00000000, 10, 0x00001000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(53553, 0x00000000, 10, 0x00001000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(53569, 0x00000000, 10, 0x00200000, 0x00010000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(53576, 0x00000000, 10, 0x00200000, 0x00010000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(53601, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x000A02A8, 0x00000000, 0.000000, 0.000000,  6),
-(53646, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(53671, 0x00000000, 10, 0x00800000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(53673, 0x00000000, 10, 0x00800000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(53817, 0x00000000, 11, 0x000001C3, 0x00008000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(54149, 0x00000000, 10, 0x00200000, 0x00010000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(54151, 0x00000000, 10, 0x00800000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(54154, 0x00000000, 10, 0x00800000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(54155, 0x00000000, 10, 0x00800000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(54278, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(54486, 0x00000000,  0, 0x20000021, 0x00009000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(54488, 0x00000000,  0, 0x20000021, 0x00009000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(54489, 0x00000000,  0, 0x20000021, 0x00009000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(54490, 0x00000000,  0, 0x20000021, 0x00009000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(54646, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00015400, 0x00000002, 0.000000, 0.000000,  0),
-(54695, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(54707, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 60),
-(54738, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 45),
-(54747, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(54749, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(54754, 0x00000000,  7, 0x00000010, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(54808, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 60),
-(54838, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(54841, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  3),
-(54936, 0x00000000, 10, 0x40000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(54937, 0x00000000, 10, 0x80000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(54939, 0x00000000, 10, 0x00008000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(55166, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(55380, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(55440, 0x00000000, 11, 0x00000040, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(55640, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(55666, 0x00000000, 15, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(55677, 0x00000000,  6, 0x00000000, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(55680, 0x00000000,  6, 0x00000200, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(55689, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(55747, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(55768, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(55776, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(56218, 0x00000000,  5, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(56342, 0x00000000,  9, 0x00004000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(56343, 0x00000000,  9, 0x00004000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(56344, 0x00000000,  9, 0x00004000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(56355, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(56364, 0x00000000,  3, 0x00000000, 0x01000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(56372, 0x00000000,  3, 0x00000000, 0x00000080, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000,  0),
-(56375, 0x00000000,  3, 0x01000000, 0x00000000, 0x00000000, 0x00010000, 0x00000000, 0.000000, 0.000000,  0),
-(56451, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
-(56611, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(56612, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(56613, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(56614, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(56636, 0x00000000,  4, 0x00000020, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  6),
-(56816, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000030, 0.000000, 0.000000,  0),
-(56821, 0x00000000,  8, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(56834, 0x00000000, 15, 0x00440000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(56835, 0x00000000, 15, 0x00440000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(57345, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(57352, 0x00000000,  0, 0x00000001, 0x00000040, 0x00000000, 0x00010154, 0x00000003, 0.000000, 0.000000, 45),
-(57470, 0x00000000,  6, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(57472, 0x00000000,  6, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(57499, 0x00000000,  4, 0x40000001, 0x00010000, 0x00000000, 0x00014000, 0x00000000, 0.000000, 0.000000,  0),
-(57870, 0x00000000,  9, 0x00800000, 0x00000000, 0x00000000, 0x00040000, 0x00000000, 0.000000, 0.000000,  0),
-(57878, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000010, 0.000000, 0.000000,  0),
-(57880, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000010, 0.000000, 0.000000,  0),
-(57881, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000010, 0.000000, 0.000000,  0),
-(57989, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000001, 0x00000000, 0.000000, 0.000000,  0),
-(58357, 0x00000000,  4, 0x00000040, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(58364, 0x00000000,  4, 0x00000400, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(58372, 0x00000000,  4, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(58386, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000020, 0.000000, 0.000000,  0),
-(58442, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 15),
-(58444, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  5),
-(58597, 0x00000000, 10, 0x40000000, 0x00000000, 0x00000000, 0x00008000, 0x00000000, 0.000000, 100.000000,6),
-(58616, 0x00000000, 15, 0x01000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(58620, 0x00000000, 15, 0x00000000, 0x00004000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(58626, 0x00000000, 15, 0x02000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(58644, 0x00000000, 15, 0x00000000, 0x00000004, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(58647, 0x00000000, 15, 0x00000000, 0x00000004, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(58677, 0x00000000, 15, 0x00002000, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000,  0),
-(58872, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(58874, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
-(58901, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 45),
-(59176, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(59327, 0x00000000, 15, 0x08000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(59345, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(59630, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(59725, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000800, 0.000000, 0.000000,  0),
-(60061, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(60063, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(60066, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(60132, 0x00000000, 15, 0x00000000, 0x08020000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(60170, 0x00000000,  5, 0x00000006, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(60172, 0x00000000,  5, 0x00040000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
-(60221, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(60301, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(60306, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(60317, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(60436, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(60442, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(60473, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(60482, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(60487, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 15),
-(60490, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(60493, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(60503, 0x00000000,  4, 0x00000004, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(60519, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(60529, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(60537, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 45),
-(60564, 0x00000000, 11, 0x90100000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(60571, 0x00000000, 11, 0x90100000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(60572, 0x00000000, 11, 0x90100000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(60573, 0x00000000, 11, 0x90100000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(60574, 0x00000000, 11, 0x90100000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(60575, 0x00000000, 11, 0x90100000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(60617, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000020, 0.000000, 0.000000,  0),
-(60710, 0x00000000,  7, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(60717, 0x00000000,  7, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(60719, 0x00000000,  7, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(60722, 0x00000000,  7, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(60724, 0x00000000,  7, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(60726, 0x00000000,  7, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(60770, 0x00000000, 11, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(60818, 0x00000000, 10, 0x00000000, 0x00000200, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(60826, 0x00000000, 15, 0x01400000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(61062, 0x00000000,  3, 0x00000000, 0x00000100, 0x00000000, 0x00004000, 0x00010000, 0.000000, 0.000000,  0),
-(61188, 0x00000000,  5, 0x00000004, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(61257, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x000202A8, 0x00010000, 0.000000, 0.000000,  0),
-(61324, 0x00000000, 10, 0x00000000, 0x00020000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(61345, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(61346, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(61356, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x000002A8, 0x00000002, 0.000000, 0.000000, 45),
-(61618, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(61846, 0x00000000,  9, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(62600, 0x00000000,  7, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(63108, 0x00000000,  5, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(63156, 0x00000000,  0, 0x00000001, 0x00000040, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(63245, 0x00000000,  5, 0x00000100, 0x00800000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(63280, 0x00000000, 11, 0x20000000, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0x000000, 0.000000,  0),
-(63320, 0x00000000,  5, 0x00040000, 0x00000000, 0x00008000, 0x00004000, 0x00000001, 0.000000, 0.000000,  0),
-(63373, 0x00000000, 11, 0x80000000, 0x00000000, 0x00000000, 0x00010000, 0x00000000, 0.000000, 0.000000,  0),
-(63534, 0x00000000,  6, 0x00000040, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000,  0),
-(63611, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00050014, 0x00000000, 0.000000, 0.000000,  0),
-(63625, 0x00000000,  6, 0x02000000, 0x00000000, 0x00000000, 0x00010000, 0x00000000, 0.000000, 0.000000,  0),
-(63730, 0x00000000,  6, 0x00000800, 0x00000004, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(64928, 0x00000000, 11, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
-(64976, 0x00000000,  4, 0x00000001, 0x00000000, 0x00000000, 0x00010000, 0x00000000, 0.000000, 0.000000,  0),
-(65661, 0x00000000, 15, 0x00400011 ,0x20020004 ,0x00000000, 0x00000010, 0x00000000, 0.000000, 100.000000,0),
-(64127, 0x00000000,  6, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(67228, 0x00000004, 11, 0x00000000, 0x00001000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(67353, 0x00000000,  7, 0x00008000, 0x00100500, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
-(67667, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(67672, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 50),
-(67702, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(67771, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
-(70664, 0x00000000,  7, 0x00000010, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x000000, 2.000000,  0),
-(70748, 0x00000000,  3, 0x00000000, 0x00200000, 0x00000000, 0x00000000, 0x00000000, 0x000000, 0.000000,  0);
+(  324, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
+(  974, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
+( 3232, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+( 5952, 0x00,  8, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+( 6346, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000100, 0.000000, 0.000000,  0),
+( 7383, 0x01,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000100, 0.000000, 0.000000,  0),
+( 7434, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+( 8178, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+( 9452, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
+( 9782, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+( 9784, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+( 9799, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(11095, 0x00,  3, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(11119, 0x04,  3, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(11129, 0x04,  3, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(11180, 0x10,  3, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(11185, 0x00,  3, 0x00000080, 0x00000080, 0x00000080, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00050000, 0x00000000, 0.000000, 0.000000,  0),
+(11255, 0x00,  3, 0x00004000, 0x00004000, 0x00004000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(12169, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(12281, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  6),
+(12289, 0x00,  4, 0x00000002, 0x00000002, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(12298, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(12311, 0x00,  4, 0x00000800, 0x00000800, 0x00000800, 0x00000001, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(12317, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(12319, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(12322, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 2.000000, 0.000000,  0),
+(12834, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(12966, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(12967, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(12968, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(12969, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(12970, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(12999, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 4.000000, 0.000000,  0),
+(13000, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 6.000000, 0.000000,  0),
+(13001, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 8.000000, 0.000000,  0),
+(13002, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,10.000000, 0.000000,  0),
+(13165, 0x00,  9, 0x00000001, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(13754, 0x00,  8, 0x00000010, 0x00000010, 0x00000010, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(13983, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000018, 0.000000, 0.000000,  0),
+(14156, 0x00,  8, 0x003E0000, 0x003E0000, 0x003E0000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(14186, 0x00,  8, 0x40800508, 0x40800508, 0x40800508, 0x00000002, 0x00000002, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(14531, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(14892, 0x00,  6, 0x10001E00, 0x10001E00, 0x10001E00, 0x00010004, 0x00010004, 0x00010004, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(15088, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(15128, 0x04,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(15277, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 6.000000, 0.000000,  0),
+(15286, 0x20,  6, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(15337, 0x00,  6, 0x00002000, 0x00002000, 0x00002000, 0x00000002, 0x00000002, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(15346, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 6.000000, 0.000000,  0),
+(15600, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1.000000, 0.000000,  0),
+(16164, 0x1C, 11, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0x00000002, 0.000000, 0.000000,  0),
+(16176, 0x00, 11, 0x000001C0, 0x000001C0, 0x000001C0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(16180, 0x00, 11, 0x000001C0, 0x000001C0, 0x000001C0, 0x00000000, 0x00000000, 0x00000000, 0x00000010, 0x00000010, 0x00000010, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(16246, 0x00, 11, 0x981001C3, 0x981001C3, 0x981001C3, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(16256, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(16257, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(16277, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(16278, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(16279, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(16280, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(16487, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(16550, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(16620, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 30),
+(16624, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(16850, 0x00,  7, 0x00000004, 0x00000004, 0x00000004, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(16864, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 2.000000, 0.000000,  0),
+(16880, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(16952, 0x00,  7, 0x00039000, 0x00039000, 0x00039000, 0x00000400, 0x00000400, 0x00000400, 0x00040000, 0x00040000, 0x00040000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(16958, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(17106, 0x00,  7, 0x00080000, 0x00080000, 0x00080000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(17364, 0x08,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(17495, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(17793, 0x00,  5, 0x00000001, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(18094, 0x00,  5, 0x0000000A, 0x0000000A, 0x0000000A, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(18096, 0x00,  5, 0x00000100, 0x00000100, 0x00000100, 0x00800000, 0x00800000, 0x00800000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(18119, 0x00,  5, 0x00000000, 0x00000000, 0x00000000, 0x00800000, 0x00800000, 0x00800000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(18820, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(19184, 0x00,  9, 0x00000010, 0x00000010, 0x00000010, 0x00002000, 0x00002000, 0x00002000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(19572, 0x00,  9, 0x00800000, 0x00800000, 0x00800000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000,  0),
+(20049, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(20128, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(20131, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(20132, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(20154, 0x01,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(20164, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 5.000000, 0.000000,  0),
+(20165, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,20.000000, 0.000000,  0),
+(20166, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,15.000000, 0.000000,  0),
+(20210, 0x00, 10, 0xC0000000, 0xC0000000, 0xC0000000, 0x00010000, 0x00010000, 0x00010000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(20234, 0x00, 10, 0x00008000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(20335, 0x00, 10, 0x00800000, 0x00800000, 0x00800000, 0x00000000, 0x00000000, 0x00000000, 0x00000008, 0x00000008, 0x00000008, 0x00000100, 0x00000000, 0.000000, 100.000000,0),
+(20375, 0x01,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  1),
+(20500, 0x00,  4, 0x10000000, 0x10000000, 0x10000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(20705, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(20784, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(20911, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000070, 0.000000, 0.000000,  0),
+(20925, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(21185, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
+(21882, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(21890, 0x00,  4, 0x2A764EEF, 0x2A764EEF, 0x2A764EEF, 0x0000036C, 0x0000036C, 0x0000036C, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(22007, 0x00,  3, 0x00200021, 0x00200021, 0x00200021, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(22618, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(22648, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(23547, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000020, 0.000000, 0.000000,  0),
+(23548, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(23551, 0x00, 11, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(23552, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
+(23572, 0x00, 11, 0x000000C0, 0x000000C0, 0x000000C0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(23578, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 2.000000, 0.000000,  0),
+(23581, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 2.000000, 0.000000,  0),
+(23602, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(23686, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 2.000000, 0.000000,  0),
+(23688, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(23689, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 4.000000, 0.000000,  0),
+(23721, 0x00,  9, 0x00000800, 0x00000800, 0x00000800, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(23920, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000800, 0.000000, 0.000000,  0),
+(24353, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(24389, 0x00,  3, 0x00C00017, 0x00C00017, 0x00C00017, 0x00000040, 0x00000040, 0x00000040, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(24658, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00014110, 0x00000000, 0.000000, 0.000000,  0),
+(24905, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002,15.000000, 0.000000,  0),
+(24932, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  6),
+(25050, 0x04,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(25669, 0x00,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1.000000, 0.000000,  0),
+(26107, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000064, 0.000000, 0.000000,  0),
+(26119, 0x00, 10, 0x90100003, 0x90100003, 0x90100003, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(26128, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000008, 0.000000, 0.000000,  0),
+(26135, 0x00, 10, 0x00800000, 0x00800000, 0x00800000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(26480, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
+(26605, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(27419, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
+(27498, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
+(27521, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(27656, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
+(27774, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(27787, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
+(27811, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(28716, 0x00,  7, 0x00000010, 0x00000010, 0x00000010, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00048000, 0x00000000, 0.000000, 0.000000,  0),
+(28719, 0x00,  7, 0x00000020, 0x00000020, 0x00000020, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(28744, 0x00,  7, 0x00000040, 0x00000040, 0x00000040, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00044000, 0x00000000, 0.000000, 0.000000,  0),
+(28752, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(28789, 0x00, 10, 0xC0000000, 0xC0000000, 0xC0000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(28802, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(28809, 0x00,  6, 0x00001000, 0x00001000, 0x00001000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(28812, 0x00,  8, 0x02000006, 0x02000006, 0x02000006, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(28816, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
+(28823, 0x00, 11, 0x000000C0, 0x000000C0, 0x000000C0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(28847, 0x00,  7, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(28849, 0x00, 11, 0x00000080, 0x00000080, 0x00000080, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(29074, 0x14,  3, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(29150, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
+(29385, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 7.000000, 0.000000,  0),
+(29441, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000008, 0.000000, 0.000000,  1),
+(29455, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(29501, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
+(29593, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000070, 0.000000, 0.000000,  0),
+(29624, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
+(29625, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
+(29626, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
+(29632, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
+(29633, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
+(29634, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
+(29635, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
+(29636, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
+(29637, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
+(29834, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(29977, 0x00,  3, 0x00C00017, 0x00C00017, 0x00C00017, 0x00000040, 0x00000040, 0x00000040, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(30003, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000800, 0.000000, 0.000000,  0),
+(30160, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(30293, 0x00,  5, 0x00000181, 0x00000181, 0x00000181, 0x008200C0, 0x008200C0, 0x008200C0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(30299, 0x7E,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(30675, 0x00, 11, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(30701, 0x1C,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(30705, 0x1C,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(30823, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 10.500000, 0.000000, 0),
+(30881, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 30),
+(30937, 0x20,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(31124, 0x00,  8, 0x2000000E, 0x2000000E, 0x2000000E, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(31244, 0x00,  8, 0x003E0000, 0x003E0000, 0x003E0000, 0x00000009, 0x00000009, 0x00000009, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00002034, 0.000000, 0.000000,  0),
+(31394, 0x20,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(31569, 0x00,  3, 0x00000000, 0x00010000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(31571, 0x00,  3, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000008, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000,  0),
+(31785, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00008800, 0x00000000, 0.000000, 0.000000,  0),
+(31794, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(31801, 0x01,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(31833, 0x00, 10, 0x80000000, 0x80000000, 0x80000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(31871, 0x00, 10, 0x00000010, 0x00000010, 0x00000010, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000,  0),
+(31876, 0x00, 10, 0x00800000, 0x00800000, 0x00800000, 0x00000000, 0x00000000, 0x00000000, 0x00000008, 0x00000008, 0x00000008, 0x00004110, 0x00000000, 0.000000, 0.000000,  0),
+(31904, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(32385, 0x00,  5, 0x00000001, 0x00000001, 0x00000001, 0x00040000, 0x00040000, 0x00040000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(32587, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(32642, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(32734, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
+(32748, 0x00,  8, 0x00000000, 0x00000000, 0x00000000, 0x00000001, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000140, 0x00000000, 0.000000, 0.000000,  0),
+(32776, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(32777, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(32837, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000, 45),
+(32844, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 2.000000, 0.000000,  0),
+(32885, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(33076, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x000A02A8, 0x00000000, 0.000000, 0.000000,  0),
+(33089, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(33127, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 7.000000, 0.000000,  0),
+(33142, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(33150, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(33151, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(33191, 0x00,  6, 0x00808000, 0x00000000, 0x00000000, 0x00000400, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(33297, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(33299, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(33510, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 5.000000, 0.000000,  0),
+(33648, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(33719, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000800, 0.000000, 0.000000,  0),
+(33746, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
+(33757, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
+(33759, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
+(33881, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(33953, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000, 45),
+(34074, 0x00,  9, 0x0007FA43, 0x0007FA43, 0x0007FA43, 0x00881081, 0x00881081, 0x00881081, 0x00000201, 0x00000201, 0x00000201, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(34080, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000008, 0.000000, 0.000000,  0),
+(34138, 0x00, 11, 0x00000080, 0x00000080, 0x00000080, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(34139, 0x00, 10, 0x40000000, 0x40000000, 0x40000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(34258, 0x00, 10, 0x00000400, 0x00000400, 0x00000400, 0x00000008, 0x00000008, 0x00000008, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(34262, 0x00, 10, 0x00800000, 0x00800000, 0x00800000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(34320, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 45),
+(34355, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
+(34497, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(34500, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(34506, 0x00,  9, 0x0007FA01, 0x0007FA01, 0x0007FA01, 0x00801081, 0x00801081, 0x00801081, 0x08000201, 0x08000201, 0x08000201, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(34584, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 30),
+(34586, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1.500000, 0.000000,  0),
+(34598, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(34749, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000008, 0.000000, 0.000000,  0),
+(34753, 0x00,  6, 0x00001800, 0x00001800, 0x00001800, 0x00000004, 0x00000004, 0x00000004, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(34774, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1.500000, 0.000000, 20),
+(34783, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000800, 0.000000, 0.000000,  0),
+(34827, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
+(34914, 0x00,  6, 0x00002000, 0x00002000, 0x00002000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(34935, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  8),
+(34950, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(35077, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 60),
+(35080, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1.000000, 0.000000, 60),
+(35083, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 60),
+(35086, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 60),
+(35100, 0x00,  9, 0x00001000, 0x00001000, 0x00001000, 0x00000000, 0x00000000, 0x00000000, 0x00000001, 0x00000001, 0x00000001, 0x00000100, 0x00000000, 0.000000, 0.000000,  0),
+(35121, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(36032, 0x40,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(36096, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000800, 0.000000, 0.000000,  0),
+(36541, 0x04,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(37165, 0x00,  8, 0x00200400, 0x00200400, 0x00200400, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(37168, 0x00,  8, 0x003E0000, 0x003E0000, 0x003E0000, 0x00000009, 0x00000009, 0x00000009, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(37170, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1.000000, 0.000000,  0),
+(37173, 0x00,  8, 0x2CBC0598, 0x2CBC0598, 0x2CBC0598, 0x00000106, 0x00000106, 0x00000106, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 30),
+(37189, 0x00, 10, 0xC0000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 60),
+(37193, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(37195, 0x00, 10, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(37197, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000, 45),
+(37213, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(37214, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(37227, 0x00, 11, 0x000001C0, 0x000001C0, 0x000001C0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 60),
+(37237, 0x00, 11, 0x00000001, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(37247, 0x08,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000, 45),
+(37377, 0x20,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(37379, 0x20,  5, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(37384, 0x00,  5, 0x00000001, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(37443, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(37514, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000020, 0.000000, 0.000000,  0),
+(37516, 0x00,  4, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(37519, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000030, 0.000000, 0.000000,  0),
+(37523, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(37528, 0x00,  4, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(37536, 0x00,  4, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(37568, 0x00,  6, 0x00000800, 0x00000800, 0x00000800, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(37594, 0x00,  6, 0x00001000, 0x00001000, 0x00001000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(37600, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(37601, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(37603, 0x00,  6, 0x00008000, 0x00008000, 0x00008000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(37655, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 60),
+(37657, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  3),
+(38026, 0x01,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000100, 0.000000, 0.000000,  0),
+(38031, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(38290, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1.600000, 0.000000,  0),
+(38299, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 12),
+(38326, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(38327, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(38332, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(38334, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 60),
+(38347, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 45),
+(38350, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(38394, 0x00,  5, 0x00000006, 0x00000006, 0x00000006, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(38857, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(39027, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
+(39372, 0x30,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(39437, 0x04,  5, 0x00001364, 0x00001364, 0x00001364, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(39442, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000001, 0.000000, 0.000000,  0),
+(39443, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(39530, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(39958, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.700000, 0.000000, 40),
+(40407, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 6.000000, 0.000000,  0),
+(40438, 0x00,  6, 0x00008040, 0x00008040, 0x00008040, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(40442, 0x00,  7, 0x00000014, 0x00000014, 0x00000014, 0x00000440, 0x00000440, 0x00000440, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(40444, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(40458, 0x00,  4, 0x02000000, 0x02000000, 0x02000000, 0x00000601, 0x00000601, 0x00000601, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(40463, 0x00, 11, 0x00000081, 0x00000081, 0x00000081, 0x00000010, 0x00000010, 0x00000010, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(40470, 0x00, 10, 0xC0800000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(40475, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 3.000000, 0.000000,  0),
+(40478, 0x00,  5, 0x00000002, 0x00000002, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(40482, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(40485, 0x00,  9, 0x00000000, 0x00000000, 0x00000000, 0x00000001, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(40899, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
+(40971, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(41034, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000400, 0.000000, 0.000000,  0),
+(41260, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
+(41262, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
+(41381, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000100, 0.000000, 0.000000,  0),
+(41393, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000020, 0.000000, 0.000000,  0),
+(41434, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 2.000000, 0.000000, 45),
+(41469, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 7.000000, 0.000000,  0),
+(41635, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x000A02A8, 0x00000000, 0.000000, 0.000000,  0),
+(41989, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.500000, 0.000000,  0),
+(42083, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 45),
+(42135, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 90),
+(42136, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 90),
+(42368, 0x00, 10, 0x40000000, 0x40000000, 0x40000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(42370, 0x00, 11, 0x00000040, 0x00000040, 0x00000040, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(42770, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(43338, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(43443, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000800, 0.000000, 0.000000,  0),
+(43726, 0x00, 10, 0x40000000, 0x40000000, 0x40000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(43728, 0x00, 11, 0x00000080, 0x00000080, 0x00000080, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(43737, 0x00,  7, 0x00000000, 0x00000000, 0x00000000, 0x00000440, 0x00000440, 0x00000440, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
+(43739, 0x00,  7, 0x00000002, 0x00000002, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(43741, 0x00, 10, 0x80000000, 0x80000000, 0x80000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(43745, 0x00, 10, 0x00000000, 0x00000000, 0x00000000, 0x00000200, 0x00000200, 0x00000200, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(43748, 0x00, 11, 0x90100000, 0x90100000, 0x90100000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(43750, 0x00, 11, 0x00000001, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(43819, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(44404, 0x00,  3, 0x20000021, 0x20000021, 0x20000021, 0x00009000, 0x00009000, 0x00009000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(44442, 0x00,  3, 0x00800000, 0x00800000, 0x00800000, 0x00000040, 0x00000040, 0x00000040, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  1),
+(44445, 0x00,  3, 0x00000013, 0x00000013, 0x00000013, 0x00001000, 0x00001000, 0x00001000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(44449, 0x00,  3, 0x20E21277, 0x20E21277, 0x20E21277, 0x00019048, 0x00019048, 0x00019048, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(44546, 0x00,  3, 0x020002A0, 0x020002A0, 0x020002A0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(44835, 0x00,  7, 0x00000000, 0x00000000, 0x00000000, 0x00000080, 0x00000080, 0x00000080, 0x00000000, 0x00000000, 0x00000000, 0x00000010, 0x00000000, 0.000000, 0.000000,  0),
+(45054, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 15),
+(45057, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 30),
+(45234, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(45354, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(45355, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(45481, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(45482, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(45483, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(45484, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000, 45),
+(46025, 0x20,  6, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(46092, 0x00, 10, 0x40000000, 0x40000000, 0x40000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(46098, 0x00, 11, 0x00000080, 0x00000080, 0x00000080, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(46569, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(46662, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 20),
+(46832, 0x00,  7, 0x00000001, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(46854, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(46867, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(46913, 0x00,  4, 0x00000040, 0x00000040, 0x00000040, 0x00000404, 0x00000404, 0x00000404, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(46916, 0x00,  4, 0x00000000, 0x00000000, 0x00000000, 0x00000400, 0x00000400, 0x00000400, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(46951, 0x00,  4, 0x00000400, 0x00000400, 0x00000400, 0x00000040, 0x00000040, 0x00000040, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(47195, 0x00,  5, 0x00000002, 0x00000002, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 30),
+(47201, 0x00,  5, 0x00000008, 0x00000008, 0x00000008, 0x00040000, 0x00040000, 0x00040000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(47245, 0x20,  5, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(47258, 0x00,  5, 0x00000000, 0x00000000, 0x00000000, 0x00800000, 0x00800000, 0x00800000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(47263, 0x20,  5, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 20),
+(47264, 0x20,  5, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 20),
+(47265, 0x20,  5, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 20),
+(47230, 0x7F,  5, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(47509, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(47516, 0x00,  6, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(47569, 0x00,  6, 0x00004000, 0x00004000, 0x00004000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000,  0),
+(47580, 0x00,  6, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0x00000040, 0x00000040, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(48110, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x000A02A8, 0x00000000, 0.000000, 0.000000,  0),
+(48111, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x000A02A8, 0x00000000, 0.000000, 0.000000,  0),
+(48483, 0x00,  7, 0x00008800, 0x00008800, 0x00008800, 0x00000440, 0x00000440, 0x00000440, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(48496, 0x00,  7, 0x00000060, 0x00000060, 0x00000060, 0x02000002, 0x02000002, 0x02000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(48506, 0x00,  7, 0x00000005, 0x00000005, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(48516, 0x00,  7, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 30),
+(48539, 0x00,  7, 0x00000010, 0x00000010, 0x00000010, 0x04000000, 0x04000000, 0x04000000, 0x00000000, 0x00000000, 0x00000000, 0x00040000, 0x00000000, 0.000000, 0.000000,  0),
+(48833, 0x00,  7, 0x00000000, 0x00000000, 0x00000000, 0x00000440, 0x00000440, 0x00000440, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(48835, 0x00, 10, 0x00000000, 0x00000000, 0x00000000, 0x00000008, 0x00000008, 0x00000008, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(48837, 0x00, 11, 0x90100000, 0x90100000, 0x90100000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(48988, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(49018, 0x00, 15, 0x01400000, 0x01400000, 0x01400000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(49188, 0x00, 15, 0x00000000, 0x00000000, 0x00000000, 0x00020000, 0x00020000, 0x00020000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(49208, 0x00, 15, 0x00440000, 0x00440000, 0x00440000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(49222, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
+(49622, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 60),
+(50781, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  6),
+(50880, 0x10, 15, 0x00000000, 0x00000000, 0x00000000, 0x00000800, 0x00000800, 0x00000800, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0x00000000, 0.000000, 0.000000,  0),
+(51123, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(51346, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
+(51349, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
+(51352, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
+(51359, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
+(51414, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(51474, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(51483, 0x01, 11, 0x20000000, 0x20000000, 0x20000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000,  0),
+(51521, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  1),
+(51528, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,12.500000, 0.000000,  0),
+(51556, 0x00, 11, 0x000000C0, 0x000000C0, 0x000000C0, 0x00000000, 0x00000000, 0x00000000, 0x00000010, 0x00000010, 0x00000010, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(51562, 0x00, 11, 0x00000100, 0x00000100, 0x00000100, 0x00000000, 0x00000000, 0x00000000, 0x00000010, 0x00000010, 0x00000010, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(51625, 0x00,  8, 0x1000A000, 0x1000A000, 0x1000A000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(51627, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000070, 0.000000, 0.000000,  0),
+(51634, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(51664, 0x00,  8, 0x00020000, 0x00020000, 0x00020000, 0x00000008, 0x00000008, 0x00000008, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(51672, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000010, 0.000000, 0.000000,  1),
+(51692, 0x00,  8, 0x00000204, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(51698, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  1),
+(51940, 0x00,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000,20.000000,  0),
+(51989, 0x00,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000,20.000000,  0),
+(52004, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000,20.000000,  0),
+(52005, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000,20.000000,  0),
+(52007, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000,20.000000,  0),
+(52008, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000,20.000000,  0),
+(52020, 0x00,  7, 0x00008000, 0x00008000, 0x00008000, 0x00100000, 0x00100000, 0x00100000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(52127, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
+(52420, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 30),
+(52423, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000020, 0.000000, 0.000000,  0),
+(52437, 0x00,  4, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000010, 0x00000000, 0.000000, 0.000000,  0),
+(53527, 0x00, 10, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000004, 0x00000004, 0x00000004, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(52795, 0x00,  6, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(52898, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(53215, 0x00,  9, 0x00000001, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(53221, 0x00,  9, 0x00000000, 0x00000000, 0x00000000, 0x00000001, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(53228, 0x00,  9, 0x00000020, 0x00000020, 0x00000020, 0x01000000, 0x01000000, 0x01000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(53234, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(53256, 0x00,  9, 0x00000800, 0x00000800, 0x00000800, 0x00800001, 0x00800001, 0x00800001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(53290, 0x00,  9, 0x00000800, 0x00000800, 0x00000800, 0x00000001, 0x00000001, 0x00000001, 0x00000200, 0x00000200, 0x00000200, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(53380, 0x00, 10, 0x00800000, 0x00800000, 0x00800000, 0x00028000, 0x00028000, 0x00028000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(53397, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(53486, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(53501, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(53551, 0x00, 10, 0x00001000, 0x00001000, 0x00001000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(53569, 0x00, 10, 0x00200000, 0x00200000, 0x00200000, 0x00010000, 0x00010000, 0x00010000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(53601, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x000A02A8, 0x00000000, 0.000000, 0.000000,  6),
+(53646, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(53671, 0x00, 10, 0x00800000, 0x00800000, 0x00800000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(53709, 0x00, 10, 0x00004000, 0x00004000, 0x00004000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000100, 0x00000000, 0.000000, 0.000000,  0),
+(53817, 0x00, 11, 0x00000000, 0x000001C3, 0x00000000, 0x00000000, 0x00008000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(54149, 0x00, 10, 0x00200000, 0x00200000, 0x00200000, 0x00010000, 0x00010000, 0x00010000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(54278, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(54646, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(54695, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(54707, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 60),
+(54738, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 45),
+(54747, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(54754, 0x00,  7, 0x00000010, 0x00000010, 0x00000010, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(54808, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 60),
+(54821, 0x00,  7, 0x00001000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000010, 0x00000000, 0.000000, 0.000000,  0),
+(54838, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(54841, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  3),
+(54937, 0x00, 10, 0x80000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(54939, 0x00, 10, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(55166, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(55380, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(55440, 0x00, 11, 0x00000040, 0x00000040, 0x00000040, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(55640, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(55666, 0x00, 15, 0x00000001, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(55677, 0x00,  6, 0x00000000, 0x00000000, 0x00000000, 0x00000001, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(55680, 0x00,  6, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(55689, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(55747, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(55768, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(55776, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(56218, 0x00,  5, 0x00000002, 0x00000002, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(56342, 0x00,  9, 0x00004000, 0x00004000, 0x00004000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(56355, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(56364, 0x00,  3, 0x00000000, 0x00000000, 0x00000000, 0x01000000, 0x01000000, 0x01000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(56372, 0x00,  3, 0x00000000, 0x00000000, 0x00000000, 0x00000080, 0x00000080, 0x00000080, 0x00000000, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000,  0),
+(56375, 0x00,  3, 0x01000000, 0x01000000, 0x01000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0x00000000, 0.000000, 0.000000,  0),
+(56451, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  3),
+(56636, 0x00,  4, 0x00000020, 0x00000020, 0x00000020, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  6),
+(56816, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000030, 0.000000, 0.000000,  0),
+(56821, 0x00,  8, 0x00000002, 0x00000002, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(57345, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(57352, 0x00,  0, 0x00000001, 0x00000001, 0x00000001, 0x00000040, 0x00000040, 0x00000040, 0x00000000, 0x00000000, 0x00000000, 0x00010154, 0x00000003, 0.000000, 0.000000, 45),
+(57470, 0x00,  6, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(57499, 0x00,  4, 0x40000001, 0x40000001, 0x40000001, 0x00010000, 0x00010000, 0x00010000, 0x00000000, 0x00000000, 0x00000000, 0x00014000, 0x00000000, 0.000000, 0.000000,  0),
+(57870, 0x00,  9, 0x00800000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00040000, 0x00000000, 0.000000, 0.000000,  0),
+(57878, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000010, 0.000000, 0.000000,  0),
+(57907, 0x00,  7, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(57989, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000001, 0x00000000, 0.000000, 0.000000,  0),
+(58357, 0x00,  4, 0x00000040, 0x00000040, 0x00000040, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(58364, 0x00,  4, 0x00000400, 0x00000400, 0x00000400, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(58372, 0x00,  4, 0x00000002, 0x00000002, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(58386, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000020, 0.000000, 0.000000,  0),
+(58442, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 15),
+(58444, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  5),
+(58597, 0x00, 10, 0x40000000, 0x40000000, 0x40000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00008000, 0x00000000, 0.000000, 100.000000,6),
+(58616, 0x00, 15, 0x01000000, 0x01000000, 0x01000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(58620, 0x00, 15, 0x00000000, 0x00000000, 0x00000000, 0x00004000, 0x00004000, 0x00004000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(58626, 0x00, 15, 0x00000000, 0x02000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(58644, 0x00, 15, 0x00000000, 0x00000000, 0x00000000, 0x00000004, 0x00000004, 0x00000004, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(58647, 0x00, 15, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(58677, 0x00, 15, 0x00002000, 0x00002000, 0x00002000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000,  0),
+(58872, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000040, 0.000000, 0.000000,  0),
+(58901, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 45),
+(59176, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(59327, 0x00, 15, 0x08000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(59345, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(59630, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 35),
+(59725, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000800, 0.000000, 0.000000,  0),
+(60061, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(60063, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(60066, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(60132, 0x00, 15, 0x00000000, 0x00000000, 0x00000000, 0x08020000, 0x08020000, 0x08020000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(60170, 0x00,  5, 0x00000006, 0x00000006, 0x00000006, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(60172, 0x00,  5, 0x00040000, 0x00040000, 0x00040000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
+(60221, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(60301, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(60306, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(60317, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(60436, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(60442, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(60473, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(60482, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(60487, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 15),
+(60490, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(60493, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(60503, 0x00,  4, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(60517, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(60519, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(60529, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(60537, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 45),
+(60564, 0x00, 11, 0x90100000, 0x90100000, 0x90100000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(60571, 0x00, 11, 0x90100000, 0x90100000, 0x90100000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(60572, 0x00, 11, 0x90100000, 0x90100000, 0x90100000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(60573, 0x00, 11, 0x90100000, 0x90100000, 0x90100000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(60574, 0x00, 11, 0x90100000, 0x90100000, 0x90100000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(60575, 0x00, 11, 0x90100000, 0x90100000, 0x90100000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(60617, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000020, 0.000000, 0.000000,  0),
+(60710, 0x00,  7, 0x00000002, 0x00000002, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(60717, 0x00,  7, 0x00000002, 0x00000002, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(60719, 0x00,  7, 0x00000002, 0x00000002, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(60722, 0x00,  7, 0x00000002, 0x00000002, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(60724, 0x00,  7, 0x00000002, 0x00000002, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(60726, 0x00,  7, 0x00000002, 0x00000002, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(60770, 0x00, 11, 0x00000001, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(60818, 0x00, 10, 0x00000000, 0x00000000, 0x00000000, 0x00000200, 0x00000200, 0x00000200, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(60826, 0x00, 15, 0x01400000, 0x01400000, 0x01400000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(61062, 0x00,  3, 0x00000000, 0x00000000, 0x00000000, 0x00000100, 0x00000100, 0x00000100, 0x00000000, 0x00000000, 0x00000000, 0x00004000, 0x00010000, 0.000000, 0.000000,  0),
+(61188, 0x00,  5, 0x00000004, 0x00000004, 0x00000004, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(61257, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x000202A8, 0x00010000, 0.000000, 0.000000,  0),
+(61324, 0x00, 10, 0x00000000, 0x00000000, 0x00000000, 0x00020000, 0x00020000, 0x00020000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(61356, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x000002A8, 0x00000002, 0.000000, 0.000000, 45),
+(61618, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(61846, 0x00,  9, 0x00000001, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(62147, 0x00, 15, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0x00000000, 0.000000, 0.000000,  0),
+(62600, 0x7F,  7, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(63108, 0x00,  5, 0x00000002, 0x00000002, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(63156, 0x00,  0, 0x00000001, 0x00000001, 0x00000001, 0x00000040, 0x00000040, 0x00000040, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(63251, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(63280, 0x00, 11, 0x20000000, 0x20000000, 0x20000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(63320, 0x00,  5, 0x00040000, 0x00040000, 0x00040000, 0x00000000, 0x00000000, 0x00000000, 0x00008000, 0x00008000, 0x00008000, 0x00004000, 0x00000001, 0.000000, 0.000000,  0),
+(63335, 0x00, 15, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(63373, 0x00, 11, 0x80000000, 0x80000000, 0x80000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0x00000000, 0.000000, 0.000000,  0),
+(63534, 0x00,  6, 0x00000040, 0x00000040, 0x00000040, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000,  0),
+(64952, 0x00,  7, 0x00000000, 0x00000000, 0x00000000, 0x00000440, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(64964, 0x00, 15, 0x00000000, 0x00000000, 0x00000000, 0x20000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(63611, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00050014, 0x00000000, 0.000000, 0.000000,  0),
+(63625, 0x00,  6, 0x02000000, 0x02000000, 0x02000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0x00000000, 0.000000, 0.000000,  0),
+(63730, 0x00,  6, 0x00000800, 0x00000800, 0x00000800, 0x00000004, 0x00000004, 0x00000004, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(64928, 0x00, 11, 0x00000001, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(64976, 0x00,  4, 0x00000001, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0x00000000, 0.000000, 0.000000,  0),
+(65661, 0x00, 15, 0x00400011 ,0x00400011, 0x00400011, 0x20020004, 0x20020004, 0x20020004, 0x00000000, 0x00000000, 0x00000000, 0x00000010, 0x00000000, 0.000000, 100.000000,0),
+(64127, 0x00,  6, 0x00000001, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(67228, 0x04, 11, 0x00000000, 0x00000000, 0x00000000, 0x00001000, 0x00001000, 0x00001000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(67353, 0x00,  7, 0x00008000, 0x00008000, 0x00008000, 0x00100500, 0x00100500, 0x00100500, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(67356, 0x00,  7, 0x00000010, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00040000, 0.000000, 0.000000,  5),
+(67361, 0x40,  7, 0x00000002, 0x00000002, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  6),
+(67363, 0x00, 10, 0x80000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
+(67365, 0x00, 10, 0x00000000, 0x00000000, 0x00000000, 0x00000800, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  6),
+(67379, 0x00, 10, 0x00000000, 0x00000000, 0x00000000, 0x00040000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(67381, 0x00, 15, 0x00000000, 0x00000000, 0x00000000, 0x20000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
+(67384, 0x00, 15, 0x00000010, 0x00000000, 0x00000000, 0x08020000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 10),
+(67386, 0x00, 11, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  6),
+(67389, 0x00, 11, 0x00000100, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  8),
+(67392, 0x00, 11, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000004, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(67667, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(67672, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 50),
+(67702, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(67771, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(69739, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(69755, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(70664, 0x00,  7, 0x00000010, 0x00000010, 0x00000010, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(70748, 0x00,  3, 0x00000000, 0x00000000, 0x00000000, 0x00200000, 0x00200000, 0x00200000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(71174, 0x00,  7, 0x00001000, 0x00000000, 0x00000000, 0x00000100, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(71176, 0x00,  7, 0x00200002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(71178, 0x00,  7, 0x00000010, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00040000, 0.000000, 0.000000,  0),
+(71186, 0x00, 10, 0x00000000, 0x00000000, 0x00000000, 0x00008000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(71191, 0x00, 10, 0x00200000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(71194, 0x00, 10, 0x00000000, 0x00000000, 0x00000000, 0x00100000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(71198, 0x00, 11, 0x10000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(71217, 0x00, 11, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000010, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(71226, 0x00, 15, 0x00000010, 0x00000000, 0x00000000, 0x08020000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(71228, 0x00, 15, 0x00000000, 0x00000000, 0x00000000, 0x20000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(71402, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(71404, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000, 50),
+(71406, 0x00,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000,45.000000,  0),
+(71519, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,105),
+(71540, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(71545, 0x00,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000,45.000000,  0),
+(71562, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,105),
+(71585, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(71602, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(71606, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,100),
+(71611, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(71637, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,100),
+(71642, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(71645, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000, 45),
+(71761, 0x00,  3, 0x00000000, 0x00000000, 0x00000000, 0x00100000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000100, 0.000000, 0.000000,  0),
+(71880, 0x00,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1.000000, 0.000000,  0),
+(71892, 0x00,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1.000000, 0.000000,  0),
+(74396, 0x00,  3, 0x28E212F7, 0x28E212F7, 0x28E212F7, 0x00119048, 0x00119048, 0x00119048, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0x00000000, 0.000000, 0.000000,  0),
+(75490, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(75495, 0x7F,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0);
 
 /*!40000 ALTER TABLE `spell_proc_event` ENABLE KEYS */;
 UNLOCK TABLES;
@@ -18712,7 +17500,12 @@ LOCK TABLES `spell_proc_item_enchant` WRITE;
 INSERT INTO `spell_proc_item_enchant` (`entry`, `ppmRate`) VALUES
 (8034, 9),        -- Frostbrand Weapon
 (8680, 8.5714),   -- Instant Poison
-(13218, 21.4286); -- Wound Poison
+(13218, 21.4286), -- Wound Poison
+(13897, 6.0),     -- Enchant Weapon - Fiery Weapon
+(20004, 6.0),     -- Enchant Weapon - Lifestealing
+(20005, 1.6),     -- Enchant Weapon - Icy Chill
+(44525, 3.4),     -- Enchant Weapon - Icebreaker
+(44578, 3.4);     -- Enchant Weapon - Lifeward
 /*!40000 ALTER TABLE `spell_proc_item_enchant` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -18748,11 +17541,18 @@ CREATE TABLE `spell_scripts` (
   `command` mediumint(8) unsigned NOT NULL default '0',
   `datalong` mediumint(8) unsigned NOT NULL default '0',
   `datalong2` int(10) unsigned NOT NULL default '0',
+  `datalong3` int(10) unsigned NOT NULL default '0',
+  `datalong4` int(10) unsigned NOT NULL default '0',
+  `data_flags` tinyint(3) unsigned NOT NULL default '0',
   `dataint` int(11) NOT NULL default '0',
+  `dataint2` int(11) NOT NULL default '0',
+  `dataint3` int(11) NOT NULL default '0',
+  `dataint4` int(11) NOT NULL default '0',
   `x` float NOT NULL default '0',
   `y` float NOT NULL default '0',
   `z` float NOT NULL default '0',
-  `o` float NOT NULL default '0'
+  `o` float NOT NULL default '0',
+  `comments` varchar(255) NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 --

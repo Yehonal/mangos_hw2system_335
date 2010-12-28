@@ -47,11 +47,15 @@ class WorldSocket;
 // ServerMessages.dbc
 enum ServerMessageType
 {
-    SERVER_MSG_SHUTDOWN_TIME      = 1,
-    SERVER_MSG_RESTART_TIME       = 2,
-    SERVER_MSG_STRING             = 3,
-    SERVER_MSG_SHUTDOWN_CANCELLED = 4,
-    SERVER_MSG_RESTART_CANCELLED  = 5
+    SERVER_MSG_SHUTDOWN_TIME          = 1,
+    SERVER_MSG_RESTART_TIME           = 2,
+    SERVER_MSG_CUSTOM                 = 3,
+    SERVER_MSG_SHUTDOWN_CANCELLED     = 4,
+    SERVER_MSG_RESTART_CANCELLED      = 5,
+    SERVER_MSG_BG_SHUTDOWN_TIME       = 6,
+    SERVER_MSG_BG_RESTART_TIME        = 7,
+    SERVER_MSG_INSTANCE_SHUTDOWN_TIME = 8,
+    SERVER_MSG_INSTANCE_RESTART_TIME  = 9,
 };
 
 enum ShutdownMask
@@ -77,11 +81,12 @@ enum WorldTimers
     WUPDATE_UPTIME      = 4,
     WUPDATE_CORPSES     = 5,
     WUPDATE_EVENTS      = 6,
-    WUPDATE_COUNT       = 7
+    WUPDATE_DELETECHARS = 7,
+    WUPDATE_COUNT       = 8
 };
 
 /// Configuration elements
-enum eConfigUint32Values
+enum eConfigUInt32Values
 {
     CONFIG_UINT32_COMPRESSION = 0,
     CONFIG_UINT32_INTERVAL_SAVE,
@@ -89,7 +94,6 @@ enum eConfigUint32Values
     CONFIG_UINT32_INTERVAL_MAPUPDATE,
     CONFIG_UINT32_INTERVAL_CHANGEWEATHER,
     CONFIG_UINT32_PORT_WORLD,
-    CONFIG_UINT32_SOCKET_SELECTTIME,
     CONFIG_UINT32_GAME_TYPE,
     CONFIG_UINT32_REALM_ZONE,
     CONFIG_UINT32_STRICT_PLAYER_NAMES,
@@ -128,6 +132,7 @@ enum eConfigUint32Values
     CONFIG_UINT32_GROUP_VISIBILITY,
     CONFIG_UINT32_MAIL_DELIVERY_DELAY,
     CONFIG_UINT32_UPTIME_UPDATE,
+    CONFIG_UINT32_AUCTION_DEPOSIT_MIN,
     CONFIG_UINT32_SKILL_CHANCE_ORANGE,
     CONFIG_UINT32_SKILL_CHANCE_YELLOW,
     CONFIG_UINT32_SKILL_CHANCE_GREEN,
@@ -148,6 +153,9 @@ enum eConfigUint32Values
     CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF,
     CONFIG_UINT32_QUEST_LOW_LEVEL_HIDE_DIFF,
     CONFIG_UINT32_QUEST_HIGH_LEVEL_HIDE_DIFF,
+    CONFIG_UINT32_QUEST_DAILY_RESET_HOUR,
+    CONFIG_UINT32_QUEST_WEEKLY_RESET_WEEK_DAY,
+    CONFIG_UINT32_QUEST_WEEKLY_RESET_HOUR,
     CONFIG_UINT32_CHAT_STRICT_LINK_CHECKING_SEVERITY,
     CONFIG_UINT32_CHAT_STRICT_LINK_CHECKING_KICK,
     CONFIG_UINT32_CORPSE_DECAY_NORMAL,
@@ -164,6 +172,7 @@ enum eConfigUint32Values
     CONFIG_UINT32_ARENA_RATING_DISCARD_TIMER,
     CONFIG_UINT32_ARENA_AUTO_DISTRIBUTE_INTERVAL_DAYS,
     CONFIG_UINT32_ARENA_SEASON_ID,
+    CONFIG_UINT32_ARENA_SEASON_PREVIOUS_ID,
     CONFIG_UINT32_CLIENTCACHE_VERSION,
     CONFIG_UINT32_GUILD_EVENT_LOG_COUNT,
     CONFIG_UINT32_GUILD_BANK_EVENT_LOG_COUNT,
@@ -173,6 +182,10 @@ enum eConfigUint32Values
     CONFIG_UINT32_TIMERBAR_BREATH_MAX,
     CONFIG_UINT32_TIMERBAR_FIRE_GMLEVEL,
     CONFIG_UINT32_TIMERBAR_FIRE_MAX,
+    CONFIG_UINT32_MIN_LEVEL_STAT_SAVE,
+    CONFIG_UINT32_CHARDELETE_KEEP_DAYS,
+    CONFIG_UINT32_CHARDELETE_METHOD,
+    CONFIG_UINT32_CHARDELETE_MIN_LEVEL,
     CONFIG_UINT32_VALUE_COUNT
 };
 
@@ -180,11 +193,13 @@ enum eConfigUint32Values
 enum eConfigInt32Values
 {
     CONFIG_INT32_DEATH_SICKNESS_LEVEL = 0,
+    CONFIG_INT32_ARENA_STARTRATING,
+    CONFIG_INT32_ARENA_STARTPERSONALRATING,
     CONFIG_INT32_VALUE_COUNT
 };
 
 /// Server config
-enum eConfigFLoatValues
+enum eConfigFloatValues
 {
     CONFIG_FLOAT_RATE_HEALTH = 0,
     CONFIG_FLOAT_RATE_POWER_MANA,
@@ -193,6 +208,7 @@ enum eConfigFLoatValues
     CONFIG_FLOAT_RATE_POWER_RUNICPOWER_INCOME,
     CONFIG_FLOAT_RATE_POWER_RUNICPOWER_LOSS,
     CONFIG_FLOAT_RATE_POWER_FOCUS,
+    CONFIG_FLOAT_RATE_POWER_ENERGY,
     CONFIG_FLOAT_RATE_SKILL_DISCOVERY,
     CONFIG_FLOAT_RATE_DROP_ITEM_POOR,
     CONFIG_FLOAT_RATE_DROP_ITEM_NORMAL,
@@ -261,7 +277,6 @@ enum eConfigBoolValues
     CONFIG_BOOL_GRID_UNLOAD = 0,
     CONFIG_BOOL_SAVE_RESPAWN_TIME_IMMEDIATLY,
     CONFIG_BOOL_OFFHAND_CHECK_AT_TALENTS_RESET,
-    CONFIG_BOOL_ARENA_SEASON_IN_PROGRESS,
     CONFIG_BOOL_ALLOW_TWO_SIDE_ACCOUNTS,
     CONFIG_BOOL_ALLOW_TWO_SIDE_INTERACTION_CHAT,
     CONFIG_BOOL_ALLOW_TWO_SIDE_INTERACTION_CHANNEL,
@@ -281,6 +296,7 @@ enum eConfigBoolValues
     CONFIG_BOOL_ALWAYS_MAX_SKILL_FOR_LEVEL,
     CONFIG_BOOL_WEATHER,
     CONFIG_BOOL_EVENT_ANNOUNCE,
+    CONFIG_BOOL_QUEST_IGNORE_RAID,
     CONFIG_BOOL_DETECT_POS_COLLISION,
     CONFIG_BOOL_RESTRICTED_LFG_CHANNEL,
     CONFIG_BOOL_SILENTLY_GM_JOIN_TO_CHANNEL,
@@ -289,6 +305,7 @@ enum eConfigBoolValues
     CONFIG_BOOL_CHAT_STRICT_LINK_CHECKING_SEVERITY,
     CONFIG_BOOL_CHAT_STRICT_LINK_CHECKING_KICK,
     CONFIG_BOOL_ADDON_CHANNEL,
+    CONFIG_BOOL_CORPSE_EMPTY_LOOT_SHOW,
     CONFIG_BOOL_DEATH_CORPSE_RECLAIM_DELAY_PVP,
     CONFIG_BOOL_DEATH_CORPSE_RECLAIM_DELAY_PVE,
     CONFIG_BOOL_DEATH_BONES_WORLD,
@@ -302,21 +319,40 @@ enum eConfigBoolValues
     CONFIG_BOOL_ARENA_QUEUE_ANNOUNCER_JOIN,
     CONFIG_BOOL_ARENA_QUEUE_ANNOUNCER_EXIT,
     CONFIG_BOOL_KICK_PLAYER_ON_BAD_PACKET,
+    CONFIG_BOOL_STATS_SAVE_ONLY_ON_LOGOUT,
+    CONFIG_BOOL_CLEAN_CHARACTER_DB,
+    CONFIG_BOOL_VMAP_INDOOR_CHECK,
+    CONFIG_BOOL_PET_UNSUMMON_AT_MOUNT,
     CONFIG_BOOL_VALUE_COUNT
 };
 
-/// Type of server
+/// Can be used in SMSG_AUTH_RESPONSE packet
+enum BillingPlanFlags
+{
+    SESSION_NONE            = 0x00,
+    SESSION_UNUSED          = 0x01,
+    SESSION_RECURRING_BILL  = 0x02,
+    SESSION_FREE_TRIAL      = 0x04,
+    SESSION_IGR             = 0x08,
+    SESSION_USAGE           = 0x10,
+    SESSION_TIME_MIXTURE    = 0x20,
+    SESSION_RESTRICTED      = 0x40,
+    SESSION_ENABLE_CAIS     = 0x80,
+};
+
+/// Type of server, this is values from second column of Cfg_Configs.dbc (1.12.1 have another numeration)
 enum RealmType
 {
-    REALM_TYPE_NORMAL = 0,
-    REALM_TYPE_PVP = 1,
-    REALM_TYPE_NORMAL2 = 4,
-    REALM_TYPE_RP = 6,
-    REALM_TYPE_RPPVP = 8,
-    REALM_TYPE_FFA_PVP = 16                                 // custom, free for all pvp mode like arena PvP in all zones except rest activated places and sanctuaries
+    REALM_TYPE_NORMAL   = 0,
+    REALM_TYPE_PVP      = 1,
+    REALM_TYPE_NORMAL2  = 4,
+    REALM_TYPE_RP       = 6,
+    REALM_TYPE_RPPVP    = 8,
+    REALM_TYPE_FFA_PVP  = 16                                // custom, free for all pvp mode like arena PvP in all zones except rest activated places and sanctuaries
                                                             // replaced by REALM_PVP in realm list
 };
 
+/// This is values from first column of Cfg_Categories.dbc (1.12.1 have another numeration)
 enum RealmZone
 {
     REALM_ZONE_UNKNOWN       = 0,                           // any language
@@ -348,29 +384,17 @@ enum RealmZone
     REALM_ZONE_TEST_SERVER   = 26,                          // any language
     REALM_ZONE_TOURNAMENT_27 = 27,                          // basic-Latin at create, any at login
     REALM_ZONE_QA_SERVER     = 28,                          // any language
-    REALM_ZONE_CN9           = 29                           // basic-Latin at create, any at login
+    REALM_ZONE_CN9           = 29,                          // basic-Latin at create, any at login
+    REALM_ZONE_TEST_SERVER_2 = 30,                          // any language
+    // in 3.x
+    REALM_ZONE_CN10          = 31,                          // basic-Latin at create, any at login
+    REALM_ZONE_CTC           = 32,
+    REALM_ZONE_CNC           = 33,
+    REALM_ZONE_CN1_4         = 34,                          // basic-Latin at create, any at login
+    REALM_ZONE_CN2_6_9       = 35,                          // basic-Latin at create, any at login
+    REALM_ZONE_CN3_7         = 36,                          // basic-Latin at create, any at login
+    REALM_ZONE_CN5_8         = 37                           // basic-Latin at create, any at login
 };
-
-// DB scripting commands
-#define SCRIPT_COMMAND_TALK                  0              // source = unit, target=any, datalong ( 0=say, 1=whisper, 2=yell, 3=emote text)
-#define SCRIPT_COMMAND_EMOTE                 1              // source = unit, datalong = anim_id
-#define SCRIPT_COMMAND_FIELD_SET             2              // source = any, datalong = field_id, datalog2 = value
-#define SCRIPT_COMMAND_MOVE_TO               3              // source = Creature, datalog2 = time, x/y/z
-#define SCRIPT_COMMAND_FLAG_SET              4              // source = any, datalong = field_id, datalog2 = bitmask
-#define SCRIPT_COMMAND_FLAG_REMOVE           5              // source = any, datalong = field_id, datalog2 = bitmask
-#define SCRIPT_COMMAND_TELEPORT_TO           6              // source or target with Player, datalong = map_id, x/y/z
-#define SCRIPT_COMMAND_QUEST_EXPLORED        7              // one from source or target must be Player, another GO/Creature, datalong=quest_id, datalong2=distance or 0
-#define SCRIPT_COMMAND_KILL_CREDIT           8              // source or target with Player, datalong = creature entry, datalong2 = bool (0=personal credit, 1=group credit)
-#define SCRIPT_COMMAND_RESPAWN_GAMEOBJECT    9              // source = any (summoner), datalong=db_guid, datalong2=despawn_delay
-#define SCRIPT_COMMAND_TEMP_SUMMON_CREATURE 10              // source = any (summoner), datalong=creature entry, datalong2=despawn_delay
-#define SCRIPT_COMMAND_OPEN_DOOR            11              // source = unit, datalong=db_guid, datalong2=reset_delay
-#define SCRIPT_COMMAND_CLOSE_DOOR           12              // source = unit, datalong=db_guid, datalong2=reset_delay
-#define SCRIPT_COMMAND_ACTIVATE_OBJECT      13              // source = unit, target=GO
-#define SCRIPT_COMMAND_REMOVE_AURA          14              // source (datalong2!=0) or target (datalong==0) unit, datalong = spell_id
-#define SCRIPT_COMMAND_CAST_SPELL           15              // source/target cast spell at target/source (script->datalong2: 0: s->t 1: s->s 2: t->t 3: t->s
-#define SCRIPT_COMMAND_PLAY_SOUND           16              // source = any object, target=any/player, datalong (sound_id), datalong2 (bitmask: 0/1=anyone/target, 0/2=with distance dependent, so 1|2 = 3 is target with distance dependent)
-#define SCRIPT_COMMAND_CREATE_ITEM          17              // source or target must be player, datalong = item entry, datalong2 = amount
-#define SCRIPT_COMMAND_DESPAWN_SELF         18              // source or target must be creature, datalong = despawn delay
 
 /// Storage class for commands issued for delayed execution
 struct CliCommandHolder
@@ -413,8 +437,8 @@ class World
         /// Get the number of current active sessions
         void UpdateMaxSessionCounters();
         uint32 GetActiveAndQueuedSessionCount() const { return m_sessions.size(); }
-        uint32 GetActiveSessionCount() const { return m_sessions.size() - m_QueuedPlayer.size(); }
-        uint32 GetQueuedSessionCount() const { return m_QueuedPlayer.size(); }
+        uint32 GetActiveSessionCount() const { return m_sessions.size() - m_QueuedSessions.size(); }
+        uint32 GetQueuedSessionCount() const { return m_QueuedSessions.size(); }
         /// Get the maximum number of parallel sessions on the server since last reboot
         uint32 GetMaxQueuedSessionCount() const { return m_maxQueuedSessionCount; }
         uint32 GetMaxActiveSessionCount() const { return m_maxActiveSessionCount; }
@@ -433,10 +457,9 @@ class World
 
         //player Queue
         typedef std::list<WorldSession*> Queue;
-        void AddQueuedPlayer(WorldSession*);
-        bool RemoveQueuedPlayer(WorldSession* session);
-        int32 GetQueuePos(WorldSession*);
-        uint32 GetQueueSize() const { return m_QueuedPlayer.size(); }
+        void AddQueuedSession(WorldSession*);
+        bool RemoveQueuedSession(WorldSession* session);
+        int32 GetQueuedSessionPos(WorldSession*);
 
         /// \todo Actions on m_allowMovement still to be implemented
         /// Is movement allowed?
@@ -462,6 +485,7 @@ class World
         uint32 GetUptime() const { return uint32(m_gameTime - m_startTime); }
         /// Next daily quests reset time
         time_t GetNextDailyQuestsResetTime() const { return m_NextDailyQuestReset; }
+        time_t GetNextWeeklyQuestsResetTime() const { return m_NextWeeklyQuestReset; }
 
         /// Get the maximum skill level a player can reach
         uint16 GetConfigMaxSkillValue() const
@@ -493,15 +517,15 @@ class World
 
         void UpdateSessions( uint32 diff );
 
-        /// et a server configuration element (see #eConfigFLoatValues)
-        void setConfig(eConfigFLoatValues index,float value) { m_configFloatValues[index]=value; }
-        /// Get a server configuration element (see #eConfigFLoatValues)
-        float getConfig(eConfigFLoatValues rate) const { return m_configFloatValues[rate]; }
+        /// Get a server configuration element (see #eConfigFloatValues)
+        void setConfig(eConfigFloatValues index,float value) { m_configFloatValues[index]=value; }
+        /// Get a server configuration element (see #eConfigFloatValues)
+        float getConfig(eConfigFloatValues rate) const { return m_configFloatValues[rate]; }
 
-        /// Set a server configuration element (see #eConfigUint32Values)
-        void setConfig(eConfigUint32Values index, uint32 value) { m_configUint32Values[index]=value; }
-        /// Get a server configuration element (see #eConfigUint32Values)
-        uint32 getConfig(eConfigUint32Values index) const { return m_configUint32Values[index]; }
+        /// Set a server configuration element (see #eConfigUInt32Values)
+        void setConfig(eConfigUInt32Values index, uint32 value) { m_configUint32Values[index]=value; }
+        /// Get a server configuration element (see #eConfigUInt32Values)
+        uint32 getConfig(eConfigUInt32Values index) const { return m_configUint32Values[index]; }
 
         /// Set a server configuration element (see #eConfigInt32Values)
         void setConfig(eConfigInt32Values index, int32 value) { m_configInt32Values[index]=value; }
@@ -519,7 +543,7 @@ class World
 
         void KickAll();
         void KickAllLess(AccountTypes sec);
-        BanReturn BanAccount(BanMode mode, std::string nameOrIP, std::string duration, std::string reason, std::string author);
+        BanReturn BanAccount(BanMode mode, std::string nameOrIP, uint32 duration_secs, std::string reason, std::string author);
         bool RemoveBanAccount(BanMode mode, std::string nameOrIP);
 
         uint32 IncreaseScheduledScriptsCount() { return (uint32)++m_scheduledScripts; }
@@ -529,7 +553,7 @@ class World
 
         // for max speed access
         static float GetMaxVisibleDistanceOnContinents()    { return m_MaxVisibleDistanceOnContinents; }
-        static float GetMaxVisibleDistanceInInstances()     { return m_MaxVisibleDistanceInInctances;  }
+        static float GetMaxVisibleDistanceInInstances()     { return m_MaxVisibleDistanceInInstances;  }
         static float GetMaxVisibleDistanceInBGArenas()      { return m_MaxVisibleDistanceInBGArenas;   }
         static float GetMaxVisibleDistanceForObject()       { return m_MaxVisibleDistanceForObject;   }
 
@@ -562,23 +586,28 @@ class World
         void _UpdateRealmCharCount(QueryResult *resultCharCount, uint32 accountId);
 
         void InitDailyQuestResetTime();
+        void InitWeeklyQuestResetTime();
+        void SetMonthlyQuestResetTime(bool initialize = true);
         void ResetDailyQuests();
+        void ResetWeeklyQuests();
+        void ResetMonthlyQuests();
+
     private:
-        void setConfig(eConfigUint32Values index, char const* fieldname, uint32 defvalue);
+        void setConfig(eConfigUInt32Values index, char const* fieldname, uint32 defvalue);
         void setConfig(eConfigInt32Values index, char const* fieldname, int32 defvalue);
-        void setConfig(eConfigFLoatValues index, char const* fieldname, float defvalue);
+        void setConfig(eConfigFloatValues index, char const* fieldname, float defvalue);
         void setConfig(eConfigBoolValues index, char const* fieldname, bool defvalue);
-        void setConfigPos(eConfigUint32Values index, char const* fieldname, uint32 defvalue);
-        void setConfigPos(eConfigFLoatValues index, char const* fieldname, float defvalue);
-        void setConfigMin(eConfigUint32Values index, char const* fieldname, uint32 defvalue, uint32 minvalue);
+        void setConfigPos(eConfigUInt32Values index, char const* fieldname, uint32 defvalue);
+        void setConfigPos(eConfigFloatValues index, char const* fieldname, float defvalue);
+        void setConfigMin(eConfigUInt32Values index, char const* fieldname, uint32 defvalue, uint32 minvalue);
         void setConfigMin(eConfigInt32Values index, char const* fieldname, int32 defvalue, int32 minvalue);
-        void setConfigMin(eConfigFLoatValues index, char const* fieldname, float defvalue, float minvalue);
-        void setConfigMinMax(eConfigUint32Values index, char const* fieldname, uint32 defvalue, uint32 minvalue, uint32 maxvalue);
+        void setConfigMin(eConfigFloatValues index, char const* fieldname, float defvalue, float minvalue);
+        void setConfigMinMax(eConfigUInt32Values index, char const* fieldname, uint32 defvalue, uint32 minvalue, uint32 maxvalue);
         void setConfigMinMax(eConfigInt32Values index, char const* fieldname, int32 defvalue, int32 minvalue, int32 maxvalue);
-        void setConfigMinMax(eConfigFLoatValues index, char const* fieldname, float defvalue, float minvalue, float maxvalue);
-        bool configNoReload(bool reload, eConfigUint32Values index, char const* fieldname, uint32 defvalue);
+        void setConfigMinMax(eConfigFloatValues index, char const* fieldname, float defvalue, float minvalue, float maxvalue);
+        bool configNoReload(bool reload, eConfigUInt32Values index, char const* fieldname, uint32 defvalue);
         bool configNoReload(bool reload, eConfigInt32Values index, char const* fieldname, int32 defvalue);
-        bool configNoReload(bool reload, eConfigFLoatValues index, char const* fieldname, float defvalue);
+        bool configNoReload(bool reload, eConfigFloatValues index, char const* fieldname, float defvalue);
         bool configNoReload(bool reload, eConfigBoolValues index, char const* fieldname, bool defvalue);
 
         static volatile bool m_stopEvent;
@@ -618,7 +647,7 @@ class World
 
         // for max speed access
         static float m_MaxVisibleDistanceOnContinents;
-        static float m_MaxVisibleDistanceInInctances;
+        static float m_MaxVisibleDistanceInInstances;
         static float m_MaxVisibleDistanceInBGArenas;
         static float m_MaxVisibleDistanceForObject;
 
@@ -632,9 +661,11 @@ class World
 
         // next daily quests reset time
         time_t m_NextDailyQuestReset;
+        time_t m_NextWeeklyQuestReset;
+        time_t m_NextMonthlyQuestReset;
 
         //Player Queue
-        Queue m_QueuedPlayer;
+        Queue m_QueuedSessions;
 
         //sessions that are added async
         void AddSession_(WorldSession* s);

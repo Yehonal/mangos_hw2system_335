@@ -31,12 +31,15 @@ std::string AcceptableClientBuildsListStr();
 typedef std::list<uint32> SimpleFactionsList;
 
 SimpleFactionsList const* GetFactionTeamList(uint32 faction);
-char* GetPetName(uint32 petfamily, uint32 dbclang);
+char const* GetPetName(uint32 petfamily, uint32 dbclang);
 uint32 GetTalentSpellCost(uint32 spellId);
+uint32 GetTalentSpellCost(TalentSpellPos const* pos);
 TalentSpellPos const* GetTalentSpellPos(uint32 spellId);
 
 int32 GetAreaFlagByAreaID(uint32 area_id);                  // -1 if not found
 uint32 GetAreaFlagByMapId(uint32 mapid);
+
+WMOAreaTableEntry const* GetWMOAreaTableEntryByTripple(int32 rootid, int32 adtid, int32 groupid);
 
 MANGOS_DLL_SPEC AreaTableEntry const* GetAreaEntryByAreaID(uint32 area_id);
 MANGOS_DLL_SPEC AreaTableEntry const* GetAreaEntryByAreaFlagAndMap(uint32 area_flag,uint32 map_id);
@@ -68,6 +71,8 @@ bool IsPointInAreaTriggerZone(AreaTriggerEntry const* atEntry, uint32 mapid, flo
 PvPDifficultyEntry const* GetBattlegroundBracketByLevel(uint32 mapid, uint32 level);
 PvPDifficultyEntry const* GetBattlegroundBracketById(uint32 mapid, BattleGroundBracketId id);
 
+MANGOS_DLL_SPEC uint32 GetCreatureModelRace(uint32 model_id);
+
 extern DBCStorage <AchievementEntry>             sAchievementStore;
 extern DBCStorage <AchievementCriteriaEntry>     sAchievementCriteriaStore;
 extern DBCStorage <AreaTableEntry>               sAreaStore;// recommend access using functions
@@ -84,6 +89,7 @@ extern DBCStorage <ChrClassesEntry>              sChrClassesStore;
 extern DBCStorage <ChrRacesEntry>                sChrRacesStore;
 extern DBCStorage <CinematicSequencesEntry>      sCinematicSequencesStore;
 extern DBCStorage <CreatureDisplayInfoEntry>     sCreatureDisplayInfoStore;
+extern DBCStorage <CreatureDisplayInfoExtraEntry>sCreatureDisplayInfoExtraStore;
 extern DBCStorage <CreatureFamilyEntry>          sCreatureFamilyStore;
 extern DBCStorage <CreatureSpellDataEntry>       sCreatureSpellDataStore;
 extern DBCStorage <CreatureTypeEntry>            sCreatureTypeStore;
@@ -105,6 +111,7 @@ extern DBCStorage <GtChanceToMeleeCritBaseEntry> sGtChanceToMeleeCritBaseStore;
 extern DBCStorage <GtChanceToMeleeCritEntry>     sGtChanceToMeleeCritStore;
 extern DBCStorage <GtChanceToSpellCritBaseEntry> sGtChanceToSpellCritBaseStore;
 extern DBCStorage <GtChanceToSpellCritEntry>     sGtChanceToSpellCritStore;
+extern DBCStorage <GtOCTClassCombatRatingScalarEntry> sGtOCTClassCombatRatingScalarStore;
 extern DBCStorage <GtOCTRegenHPEntry>            sGtOCTRegenHPStore;
 //extern DBCStorage <GtOCTRegenMPEntry>            sGtOCTRegenMPStore; -- not used currently
 extern DBCStorage <GtRegenHPPerSptEntry>         sGtRegenHPPerSptStore;
@@ -124,6 +131,7 @@ extern DBCStorage <MapEntry>                     sMapStore;
 //extern DBCStorage <MapDifficultyEntry>           sMapDifficultyStore; -- use GetMapDifficultyData insteed
 extern MapDifficultyMap                          sMapDifficultyMap;
 extern DBCStorage <MovieEntry>                   sMovieStore;
+extern DBCStorage <OverrideSpellDataEntry>       sOverrideSpellDataStore;
 extern DBCStorage <QuestFactionRewardEntry>      sQuestFactionRewardStore;
 extern DBCStorage <QuestSortEntry>               sQuestSortStore;
 extern DBCStorage <QuestXPLevel>                 sQuestXPLevelStore;
@@ -135,6 +143,7 @@ extern DBCStorage <SkillLineEntry>               sSkillLineStore;
 extern DBCStorage <SkillLineAbilityEntry>        sSkillLineAbilityStore;
 extern DBCStorage <SoundEntriesEntry>            sSoundEntriesStore;
 extern DBCStorage <SpellCastTimesEntry>          sSpellCastTimesStore;
+extern DBCStorage <SpellDifficultyEntry>         sSpellDifficultyStore;
 extern DBCStorage <SpellDurationEntry>           sSpellDurationStore;
 extern DBCStorage <SpellFocusObjectEntry>        sSpellFocusObjectStore;
 extern DBCStorage <SpellItemEnchantmentEntry>    sSpellItemEnchantmentStore;
@@ -144,7 +153,7 @@ extern PetFamilySpellsStore                      sPetFamilySpellsStore;
 extern DBCStorage <SpellRadiusEntry>             sSpellRadiusStore;
 extern DBCStorage <SpellRangeEntry>              sSpellRangeStore;
 extern DBCStorage <SpellRuneCostEntry>           sSpellRuneCostStore;
-extern DBCStorage <SpellShapeshiftEntry>         sSpellShapeshiftStore;
+extern DBCStorage <SpellShapeshiftFormEntry>     sSpellShapeshiftFormStore;
 extern DBCStorage <SpellEntry>                   sSpellStore;
 extern DBCStorage <StableSlotPricesEntry>        sStableSlotPricesStore;
 extern DBCStorage <SummonPropertiesEntry>        sSummonPropertiesStore;
@@ -156,9 +165,11 @@ extern TaxiMask                                  sTaxiNodesMask;
 extern TaxiMask                                  sOldContinentsNodesMask;
 extern TaxiPathSetBySource                       sTaxiPathSetBySource;
 extern TaxiPathNodesByPath                       sTaxiPathNodesByPath;
+extern DBCStorage <TeamContributionPoints>       sTeamContributionPoints;
 extern DBCStorage <TotemCategoryEntry>           sTotemCategoryStore;
 extern DBCStorage <VehicleEntry>                 sVehicleStore;
 extern DBCStorage <VehicleSeatEntry>             sVehicleSeatStore;
+extern DBCStorage <WMOAreaTableEntry>            sWMOAreaTableStore;
 //extern DBCStorage <WorldMapAreaEntry>           sWorldMapAreaStore; -- use Zone2MapCoordinates and Map2ZoneCoordinates
 extern DBCStorage <WorldMapOverlayEntry>         sWorldMapOverlayStore;
 extern DBCStorage <WorldSafeLocsEntry>           sWorldSafeLocsStore;

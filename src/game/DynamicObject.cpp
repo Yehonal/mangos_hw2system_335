@@ -27,7 +27,7 @@
 #include "GridNotifiersImpl.h"
 #include "SpellMgr.h"
 
-DynamicObject::DynamicObject() : WorldObject(), m_isActiveObject(false)
+DynamicObject::DynamicObject() : WorldObject()
 {
     m_objectType |= TYPEMASK_DYNAMICOBJECT;
     m_objectTypeId = TYPEID_DYNAMICOBJECT;
@@ -50,7 +50,10 @@ void DynamicObject::RemoveFromWorld()
 {
     ///- Remove the dynamicObject from the accessor
     if(IsInWorld())
+    {
         GetMap()->GetObjectsStore().erase<DynamicObject>(GetGUID(), (DynamicObject*)NULL);
+        GetViewPoint().Event_RemovedFromWorld();
+    }
 
     Object::RemoveFromWorld();
 }
@@ -68,21 +71,31 @@ bool DynamicObject::Create( uint32 guidlow, Unit *caster, uint32 spellId, SpellE
     }
 
     SetEntry(spellId);
-    SetFloatValue( OBJECT_FIELD_SCALE_X, 1 );
-    SetUInt64Value( DYNAMICOBJECT_CASTER, caster->GetGUID() );
-    SetUInt32Value( DYNAMICOBJECT_BYTES, 0x00000001 );
-    SetUInt32Value( DYNAMICOBJECT_SPELLID, spellId );
-    SetFloatValue( DYNAMICOBJECT_RADIUS, radius);
-    SetUInt32Value( DYNAMICOBJECT_CASTTIME, getMSTime() );  // new 2.4.0
+    SetObjectScale(DEFAULT_OBJECT_SCALE);
+
+    SetGuidValue(DYNAMICOBJECT_CASTER, caster->GetObjectGuid());
+
+    /* Bytes field, so it's really 4 bit fields. These flags are unknown, but we do know that 0x00000001 is set for most.
+       Farsight for example, does not have this flag, instead it has 0x80000002.
+       Flags are set dynamically with some conditions, so one spell may have different flags set, depending on those conditions.
+       The size of the visual may be controlled to some degree with these flags.
+
+    uint32 bytes = 0x00000000;
+    bytes |= 0x01;
+    bytes |= 0x00 << 8;
+    bytes |= 0x00 << 16;
+    bytes |= 0x00 << 24;
+    */
+    SetUInt32Value(DYNAMICOBJECT_BYTES, 0x00000001);
+
+    SetUInt32Value(DYNAMICOBJECT_SPELLID, spellId);
+    SetFloatValue(DYNAMICOBJECT_RADIUS, radius);
+    SetUInt32Value(DYNAMICOBJECT_CASTTIME, WorldTimer::getMSTime());    // new 2.4.0
 
     m_aliveDuration = duration;
     m_radius = radius;
     m_effIndex = effIndex;
     m_spellId = spellId;
-
-    // set to active for far sight case
-    if(SpellEntry const* spellEntry = sSpellStore.LookupEntry(spellId))
-        m_isActiveObject = IsSpellHaveEffect(spellEntry,SPELL_EFFECT_ADD_FARSIGHT);
 
     return true;
 }
@@ -90,10 +103,10 @@ bool DynamicObject::Create( uint32 guidlow, Unit *caster, uint32 spellId, SpellE
 Unit* DynamicObject::GetCaster() const
 {
     // can be not found in some cases
-    return ObjectAccessor::GetUnit(*this, GetCasterGUID());
+    return ObjectAccessor::GetUnit(*this, GetCasterGuid());
 }
 
-void DynamicObject::Update(uint32 p_time)
+void DynamicObject::Update(uint32 update_diff, uint32 p_time)
 {
     // caster can be not in world at time dynamic object update, but dynamic object not yet deleted in Unit destructor
     Unit* caster = GetCaster();
@@ -114,18 +127,8 @@ void DynamicObject::Update(uint32 p_time)
     if(m_radius)
     {
         // TODO: make a timer and update this in larger intervals
-        CellPair p(MaNGOS::ComputeCellPair(GetPositionX(), GetPositionY()));
-        Cell cell(p);
-        cell.data.Part.reserved = ALL_DISTRICT;
-        cell.SetNoCreate();
-
         MaNGOS::DynamicObjectUpdater notifier(*this, caster);
-
-        TypeContainerVisitor<MaNGOS::DynamicObjectUpdater, WorldTypeMapContainer > world_object_notifier(notifier);
-        TypeContainerVisitor<MaNGOS::DynamicObjectUpdater, GridTypeMapContainer > grid_object_notifier(notifier);
-
-        cell.Visit(p, world_object_notifier, *GetMap(), *this, m_radius);
-        cell.Visit(p, grid_object_notifier,  *GetMap(), *this, m_radius);
+        Cell::VisitAllObjects(this, notifier, m_radius);
     }
 
     if(deleteThis)
@@ -144,18 +147,49 @@ void DynamicObject::Delete()
 void DynamicObject::Delay(int32 delaytime)
 {
     m_aliveDuration -= delaytime;
-    for(AffectedSet::iterator iunit= m_affected.begin(); iunit != m_affected.end(); ++iunit)
-        if (*iunit)
-            (*iunit)->DelayAura(m_spellId, m_effIndex, delaytime);
+    for(AffectedSet::iterator iter = m_affected.begin(); iter != m_affected.end(); )
+    {
+        Unit *target = GetMap()->GetUnit((*iter));
+        if (target)
+        {
+            SpellAuraHolder *holder = target->GetSpellAuraHolder(m_spellId, GetCasterGuid().GetRawValue());
+            if (!holder)
+            {
+                ++iter;
+                continue;
+            }
+
+            bool foundAura = false;
+            for (int32 i = m_effIndex + 1; i < MAX_EFFECT_INDEX; ++i)
+            {
+                if ((holder->GetSpellProto()->Effect[i] == SPELL_EFFECT_PERSISTENT_AREA_AURA || holder->GetSpellProto()->Effect[i] == SPELL_EFFECT_ADD_FARSIGHT) && holder->m_auras[i])
+                {
+                    foundAura = true;
+                    break;
+                }
+            }
+
+            if (foundAura)
+            {
+                ++iter;
+                continue;
+            }
+
+            target->DelaySpellAuraHolder(m_spellId, delaytime, GetCasterGuid().GetRawValue());
+            ++iter;
+        }
+        else
+            m_affected.erase(iter++);
+    }
 }
 
 bool DynamicObject::isVisibleForInState(Player const* u, WorldObject const* viewPoint, bool inVisibleList) const
 {
-    if(!IsInWorld() || !u->IsInWorld())
+    if (!IsInWorld() || !u->IsInWorld())
         return false;
 
     // always seen by owner
-    if(GetCasterGUID()==u->GetGUID())
+    if (GetCasterGuid() == u->GetObjectGuid())
         return true;
 
     // normal case

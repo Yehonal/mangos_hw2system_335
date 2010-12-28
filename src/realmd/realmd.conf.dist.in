@@ -1,7 +1,9 @@
 ############################################
 # MaNGOS realmd configuration file         #
 ############################################
-ConfVersion=2007062001
+
+[RealmdConf]
+ConfVersion=2010062001
 
 ###################################################################################################################
 # REALMD SETTINGS
@@ -28,6 +30,9 @@ ConfVersion=2007062001
 #
 #    BindIP
 #         Bind Realm Server to IP/hostname
+#         This option is useful for running multiple worldd/realmd instances
+#         on different IP addresses using default ports.
+#         DO NOT CHANGE THIS UNLESS YOU _REALLY_ KNOW WHAT YOU'RE DOING
 #
 #    PidFile
 #        Realmd daemon PID file
@@ -76,6 +81,12 @@ ConfVersion=2007062001
 #        Default: 1 (HIGH)
 #                 0 (Normal)
 #
+#    WaitAtStartupError
+#        After startup error report wait <Enter> or some time before continue (and possible close console window)
+#                 -1 (wait until <Enter> press)
+#        Default:  0 (not wait)
+#                  N (>0, wait N secs)
+#
 #    RealmsStateUpdateDelay
 #        Realm list Update up delay (updated at realm list request if delay expired).
 #        Default: 20
@@ -96,8 +107,8 @@ ConfVersion=2007062001
 #
 ###################################################################################################################
 
-LoginDatabaseInfo = "127.0.0.1;3306;root;root;realmd_mangos_hw2"
-LogsDir = "D:\EMU-works\server_logs\Mangos_hw2\"
+LoginDatabaseInfo = "127.0.0.1;3306;mangos;mangos;realmd"
+LogsDir = ""
 MaxPingTime = 30
 RealmServerPort = 3724
 BindIP = "0.0.0.0"
@@ -110,6 +121,7 @@ LogFileLevel = 0
 LogColors = ""
 UseProcessors = 0
 ProcessPriority = 1
+WaitAtStartupError = 0
 RealmsStateUpdateDelay = 20
 WrongPass.MaxCount = 0
 WrongPass.BanTime = 600

@@ -23,6 +23,7 @@
 #include "../../game/Player.h"
 #include "../../game/Map.h"
 #include "../../game/ObjectMgr.h"
+#include "../../game/ScriptMgr.h"
 #include "../../game/SpellAuras.h"
 
 //uint8 loglevel = 0;
@@ -155,7 +156,7 @@ bool QuestAccept( Player *player, Creature *_Creature, Quest *_Quest )
         return false;
 
     player->PlayerTalkClass->ClearMenus();
-    
+
     return tmpscript->pQuestAccept(player,_Creature,_Quest);
 }
 
@@ -279,13 +280,24 @@ bool GOChooseReward( Player *player, GameObject *_GO, Quest *_Quest, uint32 opt 
 }
 
 MANGOS_DLL_EXPORT
-bool AreaTrigger      ( Player *player, AreaTriggerEntry* atEntry )
+bool AreaTrigger(Player *player, AreaTriggerEntry const* atEntry)
 {
     Script *tmpscript = m_scripts[GetAreaTriggerScriptId(atEntry->id)];
     if (!tmpscript || !tmpscript->pAreaTrigger)
         return false;
 
     return tmpscript->pAreaTrigger(player, atEntry);
+}
+
+MANGOS_DLL_EXPORT
+bool ProcessEventId(uint32 eventId, Object* source, Object* target, bool isStart)
+{
+    Script *tmpscript = m_scripts[GetEventIdScriptId(eventId)];
+    if (!tmpscript || !tmpscript->pProcessEventId)
+        return false;
+
+    // isStart are normally true. For taxi event id at arrival, it's false
+    return tmpscript->pProcessEventId(eventId, source, target, isStart);
 }
 
 MANGOS_DLL_EXPORT

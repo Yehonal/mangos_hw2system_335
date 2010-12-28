@@ -30,7 +30,7 @@
 #include "Timer.h"
 #include "Policies/SingletonImp.h"
 #include "SystemConfig.h"
-#include "Config/ConfigEnv.h"
+#include "Config/Config.h"
 #include "Database/DatabaseEnv.h"
 #include "CliRunnable.h"
 #include "RASocket.h"
@@ -73,35 +73,20 @@ public:
         {
             ACE_Based::Thread::Sleep(1000);
 
-            uint32 curtime = getMSTime();
+            uint32 curtime = WorldTimer::getMSTime();
             //DEBUG_LOG("anti-freeze: time=%u, counters=[%u; %u]",curtime,Master::m_masterLoopCounter,World::m_worldLoopCounter);
 
-            // There is no Master anymore
-            // TODO: clear the rest of the code
-//            // normal work
-//            if(m_loops != Master::m_masterLoopCounter)
-//            {
-//                m_lastchange = curtime;
-//                m_loops = Master::m_masterLoopCounter;
-//            }
-//            // possible freeze
-//            else if(getMSTimeDiff(m_lastchange,curtime) > _delaytime)
-//            {
-//                sLog.outError("Main/Sockets Thread hangs, kicking out server!");
-//                *((uint32 volatile*)NULL) = 0;                       // bang crash
-//            }
-
             // normal work
-            if(w_loops != World::m_worldLoopCounter)
+            if (w_loops != World::m_worldLoopCounter)
             {
                 w_lastchange = curtime;
                 w_loops = World::m_worldLoopCounter;
             }
             // possible freeze
-            else if(getMSTimeDiff(w_lastchange,curtime) > _delaytime)
+            else if (WorldTimer::getMSTimeDiff(w_lastchange, curtime) > _delaytime)
             {
                 sLog.outError("World Thread hangs, kicking out server!");
-                *((uint32 volatile*)NULL) = 0;                       // bang crash
+                *((uint32 volatile*)NULL) = 0;              // bang crash
             }
         }
         sLog.outString("Anti-freeze thread exiting without problems.");
@@ -194,6 +179,7 @@ int Master::Run()
         if( !pid )
         {
             sLog.outError( "Cannot create PID file %s.\n", pidfile.c_str() );
+            Log::WaitBeforeContinueIfNeed();
             return 1;
         }
 
@@ -202,7 +188,10 @@ int Master::Run()
 
     ///- Start the databases
     if (!_StartDB())
+    {
+        Log::WaitBeforeContinueIfNeed();
         return 1;
+    }
 
     ///- Initialize the World
     sWorld.SetInitialWorldSettings();
@@ -217,8 +206,8 @@ int Master::Run()
     // set realmbuilds depend on mangosd expected builds, and set server online
     {
         std::string builds = AcceptableClientBuildsListStr();
-        loginDatabase.escape_string(builds);
-        loginDatabase.PExecute("UPDATE realmlist SET color = 0, population = 0, realmbuilds = '%s'  WHERE id = '%d'", builds.c_str(), realmID);
+        LoginDatabase.escape_string(builds);
+        LoginDatabase.PExecute("UPDATE realmlist SET realmflags = realmflags & ~(%u), population = 0, realmbuilds = '%s'  WHERE id = '%u'", REALM_FLAG_OFFLINE, builds.c_str(), realmID);
     }
 
     ACE_Based::Thread* cliThread = NULL;
@@ -277,7 +266,7 @@ int Master::Run()
             if(SetPriorityClass(hProcess,HIGH_PRIORITY_CLASS))
                 sLog.outString("mangosd process priority class set to HIGH");
             else
-                sLog.outError("ERROR: Can't set mangosd process priority class.");
+                sLog.outError("Can't set mangosd process priority class.");
             sLog.outString();
         }
     }
@@ -296,7 +285,7 @@ int Master::Run()
 
 
     uint32 realCurrTime, realPrevTime;
-    realCurrTime = realPrevTime = getMSTime();
+    realCurrTime = realPrevTime = WorldTimer::getMSTime();
 
     ///- Start up freeze catcher thread
     ACE_Based::Thread* freeze_thread = NULL;
@@ -312,9 +301,10 @@ int Master::Run()
     uint16 wsport = sWorld.getConfig (CONFIG_UINT32_PORT_WORLD);
     std::string bind_ip = sConfig.GetStringDefault ("BindIP", "0.0.0.0");
 
-    if (sWorldSocketMgr->StartNetwork (wsport, bind_ip.c_str ()) == -1)
+    if (sWorldSocketMgr->StartNetwork (wsport, bind_ip) == -1)
     {
         sLog.outError ("Failed to start network");
+        Log::WaitBeforeContinueIfNeed();
         World::StopNow(ERROR_EXIT_CODE);
         // go down and shutdown the server
     }
@@ -337,7 +327,7 @@ int Master::Run()
     }
 
     ///- Set server offline in realmlist
-    loginDatabase.PExecute("UPDATE realmlist SET color = 2 WHERE id = '%d'",realmID);
+    LoginDatabase.PExecute("UPDATE realmlist SET realmflags = realmflags | %u WHERE id = '%u'", REALM_FLAG_OFFLINE, realmID);
 
     ///- Remove signal handling before leaving
     _UnhookSignals();
@@ -359,7 +349,7 @@ int Master::Run()
     ///- Wait for DB delay threads to end
     CharacterDatabase.HaltDelayThread();
     WorldDatabase.HaltDelayThread();
-    loginDatabase.HaltDelayThread();
+    LoginDatabase.HaltDelayThread();
 
     sLog.outString( "Halting process..." );
 
@@ -490,7 +480,7 @@ bool Master::_StartDB()
 
     ///- Initialise the login database
     sLog.outString("Login Database: %s", dbstring.c_str() );
-    if(!loginDatabase.Initialize(dbstring.c_str()))
+    if(!LoginDatabase.Initialize(dbstring.c_str()))
     {
         sLog.outError("Cannot connect to login database %s",dbstring.c_str());
 
@@ -500,12 +490,12 @@ bool Master::_StartDB()
         return false;
     }
 
-    if(!loginDatabase.CheckRequiredField("realmd_db_version",REVISION_DB_REALMD))
+    if(!LoginDatabase.CheckRequiredField("realmd_db_version",REVISION_DB_REALMD))
     {
         ///- Wait for already started DB delay threads to end
         WorldDatabase.HaltDelayThread();
         CharacterDatabase.HaltDelayThread();
-        loginDatabase.HaltDelayThread();
+        LoginDatabase.HaltDelayThread();
         return false;
     }
 
@@ -539,7 +529,7 @@ bool Master::_StartDB()
         ///- Wait for already started DB delay threads to end
         WorldDatabase.HaltDelayThread();
         CharacterDatabase.HaltDelayThread();
-        loginDatabase.HaltDelayThread();
+        LoginDatabase.HaltDelayThread();
         Hw2Database.HaltDelayThread();
         return false;
     }
@@ -561,7 +551,7 @@ void Master::clearOnlineAccounts()
 {
     // Cleanup online status for characters hosted at current realm
     /// \todo Only accounts with characters logged on *this* realm should have online status reset. Move the online column from 'account' to 'realmcharacters'?
-    loginDatabase.PExecute("UPDATE account SET active_realm_id = 0 WHERE active_realm_id = '%d'", realmID);
+    LoginDatabase.PExecute("UPDATE account SET active_realm_id = 0 WHERE active_realm_id = '%u'", realmID);
 
     CharacterDatabase.Execute("UPDATE characters SET online = 0 WHERE online<>0");
 

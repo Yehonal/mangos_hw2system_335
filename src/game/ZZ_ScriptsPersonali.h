@@ -28,6 +28,11 @@
 
 #define STANDARD   20
 
+enum ScriptsId
+{
+    GUARD1_ID = 4000,
+};
+
 
 enum Azeroth_Values
 {
@@ -102,6 +107,9 @@ class MANGOS_DLL_SPEC Hw2Class
 		uint16 cl_count;
 		bool AzConf[STANDARD],ListFilled,TrMod[STANDARD];
 		std::string ConfDef[STANDARD];
+        time_t m_modGameTime;
+        uint32 timerCambiaOra;
+        int newHr;
 
 
 		//procedure
@@ -127,6 +135,10 @@ class MANGOS_DLL_SPEC Hw2Class
 	    uint8 CheckAcc(Player *player,uint8 type);
 		bool ImpostaGiocatore(Player *pl);
 		bool Hw2Config(bool start,uint8 mode=0,uint8 tipo=0,bool scelta=false);
+        time_t const& GetModGameTime() const { return m_modGameTime; }
+        void Update(uint32 diff);
+
+        static Hw2Class *GetHw2();
 		
 		//rpg functions
 		bool RpgFunzioneIniziale(Player *pl);

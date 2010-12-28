@@ -9,6 +9,9 @@ Hw2Class::Hw2Class() //costruttore
 	ListFilled=false;
 	lista=(struct act *)malloc(sizeof(struct act));
 	ConfCount=0;
+    timerCambiaOra = 0;
+    newHr = 0;
+    m_modGameTime = time(NULL);
 }
 
 Hw2Class::~Hw2Class()
@@ -18,6 +21,51 @@ Hw2Class::~Hw2Class()
 
 }
 
+Hw2Class* Hw2Class::GetHw2()
+{
+    return &sHw2;
+}
+
+void Hw2Class::Update(uint32 diff)
+{
+
+    if (newHr!=0)
+        if (timerCambiaOra < diff)
+        {
+
+                tm localTm = *localtime(&sHw2.GetModGameTime());
+                int increment = newHr > 0 ? 1 : -1;
+
+                if (localTm.tm_min >=59)
+                {
+                    localTm.tm_min  = 0;
+                    localTm.tm_hour += increment;
+                    newHr -= increment;
+                }
+                else
+                if ( localTm.tm_min <=0)
+                {
+                    localTm.tm_min  = 59;
+                    localTm.tm_hour += increment;
+                    newHr -= increment;
+                }
+
+                localTm.tm_min  += increment;
+
+                time_t newtime = mktime(&localTm);
+                WorldPacket data(SMSG_LOGIN_SETTIMESPEED, 4 + 4 + 4);
+                data << uint32(secsToTimeBitFields(newtime));
+                data << (float)0.01666667f;                             // game speed
+                data << uint32(0);                                      // added in 3.1.2
+                sWorld.SendGlobalMessage( &data );
+
+                timerCambiaOra = 50;
+                sHw2.m_modGameTime = newtime;
+
+        } else timerCambiaOra -= diff;
+
+
+}
 
 
 
@@ -141,20 +189,98 @@ bool ChatHandler::HandleAzerothSpecialCommands(const char* args)
 		if (!tipo)
             return false;
 
-	    type = atoi(tipo);
+        tm localTm = *localtime(&sHw2.GetModGameTime());
+        int ora = atoi(tipo);
 
-        tm localTm = *localtime(&sWorld.GetGameTime());
-        localTm.tm_hour = type;
+        sHw2.newHr = localTm.tm_hour >= ora ? -1 * (localTm.tm_hour - ora) : ora - localTm.tm_hour;
 
-        // current day reset time
-        time_t newtime = mktime(&localTm);
-        
-        WorldPacket data(SMSG_LOGIN_SETTIMESPEED, 4 + 4 + 4);
-        data << uint32(secsToTimeBitFields(newtime));
-        data << (float)0.01666667f;                             // game speed
-        data << uint32(0);                                      // added in 3.1.2
-        sWorld.SendGlobalMessage( &data );
+        return true;
 
+        /*tm localTm = *localtime(&sHw2.GetModGameTime());
+        int now       = localTm.tm_hour;
+        int diffHours = newHr - now;
+        if(diffHours < 0)
+            diffHours *= -1;
+
+        time_t newtime;
+        for (uint8 i=0;i<=diffHours;i++)
+        {
+            localTm.tm_hour = newHr >= now ? now + i : now - i;
+
+            // current day reset time
+            newtime = mktime(&localTm);
+            WorldPacket data(SMSG_LOGIN_SETTIMESPEED, 4 + 4 + 4);
+            data << uint32(secsToTimeBitFields(newtime));
+            data << (float)0.01666667f;                             // game speed
+            data << uint32(0);                                      // added in 3.1.2
+            sWorld.SendGlobalMessage( &data );
+        }
+
+        if (newtime)
+            sHw2.m_modGameTime = newtime; */
+
+    }
+
+    if (argstr=="creapet")
+    {
+        if(autore->GetPetGUID())
+        return false;
+
+        Creature * creatureTarget = getSelectedCreature();
+		if(!creatureTarget) 
+            return false;
+
+        if(creatureTarget->isPet())
+            return false;
+
+        Pet* pet = new Pet(MINI_PET);
+
+        pet->Create(autore->GetMap()->GenerateLocalLowGuid(HIGHGUID_PET), autore->GetMap(), autore->GetPhaseMask(),creatureTarget->GetEntry(), sObjectMgr.GeneratePetNumber());
+
+        if(!pet)                                                // in versy specific state like near world end/etc.
+        {
+            delete pet;
+            return false;
+        }
+
+        // kill original creature
+        //creatureTarget->setDeathState(JUST_DIED);
+        //creatureTarget->RemoveCorpse();
+        //creatureTarget->SetHealth(0);                       // just for nice GM-mode view
+
+        uint32 level = (creatureTarget->getLevel() < (autore->getLevel() - 5)) ? (autore->getLevel() - 5) : creatureTarget->getLevel();
+
+        // prepare visual effect for levelup
+        pet->SetUInt32Value(UNIT_FIELD_LEVEL, level - 1);
+        pet->GetMap()->Add((Creature*)pet);
+        pet->SetUInt32Value(UNIT_FIELD_LEVEL, level);
+        float x, y, z;
+        autore->GetClosePoint(x, y, z, pet->GetObjectSize());
+        pet->Relocate(x, y, z, autore->GetOrientation());
+        if(!pet->IsPositionValid())
+        {
+            delete pet;
+            return false;
+        }
+
+        pet->SetOwnerGUID(autore->GetGUID());
+        pet->SetCreatorGUID(autore->GetGUID());
+        pet->setFaction(autore->getFaction());
+        pet->AIM_Initialize();
+        pet->InitPetCreateSpells();                         // e.g. disgusting oozeling has a create spell as critter...
+        SendSysMessage("minipet creato"); 
+        return true;
+    }
+
+    if (argstr=="guardian")
+    {
+        Creature * creature = getSelectedCreature();
+		if(!creature) return false;
+
+        creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GUARD);
+        creature->setFaction(autore->getFaction());
+        SendSysMessage("guardia attiva"); 
+        return true;
     }
 
 
@@ -542,15 +668,9 @@ if (autore->AccLvl[1]>=1)
 	    creature->SetSpeedRate(MOVE_SWIM,    autore->GetSpeedRate(MOVE_SWIM),true);
         creature->SetSpeedRate(MOVE_FLIGHT,     autore->GetSpeedRate(MOVE_FLIGHT),true);
 		if (autore->m_movementInfo.GetMovementFlags()==SPLINEFLAG_WALKMODE)
-		{
-			creature->AddSplineFlag(SPLINEFLAG_WALKMODE);
 			SendSysMessage("Seguimi! (MODALITA' WALK)");
-		}
 		else
-		{
-			creature->AddSplineFlag(SPLINEFLAG_NONE);
 			SendSysMessage("Seguimi! (MODALITA' RUN)");
-		}
 		return true;
     }
 
@@ -844,8 +964,6 @@ if (autore->AccLvl[1]>=1)
 
 							}
 
-
-
 					if (argstr == "summon")
 					{
 						uint32 cEntry=0;
@@ -860,7 +978,34 @@ if (autore->AccLvl[1]>=1)
 						if (cEntry==0) return false;
 						
 						autore->SummonCreature(cEntry,autore->GetPositionX(),autore->GetPositionY(),autore->GetPositionZ(),PET_FOLLOW_ANGLE,TEMPSUMMON_CORPSE_DESPAWN,0);
-						SendSysMessage("Evocazione Completata.");
+                        SendSysMessage("Evocazione Completata.");
+						
+						return true;
+					}
+
+
+					if (argstr == "summon_guard")
+					{
+						uint32 cEntry=0;
+						
+						if(!autore) 
+							return false; 
+						
+						char* ID = stringa;
+						if (!ID){ SendSysMessage("Devi inserire un ID di creatura."); return false; }
+						
+						cEntry = atoi(ID);
+						if (cEntry==0) return false;
+						
+						Creature *creature = autore->SummonCreature(cEntry,autore->GetPositionX(),autore->GetPositionY(),autore->GetPositionZ(),PET_FOLLOW_ANGLE,TEMPSUMMON_CORPSE_DESPAWN,0);
+                        if(!creature || !creature->IsInWorld()) 
+                            return false;
+
+                        creature->customScriptID = GUARD1_ID;
+                        creature->AIM_Initialize();
+                        // creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GUARD);
+                        creature->setFaction(autore->getFaction());
+                        SendSysMessage("Evocazione Completata.");
 						
 						return true;
 					}
@@ -1127,7 +1272,7 @@ if (autore->AccLvl[1]>=1)
 									 int val = atoi(valore);
 									 int resistenza = atoi(stringa);
 
-									 if (!val || !resistenza || ( resistenza>6 || resistenza<-2)) 
+									 if ( resistenza>6 || resistenza<-2) 
 										 return false;
 							        
 									 SendSysMessage("Eseguito! ( ricorda di non inserire valori <enormi>) ");
@@ -1558,7 +1703,7 @@ bool ChatHandler::AzerothQuest(Player *player)
 				fields2 = result2->Fetch();
 				cEntry = fields2[0].GetUInt32();
 				player->GetClosePoint(x,y,z,player->GetObjectSize());
-			    cr = player->SummonCreature(cEntry,x,y,z+1,4.14,TEMPSUMMON_TIMED_DESPAWN,200000);
+			    cr = player->SummonCreature(cEntry,x,y,z+1,4.14f,TEMPSUMMON_TIMED_DESPAWN,200000);
 				if (cr)
 				{
 					cr->SetUInt32Value(UNIT_NPC_FLAGS, 0);

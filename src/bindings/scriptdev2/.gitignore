@@ -1,0 +1,19 @@
+#
+# Questo file gitignore fa si che i makefile.in 
+# di progetto sd2 siano inclusi nella compilazione
+#
+
+!Makefile.in
+*.user
+*.ncb
+*.suo
+*.obj
+BuildLog.htm
+*.manifest
+*.dep
+*.idb
+*.pdb
+*.pch
+*.res
+
+revision.h

@@ -1,0 +1,179 @@
+/* Copyright (C) 2006,2007 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+* This program is free software; you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program; if not, write to the Free Software
+* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+*/
+
+#include "../../../sc_defines.h"
+
+#define SPELL_SEEDOFCORRUPTION	32863
+#define SPELL_VOIDZONE	30533	// on videos seems to last more than 6 seconds, but wowhead insist that this is the right spell
+#define SPELL_SHADOWNOVA	36127
+
+
+#define SAY_AGGRO	"Life energy to... consume."
+#define SAY_SPECIAL	"The shadow... will engulf you."
+#define SAY_KILL1	"This vessel...is empty."
+#define SAY_KILL2	"No...more...life"
+#define SAY_DEATH	"The Void... beckons."
+
+struct MANGOS_DLL_DECL boss_zereketh_the_unboundAI : public ScriptedAI
+{
+    boss_zereketh_the_unboundAI(Creature *c) : ScriptedAI(c) {EnterEvadeMode();}
+
+    uint32 seedofcorruption_timer;
+    uint32 voidzone_timer;
+    uint32 shadownova_timer;
+    
+    bool incombat;
+
+	bool said;  
+
+	Unit* target;
+	Unit* target2;
+
+
+    void EnterEvadeMode()
+    {
+        seedofcorruption_timer = 20000; // the only timer i'm not sure of
+        voidzone_timer = 15000;
+        shadownova_timer = 25000;
+
+        incombat = false;
+		said = false;
+
+        m_creature->RemoveAllAuras();
+        m_creature->DeleteThreatList();
+        m_creature->CombatStop();
+
+        DoGoHome();
+    }
+
+    void AttackStart(Unit *who)
+    {
+        if (!who)
+            return;
+
+        if (who->isTargetableForAttack() && who != m_creature)
+        {
+            //Begin attack
+            DoStartMeleeAttack(who);        
+        }
+
+        if(!incombat)
+            DoYell(SAY_AGGRO,LANG_UNIVERSAL,NULL);
+
+        incombat = true;
+    }
+
+    void MoveInLineOfSight(Unit *who)
+    {  
+        if (!who || m_creature->getVictim())
+            return;
+
+        if (who->isTargetableForAttack() && who->isInAccessablePlaceFor(m_creature) && m_creature->IsHostileTo(who))
+        {
+            float attackRadius = m_creature->GetAttackDistance(who);
+            if (m_creature->IsWithinDistInMap(who, attackRadius) && m_creature->GetDistanceZ(who) <= CREATURE_Z_ATTACK_RANGE && m_creature->IsWithinLOSInMap(who))
+            {
+                if(who->HasStealthAura())
+                    who->RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
+                    
+                //Begin attack
+                DoStartMeleeAttack(who);  
+
+            }
+
+            if(!incombat)
+                DoYell(SAY_AGGRO,LANG_UNIVERSAL,NULL);
+
+        }
+
+        incombat = true;
+    } 
+
+
+    void KilledUnit(Unit* Victim)
+    {
+            switch(rand()%2)
+            {
+             case 0:
+                 DoYell(SAY_KILL1,LANG_UNIVERSAL,NULL);
+                 break;
+             case 1:
+                 DoYell(SAY_KILL2,LANG_UNIVERSAL,NULL);
+                 break;
+            }
+
+    }
+
+    void JustDied(Unit* Killer)
+    {
+        DoYell(SAY_DEATH,LANG_UNIVERSAL,NULL);
+    }
+
+
+    void UpdateAI(const uint32 diff)
+    {
+        //Return since we have no target
+        if (!m_creature->SelectHostilTarget() || !m_creature->getVictim() )
+            return;
+
+        if (seedofcorruption_timer < diff)
+        {
+			target = SelectUnit(SELECT_TARGET_RANDOM, 0);
+            DoCast(target,SPELL_SEEDOFCORRUPTION);
+            seedofcorruption_timer = 20000;
+        }
+        else seedofcorruption_timer -= diff;
+
+        if (voidzone_timer < diff)
+        {
+			target2 = SelectUnit(SELECT_TARGET_RANDOM, 0);
+            DoCast(target2,SPELL_VOIDZONE);
+            voidzone_timer = 15000;
+        }
+        else voidzone_timer -= diff;
+
+        if(shadownova_timer < diff)
+        {
+            DoCast(m_creature,SPELL_SHADOWNOVA);
+            shadownova_timer = 25000;
+			if(!said)
+			{
+				DoYell(SAY_SPECIAL,LANG_UNIVERSAL,NULL);
+				said = true;
+			}
+
+        }
+        else shadownova_timer -= diff;
+
+
+        DoMeleeAttackIfReady();
+    }
+
+};
+
+CreatureAI* GetAI_boss_zereketh_the_unbound(Creature *_Creature)
+{
+    return new boss_zereketh_the_unboundAI (_Creature);
+}
+
+void AddSC_boss_zereketh_the_unbound()
+{
+    Script *newscript;
+    newscript = new Script;
+    newscript->Name="boss_zereketh_the_unbound";
+    newscript->GetAI = GetAI_boss_zereketh_the_unbound;
+    m_scripts[nrscripts++] = newscript;
+}

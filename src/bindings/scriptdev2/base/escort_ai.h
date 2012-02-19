@@ -1,31 +1,28 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software licensed under GPL version 2
  * Please see the included DOCS/LICENSE.TXT for more information */
 
 #ifndef SC_ESCORTAI_H
 #define SC_ESCORTAI_H
 
-#include "../system/system.h"
-
 struct Escort_Waypoint
 {
-    Escort_Waypoint(uint32 _id, float _x, float _y, float _z, uint32 _w)
-    {
-        id = _id;
-        x = _x;
-        y = _y;
-        z = _z;
-        WaitTimeMs = _w;
-    }
+    Escort_Waypoint(uint32 uiId, float fX, float fY, float fZ, uint32 uiWaitTime) :
+        uiId(uiId),
+        fX(fX),
+        fY(fY),
+        fZ(fZ),
+        uiWaitTime(uiWaitTime)
+    {}
 
-    uint32 id;
-    float x;
-    float y;
-    float z;
-    uint32 WaitTimeMs;
+    uint32 uiId;
+    float  fX;
+    float  fY;
+    float  fZ;
+    uint32 uiWaitTime;
 };
 
-enum eEscortState
+enum EscortState
 {
     STATE_ESCORT_NONE       = 0x000,                        //nothing in progress
     STATE_ESCORT_ESCORTING  = 0x001,                        //escort are in progress
@@ -38,6 +35,8 @@ struct MANGOS_DLL_DECL npc_escortAI : public ScriptedAI
     public:
         explicit npc_escortAI(Creature* pCreature);
         ~npc_escortAI() {}
+
+        void GetAIInformation(ChatHandler& reader);
 
         virtual void Aggro(Unit*);
 
@@ -69,26 +68,30 @@ struct MANGOS_DLL_DECL npc_escortAI : public ScriptedAI
         virtual void WaypointReached(uint32 uiPointId) = 0;
         virtual void WaypointStart(uint32 uiPointId) {}
 
-        void Start(bool bIsActiveAttacker = true, bool bRun = false, uint64 uiPlayerGUID = 0, const Quest* pQuest = NULL, bool bInstantRespawn = false, bool bCanLoopPath = false);
+        void Start(bool bRun = false, const Player* pPlayer = NULL, const Quest* pQuest = NULL, bool bInstantRespawn = false, bool bCanLoopPath = false);
 
         void SetRun(bool bRun = true);
         void SetEscortPaused(bool uPaused);
 
         bool HasEscortState(uint32 uiEscortState) { return (m_uiEscortState & uiEscortState); }
 
+        // update current point
+        void SetCurrentWaypoint(uint32 uiPointId);
+
     protected:
-        Player* GetPlayerForEscort() { return (Player*)Unit::GetUnit(*m_creature, m_uiPlayerGUID); }
+        Player* GetPlayerForEscort() { return m_creature->GetMap()->GetPlayer(m_playerGuid); }
         virtual void JustStartedEscort() {}
 
     private:
         bool AssistPlayerInCombat(Unit* pWho);
         bool IsPlayerOrGroupInRange();
+        bool MoveToNextWaypoint();
         void FillPointMovementListForCreature();
 
         void AddEscortState(uint32 uiEscortState) { m_uiEscortState |= uiEscortState; }
         void RemoveEscortState(uint32 uiEscortState) { m_uiEscortState &= ~uiEscortState; }
 
-        uint64 m_uiPlayerGUID;
+        ObjectGuid m_playerGuid;
         uint32 m_uiWPWaitTimer;
         uint32 m_uiPlayerCheckTimer;
         uint32 m_uiEscortState;
@@ -98,7 +101,6 @@ struct MANGOS_DLL_DECL npc_escortAI : public ScriptedAI
         std::list<Escort_Waypoint> WaypointList;
         std::list<Escort_Waypoint>::iterator CurrentWP;
 
-        bool m_bIsActiveAttacker;                           //obsolete, determined by faction.
         bool m_bIsRunning;                                  //all creatures are walking by default (has flag SPLINEFLAG_WALKMODE)
         bool m_bCanInstantRespawn;                          //if creature should respawn instantly after escort over (if not, database respawntime are used)
         bool m_bCanReturnToStart;                           //if creature can walk same path (loop) without despawn. Not for regular escort quests.

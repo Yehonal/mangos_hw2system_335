@@ -13,7 +13,7 @@
 //
 
 
-bool GOHello_go_not_selectable(Player *player, GameObject *go)
+bool GOUse_go_not_selectable(Player *player, GameObject *go)
 {
 uint32 level;
 level = player->getLevel();
@@ -253,7 +253,7 @@ bool GossipHello_teleport_npc_1(Player *player, Creature *_Creature)
 			player->ADD_GOSSIP_ITEM( 0, "Non sono attualmente in servizio", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+200);
 	}
 
- player->SEND_GOSSIP_MENU(DEFAULT_GOSSIP_MESSAGE,_Creature->GetGUID());
+ player->SEND_GOSSIP_MENU(DEFAULT_GOSSIP_MESSAGE,_Creature->GetObjectGuid());
 
 return true;
 
@@ -289,15 +289,14 @@ if (action==0)
 // funzione GetNPCIfCanInteractWith
  if (action==GOSSIP_ACTION_TRADE)
  { 
-   player->SEND_VENDORLIST( _Creature->GetGUID() );
+   player->SEND_VENDORLIST( _Creature->GetObjectGuid() );
    player->CLOSE_GOSSIP_MENU();
    return;
  }
 
 if (action==GOSSIP_ACTION_AUCTION)
  { 
-   uint64 guid=_Creature->GetGUID();
-   player->GetSession()->SendAuctionHello(guid, _Creature);
+   player->GetSession()->SendAuctionHello(_Creature);
    return;
  }
 
@@ -526,7 +525,7 @@ Script *newscript;
 
 	newscript = new Script;
 	newscript->Name="go_not_selectable";
-	newscript->pGOHello = GOHello_go_not_selectable;
+	newscript->pGOUse = &GOUse_go_not_selectable;
 	newscript->RegisterSelf();
 
 	newscript = new Script;

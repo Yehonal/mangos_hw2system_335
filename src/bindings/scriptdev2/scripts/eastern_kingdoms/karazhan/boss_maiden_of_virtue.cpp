@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -111,9 +111,11 @@ struct MANGOS_DLL_DECL boss_maiden_of_virtueAI : public ScriptedAI
             ThreatList const& tList = m_creature->getThreatManager().getThreatList();
             for (ThreatList::const_iterator itr = tList.begin();itr != tList.end(); ++itr)
             {
-                pTarget = Unit::GetUnit(*m_creature, (*itr)->getUnitGuid());
+                pTarget = m_creature->GetMap()->GetUnit((*itr)->getUnitGuid());
+
                 if (pTarget && !pTarget->IsWithinDist(m_creature, 12.0f, false))
                     target_list.push_back(pTarget);
+
                 pTarget = NULL;
             }
 
@@ -130,7 +132,7 @@ struct MANGOS_DLL_DECL boss_maiden_of_virtueAI : public ScriptedAI
 
         if (m_uiHolywrath_Timer < uiDiff)
         {
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM,0))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
                 DoCastSpellIfCan(pTarget, SPELL_HOLYWRATH);
 
             m_uiHolywrath_Timer = urand(20000, 25000);      //20-25 secs sounds nice
@@ -149,9 +151,10 @@ CreatureAI* GetAI_boss_maiden_of_virtue(Creature* pCreature)
 
 void AddSC_boss_maiden_of_virtue()
 {
-    Script* newscript;
-    newscript = new Script;
-    newscript->Name = "boss_maiden_of_virtue";
-    newscript->GetAI = &GetAI_boss_maiden_of_virtue;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_maiden_of_virtue";
+    pNewScript->GetAI = &GetAI_boss_maiden_of_virtue;
+    pNewScript->RegisterSelf();
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -57,7 +57,7 @@ struct MANGOS_DLL_DECL boss_murmurAI : public ScriptedAI
     uint32 ThunderingStorm_Timer;
     bool CanSonicBoom;
     bool CanShockWave;
-    uint64 pTarget;
+    ObjectGuid m_playerTargetGuid;
 
     void Reset()
     {
@@ -69,7 +69,7 @@ struct MANGOS_DLL_DECL boss_murmurAI : public ScriptedAI
         ThunderingStorm_Timer = 12000;                //Casting directly after Sonic Boom.
         CanSonicBoom = false;
         CanShockWave = false;
-        pTarget = 0;
+        m_playerTargetGuid.Clear();
 
         //database should have `RegenHealth`=0 to prevent regen
         uint32 hp = (m_creature->GetMaxHealth()*40)/100;
@@ -79,10 +79,12 @@ struct MANGOS_DLL_DECL boss_murmurAI : public ScriptedAI
 
     void SonicBoomEffect()
     {
-        ThreatList const& tList = m_creature->getThreatManager().getThreatList();
-        for (ThreatList::const_iterator itr = tList.begin();itr != tList.end(); ++itr)
+        std::vector<ObjectGuid> vGuids;
+        m_creature->FillGuidsListFromThreatList(vGuids);
+        for (std::vector<ObjectGuid>::const_iterator itr = vGuids.begin();itr != vGuids.end(); ++itr)
         {
-           Unit* target = Unit::GetUnit(*m_creature, (*itr)->getUnitGuid());
+           Unit* target = m_creature->GetMap()->GetUnit(*itr);
+
            if (target && target->GetTypeId() == TYPEID_PLAYER)
            {
                //Not do anything without aura, spell can be resisted!
@@ -125,7 +127,7 @@ struct MANGOS_DLL_DECL boss_murmurAI : public ScriptedAI
         if (MurmursTouch_Timer < diff)
         {
             /*Unit* target = NULL;
-            target = SelectUnit(SELECT_TARGET_RANDOM,0);
+            target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0);
             if (target)
                 DoCastSpellIfCan(target, SPELL_MURMURS_TOUCH);*/
             DoCastSpellIfCan(m_creature, SPELL_MURMURS_TOUCH);
@@ -133,7 +135,7 @@ struct MANGOS_DLL_DECL boss_murmurAI : public ScriptedAI
         }else MurmursTouch_Timer -= diff;
 
         //Resonance_Timer
-        if (!CanSonicBoom && !m_creature->IsWithinDistInMap(m_creature->getVictim(), ATTACK_DISTANCE))
+        if (!CanSonicBoom && !m_creature->CanReachWithMeleeAttack(m_creature->getVictim()))
         {
             if (Resonance_Timer < diff)
             {
@@ -146,7 +148,7 @@ struct MANGOS_DLL_DECL boss_murmurAI : public ScriptedAI
         {
             if (SonicShock_Timer < diff)
             {
-                if (Unit *target = SelectUnit(SELECT_TARGET_RANDOM, 0))
+                if (Unit *target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                     DoCastSpellIfCan(target, SPELL_SONIC_SHOCK);
                 SonicShock_Timer = urand(8000, 12000);
             }else SonicShock_Timer -= diff;
@@ -163,33 +165,32 @@ struct MANGOS_DLL_DECL boss_murmurAI : public ScriptedAI
         {
             if (!CanShockWave)
             {
-                if (Unit* temp = SelectUnit(SELECT_TARGET_RANDOM,0))
+                if (Unit* pTemp = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_MAGNETIC_PULL, SELECT_FLAG_PLAYER))
                 {
-                    if (temp->GetTypeId() == TYPEID_PLAYER)
-                    {
-                        DoCastSpellIfCan(temp, SPELL_MAGNETIC_PULL);
-                        pTarget = temp->GetGUID();
-                        CanShockWave = true;
-                    }
-                    MagneticPull_Timer = 2500;
+                    DoCastSpellIfCan(pTemp, SPELL_MAGNETIC_PULL);
+                    m_playerTargetGuid = pTemp->GetObjectGuid();
+                    CanShockWave = true;
                 }
             }
             else
             {
-                if (Unit* target = Unit::GetUnit(*m_creature,pTarget))
-                    target->CastSpell(target,SPELL_SHOCKWAVE,true);
+                if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerTargetGuid))
+                    pPlayer->CastSpell(pPlayer, SPELL_SHOCKWAVE, true);
 
                 MagneticPull_Timer = urand(15000, 30000);
                 CanShockWave = false;
-                pTarget = 0;
+                m_playerTargetGuid.Clear();
             }
-        }else MagneticPull_Timer -= diff;
+        }
+        else
+            MagneticPull_Timer -= diff;
 
         //no meele if preparing for sonic boom
         if (!CanSonicBoom)
             DoMeleeAttackIfReady();
     }
 };
+
 CreatureAI* GetAI_boss_murmur(Creature* pCreature)
 {
     return new boss_murmurAI(pCreature);
@@ -197,9 +198,10 @@ CreatureAI* GetAI_boss_murmur(Creature* pCreature)
 
 void AddSC_boss_murmur()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_murmur";
-    newscript->GetAI = &GetAI_boss_murmur;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_murmur";
+    pNewScript->GetAI = &GetAI_boss_murmur;
+    pNewScript->RegisterSelf();
 }

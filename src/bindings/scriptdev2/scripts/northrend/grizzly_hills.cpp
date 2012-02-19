@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,99 +16,80 @@
 
 /* ScriptData
 SDName: Grizzly_Hills
-SD%Complete: 80
-SDComment: Quest support: 12247
+SD%Complete:
+SDComment: Quest support: 12138, 12198
 SDCategory: Grizzly Hills
 EndScriptData */
 
 /* ContentData
-npc_orsonn_and_kodian
+npc_depleted_war_golem
 EndContentData */
 
 #include "precompiled.h"
+#include "pet_ai.h"
 
-#define GOSSIP_ITEM1 "You're free to go Orsonn, but first tell me what's wrong with the furbolg."
-#define GOSSIP_ITEM2 "What happened then?"
-#define GOSSIP_ITEM3 "Thank you, Son of Ursoc. I'll see what can be done."
-#define GOSSIP_ITEM4 "Who was this stranger?"
-#define GOSSIP_ITEM5 "Thank you, Kodian. I'll do what I can."
+/*######
+## npc_depleted_war_golem
+######*/
 
 enum
 {
-    GOSSIP_TEXTID_ORSONN1       = 12793,
-    GOSSIP_TEXTID_ORSONN2       = 12794,
-    GOSSIP_TEXTID_ORSONN3       = 12796,
+    SAY_GOLEM_CHARGE            = -1000626,
+    SAY_GOLEM_COMPLETE          = -1000627,
 
-    GOSSIP_TEXTID_KODIAN1       = 12797,
-    GOSSIP_TEXTID_KODIAN2       = 12798,
+    NPC_LIGHTNING_SENTRY        = 26407,
 
-    NPC_ORSONN                  = 27274,
-    NPC_KODIAN                  = 27275,
-
-    //trigger creatures
-    NPC_ORSONN_CREDIT           = 27322,
-    NPC_KODIAN_CREDIT           = 27321,
-
-    QUEST_CHILDREN_OF_URSOC     = 12247
+    SPELL_CHARGE_GOLEM          = 47799,
+    SPELL_GOLEM_CHARGE_CREDIT   = 47797,
 };
 
-bool GossipHello_npc_orsonn_and_kodian(Player* pPlayer, Creature* pCreature)
+struct MANGOS_DLL_DECL npc_depleted_war_golemAI : public ScriptedPetAI
 {
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetGUID());
+    npc_depleted_war_golemAI(Creature* pCreature) : ScriptedPetAI(pCreature) { Reset(); }
 
-    if (pPlayer->GetQuestStatus(QUEST_CHILDREN_OF_URSOC) == QUEST_STATUS_INCOMPLETE)
+    void Reset() { }
+
+    void OwnerKilledUnit(Unit* pVictim)
     {
-        switch(pCreature->GetEntry())
+        if (pVictim->GetTypeId() == TYPEID_UNIT && pVictim->GetEntry() == NPC_LIGHTNING_SENTRY)
         {
-            case NPC_ORSONN:
-                if (!pPlayer->GetReqKillOrCastCurrentCount(QUEST_CHILDREN_OF_URSOC, NPC_ORSONN_CREDIT))
-                {
-                    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-                    pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_ORSONN1, pCreature->GetGUID());
-                    return true;
-                }
-                break;
-            case NPC_KODIAN:
-                if (!pPlayer->GetReqKillOrCastCurrentCount(QUEST_CHILDREN_OF_URSOC, NPC_KODIAN_CREDIT))
-                {
-                    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM4, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+4);
-                    pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_KODIAN1, pCreature->GetGUID());
-                    return true;
-                }
-                break;
+            // Is distance expected?
+            if (m_creature->IsWithinDistInMap(pVictim, 10.0f))
+                m_creature->CastSpell(m_creature, SPELL_CHARGE_GOLEM, true);
         }
     }
+};
 
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
-    return true;
+CreatureAI* GetAI_npc_depleted_war_golem(Creature* pCreature)
+{
+    return new npc_depleted_war_golemAI(pCreature);
 }
 
-bool GossipSelect_npc_orsonn_and_kodian(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+bool EffectAuraDummy_npc_depleted_war_golem(const Aura* pAura, bool bApply)
 {
-    switch(uiAction)
-    {
-        case GOSSIP_ACTION_INFO_DEF+1:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
-            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_ORSONN2, pCreature->GetGUID());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+2:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
-            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_ORSONN3, pCreature->GetGUID());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+3:
-            pPlayer->CLOSE_GOSSIP_MENU();
-            pPlayer->TalkedToCreature(NPC_ORSONN_CREDIT, pCreature->GetGUID());
-            break;
+    if (pAura->GetId() != SPELL_CHARGE_GOLEM)
+        return true;
 
-        case GOSSIP_ACTION_INFO_DEF+4:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM5, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 5);
-            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_KODIAN2, pCreature->GetGUID());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+5:
-            pPlayer->CLOSE_GOSSIP_MENU();
-            pPlayer->TalkedToCreature(NPC_KODIAN_CREDIT, pCreature->GetGUID());
-            break;
+    Creature* pCreature = (Creature*)pAura->GetTarget();
+
+    if (!pCreature)
+        return true;
+
+    if (pAura->GetEffIndex() == EFFECT_INDEX_0)
+    {
+        if (bApply)
+        {
+            DoScriptText(SAY_GOLEM_CHARGE, pCreature);
+            pCreature->addUnitState(UNIT_STAT_STUNNED);
+        }
+        else
+        {
+            DoScriptText(SAY_GOLEM_COMPLETE, pCreature);
+            pCreature->clearUnitState(UNIT_STAT_STUNNED);
+
+            // targets master
+            pCreature->CastSpell(pCreature, SPELL_GOLEM_CHARGE_CREDIT, true);
+        }
     }
 
     return true;
@@ -116,11 +97,11 @@ bool GossipSelect_npc_orsonn_and_kodian(Player* pPlayer, Creature* pCreature, ui
 
 void AddSC_grizzly_hills()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_orsonn_and_kodian";
-    newscript->pGossipHello = &GossipHello_npc_orsonn_and_kodian;
-    newscript->pGossipSelect = &GossipSelect_npc_orsonn_and_kodian;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_depleted_war_golem";
+    pNewScript->GetAI = &GetAI_npc_depleted_war_golem;
+    pNewScript->pEffectAuraDummy = &EffectAuraDummy_npc_depleted_war_golem;
+    pNewScript->RegisterSelf();
 }

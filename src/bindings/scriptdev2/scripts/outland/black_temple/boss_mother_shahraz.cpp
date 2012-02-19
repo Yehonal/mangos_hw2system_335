@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -86,7 +86,7 @@ struct MANGOS_DLL_DECL boss_shahrazAI : public ScriptedAI
 
     ScriptedInstance* m_pInstance;
 
-    uint64 TargetGUID[3];
+    ObjectGuid m_targetGuid[3];
     uint32 BeamTimer;
     uint32 BeamCount;
     uint32 CurrentBeam;
@@ -102,8 +102,8 @@ struct MANGOS_DLL_DECL boss_shahrazAI : public ScriptedAI
 
     void Reset()
     {
-        for(uint8 i = 0; i<3; ++i)
-            TargetGUID[i] = 0;
+        for (uint8 i = 0; i < 3; ++i)
+            m_targetGuid[i].Clear();
 
         BeamTimer = 60000;                                  // Timers may be incorrect
         BeamCount = 0;
@@ -123,8 +123,6 @@ struct MANGOS_DLL_DECL boss_shahrazAI : public ScriptedAI
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_SHAHRAZ, IN_PROGRESS);
-
-        m_creature->SetInCombatWithZone();
 
         DoScriptText(SAY_AGGRO, m_creature);
     }
@@ -157,10 +155,10 @@ struct MANGOS_DLL_DECL boss_shahrazAI : public ScriptedAI
 
         for(uint8 i = 0; i < 3; ++i)
         {
-            Unit* pUnit = SelectUnit(SELECT_TARGET_RANDOM, 1);
+            Unit* pUnit = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1);
             if (pUnit && pUnit->isAlive() && (pUnit->GetTypeId() == TYPEID_PLAYER))
             {
-                TargetGUID[i] = pUnit->GetGUID();
+                m_targetGuid[i] = pUnit->GetObjectGuid();
                 pUnit->CastSpell(pUnit, SPELL_TELEPORT_VISUAL, true);
                 DoTeleportPlayer(pUnit, X, Y, Z, pUnit->GetOrientation());
             }
@@ -182,7 +180,7 @@ struct MANGOS_DLL_DECL boss_shahrazAI : public ScriptedAI
         //Randomly cast one beam.
         if (BeamTimer < diff)
         {
-            Unit* target = SelectUnit(SELECT_TARGET_RANDOM, 0);
+            Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
             if (!target || !target->isAlive())
                 return;
 
@@ -241,13 +239,12 @@ struct MANGOS_DLL_DECL boss_shahrazAI : public ScriptedAI
             {
                 for(uint8 i = 0; i < 3; ++i)
                 {
-                    Unit* pUnit = NULL;
-                    if (TargetGUID[i])
+                    if (m_targetGuid[i])
                     {
-                        pUnit = Unit::GetUnit((*m_creature), TargetGUID[i]);
-                        if (pUnit)
-                            pUnit->CastSpell(pUnit, SPELL_ATTRACTION, true);
-                        TargetGUID[i] = 0;
+                        if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_targetGuid[i]))
+                            pPlayer->CastSpell(pPlayer, SPELL_ATTRACTION, true);
+
+                        m_targetGuid[i].Clear();
                     }
                 }
 
@@ -301,9 +298,10 @@ CreatureAI* GetAI_boss_shahraz(Creature* pCreature)
 
 void AddSC_boss_mother_shahraz()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_mother_shahraz";
-    newscript->GetAI = &GetAI_boss_shahraz;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_mother_shahraz";
+    pNewScript->GetAI = &GetAI_boss_shahraz;
+    pNewScript->RegisterSelf();
 }

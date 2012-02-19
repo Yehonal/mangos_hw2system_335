@@ -24,9 +24,9 @@
 #define SAY_DEATH	"Oughgn..."
 #define SAY_SLAY	"GNCHGNG"
 
-// nn è fortissimo, ma ricordati k è pur sempre un boss k droppa blu
+// nn ï¿½ fortissimo, ma ricordati k ï¿½ pur sempre un boss k droppa blu
 
-// quando lo feci, nn sapissi della simple ai, quindi x giustificare uno script apposito mettessi ora dei say simpatici... alla fine è 1 essere senza cervello, rude, bvoso e grosso.
+// quando lo feci, nn sapissi della simple ai, quindi x giustificare uno script apposito mettessi ora dei say simpatici... alla fine ï¿½ 1 essere senza cervello, rude, bvoso e grosso.
 // http://www.wowwiki.com/Quagmirran
 
 
@@ -90,7 +90,7 @@ struct MANGOS_DLL_DECL boss_quagmirranAI : public ScriptedAI
 
         if (poison_timer < diff)
         {
-            target = SelectUnit(SELECT_TARGET_RANDOM,0);
+            target = m_creature->SelectRandomUnfriendlyTarget();
             DoCast(target,SPELL_AOEPOISON);
 
             poison_timer = 10000;
@@ -110,7 +110,7 @@ struct MANGOS_DLL_DECL boss_quagmirranAI : public ScriptedAI
 
 };
 
-CreatureAI* GetAI_boss_quagmirran(Creature *_Creature)
+CreatureAI* GetAI_boss_quagmirran_azsc(Creature *_Creature)
 {
     return new boss_quagmirranAI (_Creature);
 }
@@ -120,7 +120,7 @@ void AddSC_boss_quagmirran_azsc()
     Script *newscript;
     newscript = new Script;
     newscript->Name="boss_quagmirran_azsc";
-    newscript->GetAI = GetAI_boss_quagmirran;
+    newscript->GetAI = GetAI_boss_quagmirran_azsc;
     newscript->RegisterSelf();
 }
 

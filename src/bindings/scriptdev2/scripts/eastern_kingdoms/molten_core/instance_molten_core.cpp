@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,261 +16,226 @@
 
 /* ScriptData
 SDName: Instance_Molten_Core
-SD%Complete: 0
-SDComment: Place Holder
+SD%Complete: 25
+SDComment: Majordomos and Ragnaros Event missing
 SDCategory: Molten Core
 EndScriptData */
 
 #include "precompiled.h"
 #include "molten_core.h"
 
-struct MANGOS_DLL_DECL instance_molten_core : public ScriptedInstance
+instance_molten_core::instance_molten_core(Map* pMap) : ScriptedInstance(pMap)
 {
-    instance_molten_core(Map* pMap) : ScriptedInstance(pMap) {Initialize();};
+    Initialize();
+}
 
-    uint32 m_auiEncounter[MAX_ENCOUNTER];
-    std::string strInstData;
+void instance_molten_core::Initialize()
+{
+    memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
+}
 
-    uint64 m_uiLucifronGUID, m_uiMagmadarGUID, m_uiGehennasGUID, m_uiGarrGUID, m_uiGeddonGUID, m_uiShazzrahGUID, m_uiSulfuronGUID, m_uiGolemaggGUID, m_uiMajorDomoGUID, m_uiRagnarosGUID, m_uiFlamewakerPriestGUID;
-    uint64 m_uiRuneKoroGUID, m_uiRuneZethGUID, m_uiRuneMazjGUID, m_uiRuneTheriGUID, m_uiRuneBlazGUID, m_uiRuneKressGUID, m_uiRuneMohnGUID, m_uiFirelordCacheGUID;
-
-    void Initialize()
+bool instance_molten_core::IsEncounterInProgress() const
+{
+    for (uint8 i = 0; i < MAX_ENCOUNTER; ++i)
     {
-        memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
-
-        m_uiLucifronGUID = 0;
-        m_uiMagmadarGUID = 0;
-        m_uiGehennasGUID = 0;
-        m_uiGarrGUID = 0;
-        m_uiGeddonGUID = 0;
-        m_uiShazzrahGUID = 0;
-        m_uiSulfuronGUID = 0;
-        m_uiGolemaggGUID = 0;
-        m_uiMajorDomoGUID = 0;
-        m_uiRagnarosGUID = 0;
-        m_uiFlamewakerPriestGUID = 0;
-
-        m_uiRuneKoroGUID = 0;
-        m_uiRuneZethGUID = 0;
-        m_uiRuneMazjGUID = 0;
-        m_uiRuneTheriGUID = 0;
-        m_uiRuneBlazGUID = 0;
-        m_uiRuneKressGUID = 0;
-        m_uiRuneMohnGUID = 0;
-
-        m_uiFirelordCacheGUID = 0;
+        if (m_auiEncounter[i] == IN_PROGRESS)
+            return true;
     }
 
-    bool IsEncounterInProgress() const
+    return false;
+}
+
+void instance_molten_core::OnPlayerEnter(Player* pPlayer)
+{
+    // Summon Majordomo if can
+    DoSpawnMajordomoIfCan(true);
+}
+
+void instance_molten_core::OnCreatureCreate(Creature* pCreature)
+{
+    switch (pCreature->GetEntry())
     {
-        return false;
+        // Bosses
+        case NPC_GARR:
+        case NPC_SULFURON:
+        case NPC_MAJORDOMO:
+            m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+            break;
+    }
+}
+
+void instance_molten_core::OnObjectCreate(GameObject* pGo)
+{
+    switch(pGo->GetEntry())
+    {
+        // Runes
+        case GO_RUNE_KRESS:
+        case GO_RUNE_MOHN:
+        case GO_RUNE_BLAZ:
+        case GO_RUNE_MAZJ:
+        case GO_RUNE_ZETH:
+        case GO_RUNE_THERI:
+        case GO_RUNE_KORO:
+
+        // Majordomo event chest
+        case GO_CACHE_OF_THE_FIRE_LORD:
+        // Ragnaros GOs
+        case GO_LAVA_STEAM:
+        case GO_LAVA_SPLASH:
+            m_mGoEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
+            break;
+    }
+}
+
+void instance_molten_core::SetData(uint32 uiType, uint32 uiData)
+{
+    switch(uiType)
+    {
+        case TYPE_LUCIFRON:
+            m_auiEncounter[uiType] = uiData;
+            break;
+        case TYPE_MAGMADAR:
+            m_auiEncounter[uiType] = uiData;
+            if (uiData == DONE)
+                DoUseDoorOrButton(GO_RUNE_KRESS);
+            break;
+        case TYPE_GEHENNAS:
+            m_auiEncounter[uiType] = uiData;
+            if (uiData == DONE)
+                DoUseDoorOrButton(GO_RUNE_MOHN);
+            break;
+        case TYPE_GARR:
+            m_auiEncounter[uiType] = uiData;
+            if (uiData == DONE)
+                DoUseDoorOrButton(GO_RUNE_BLAZ);
+            break;
+        case TYPE_SHAZZRAH:
+            m_auiEncounter[uiType] = uiData;
+            if (uiData == DONE)
+                DoUseDoorOrButton(GO_RUNE_MAZJ);
+            break;
+        case TYPE_GEDDON:
+            m_auiEncounter[uiType] = uiData;
+            if (uiData == DONE)
+                DoUseDoorOrButton(GO_RUNE_ZETH);
+            break;
+        case TYPE_GOLEMAGG:
+            m_auiEncounter[uiType] = uiData;
+            if (uiData == DONE)
+                DoUseDoorOrButton(GO_RUNE_THERI);
+            break;
+        case TYPE_SULFURON:
+            m_auiEncounter[uiType] = uiData;
+            if (uiData == DONE)
+                DoUseDoorOrButton(GO_RUNE_KORO);
+            break;
+        case TYPE_MAJORDOMO:
+            m_auiEncounter[uiType] = uiData;
+            if (uiData == DONE)
+                DoRespawnGameObject(GO_CACHE_OF_THE_FIRE_LORD, HOUR);
+            break;
+        case TYPE_RAGNAROS:
+            m_auiEncounter[uiType] = uiData;
+            break;
     }
 
-    void OnObjectCreate(GameObject* pGo)
+    // Check if Majordomo can be summoned
+    if (uiData == DONE)
+        DoSpawnMajordomoIfCan(false);
+
+    if (uiData == DONE)
     {
-        switch(pGo->GetEntry())
-        {
-            case 176951:                                    //Sulfuron
-                m_uiRuneKoroGUID = pGo->GetGUID();
-                break;
-            case 176952:                                    //Geddon
-                m_uiRuneZethGUID = pGo->GetGUID();
-                break;
-            case 176953:                                    //Shazzrah
-                m_uiRuneMazjGUID = pGo->GetGUID();
-                break;
-            case 176954:                                    //Golemagg
-                m_uiRuneTheriGUID = pGo->GetGUID();
-                break;
-            case 176955:                                    //Garr
-                m_uiRuneBlazGUID = pGo->GetGUID();
-                break;
-            case 176956:                                    //Magmadar
-                m_uiRuneKressGUID = pGo->GetGUID();
-                break;
-            case 176957:                                    //Gehennas
-                m_uiRuneMohnGUID = pGo->GetGUID();
-                break;
-            case 179703:
-                m_uiFirelordCacheGUID = pGo->GetGUID();     //majordomo event chest
-                break;
-        }
+        OUT_SAVE_INST_DATA;
+
+        std::ostringstream saveStream;
+        saveStream << m_auiEncounter[0] << " " << m_auiEncounter[1] << " " << m_auiEncounter[2] << " "
+            << m_auiEncounter[3] << " " << m_auiEncounter[4] << " " << m_auiEncounter[5] << " "
+            << m_auiEncounter[6] << " " << m_auiEncounter[7] << " " << m_auiEncounter[8] << " "
+            << m_auiEncounter[9];
+
+        m_strInstData = saveStream.str();
+
+        SaveToDB();
+        OUT_SAVE_INST_DATA_COMPLETE;
     }
+}
 
-    void OnCreatureCreate(Creature* pCreature)
+uint32 instance_molten_core::GetData(uint32 uiType)
+{
+    if (uiType < MAX_ENCOUNTER)
+        return m_auiEncounter[uiType];
+
+    return 0;
+}
+
+// Handle Majordomo summon here
+void instance_molten_core::DoSpawnMajordomoIfCan(bool bByPlayerEnter)
+{
+    // If both Majordomo and Ragnaros events are finished, return
+    if (m_auiEncounter[TYPE_MAJORDOMO] == DONE && m_auiEncounter[TYPE_RAGNAROS] == DONE)
+        return;
+
+    // If already spawned return
+    if (GetSingleCreatureFromStorage(NPC_MAJORDOMO, true))
+        return;
+
+    // Check if all rune bosses are done
+    for(uint8 i = TYPE_MAGMADAR; i < TYPE_MAJORDOMO; ++i)
     {
-        switch(pCreature->GetEntry())
-        {
-            case NPC_LUCIFRON:
-                m_uiLucifronGUID = pCreature->GetGUID();
-                break;
-            case NPC_MAGMADAR:
-                m_uiMagmadarGUID = pCreature->GetGUID();
-                break;
-            case NPC_GEHENNAS:
-                m_uiGehennasGUID = pCreature->GetGUID();
-                break;
-            case NPC_GARR:
-                m_uiGarrGUID = pCreature->GetGUID();
-                break;
-            case NPC_GEDDON:
-                m_uiGeddonGUID = pCreature->GetGUID();
-                break;
-            case NPC_SHAZZRAH:
-                m_uiShazzrahGUID = pCreature->GetGUID();
-                break;
-            case NPC_SULFURON:
-                m_uiSulfuronGUID = pCreature->GetGUID();
-                break;
-            case NPC_GOLEMAGG:
-                m_uiGolemaggGUID = pCreature->GetGUID();
-                break;
-            case NPC_DOMO:
-                m_uiMajorDomoGUID = pCreature->GetGUID();
-                break;
-            case NPC_RAGNAROS:
-                m_uiRagnarosGUID = pCreature->GetGUID();
-                break;
-            case NPC_FLAMEWAKERPRIEST:
-                m_uiFlamewakerPriestGUID = pCreature->GetGUID();
-                break;
-        }
-    }
-
-    void SetData(uint32 uiType, uint32 uiData)
-    {
-        switch(uiType)
-        {
-            case TYPE_SULFURON:
-                m_auiEncounter[0] = uiData;
-                break;
-            case TYPE_GEDDON:
-                m_auiEncounter[1] = uiData;
-                break;
-            case TYPE_SHAZZRAH:
-                m_auiEncounter[2] = uiData;
-                break;
-            case TYPE_GOLEMAGG:
-                m_auiEncounter[3] = uiData;
-                break;
-            case TYPE_GARR:
-                m_auiEncounter[4] = uiData;
-                break;
-            case TYPE_MAGMADAR:
-                m_auiEncounter[5] = uiData;
-                break;
-            case TYPE_GEHENNAS:
-                m_auiEncounter[6] = uiData;
-                break;
-            case TYPE_LUCIFRON:
-                m_auiEncounter[7] = uiData;
-                break;
-            case TYPE_MAJORDOMO:
-                if (uiData == DONE)
-                    DoRespawnGameObject(m_uiFirelordCacheGUID);
-                m_auiEncounter[8] = uiData;
-                break;
-            case TYPE_RAGNAROS:
-                m_auiEncounter[9] = uiData;
-                break;
-        }
-
-        if (uiData == DONE)
-        {
-            OUT_SAVE_INST_DATA;
-
-            std::ostringstream saveStream;
-            saveStream << m_auiEncounter[0] << " " << m_auiEncounter[1] << " " << m_auiEncounter[2] << " "
-                << m_auiEncounter[3] << " " << m_auiEncounter[4] << " " << m_auiEncounter[5] << " "
-                << m_auiEncounter[6] << " " << m_auiEncounter[7] << " " << m_auiEncounter[8] << " "
-                << m_auiEncounter[9];
-
-            strInstData = saveStream.str();
-
-            SaveToDB();
-            OUT_SAVE_INST_DATA_COMPLETE;
-        }
-    }
-
-    const char* Save()
-    {
-        return strInstData.c_str();
-    }
-
-    bool CanSpawnMajorDomo()
-    {
-        return m_auiEncounter[0] && m_auiEncounter[1] && m_auiEncounter[2] && m_auiEncounter[3] &&
-            m_auiEncounter[4] && m_auiEncounter[5] && m_auiEncounter[6];
-    }
-
-    uint32 GetData(uint32 uiType)
-    {
-        switch(uiType)
-        {
-            case TYPE_SULFURON:
-                return m_auiEncounter[0];
-            case TYPE_GEDDON:
-                return m_auiEncounter[1];
-            case TYPE_SHAZZRAH:
-                return m_auiEncounter[2];
-            case TYPE_GOLEMAGG:
-                return m_auiEncounter[3];
-            case TYPE_GARR:
-                return m_auiEncounter[4];
-            case TYPE_MAGMADAR:
-                return m_auiEncounter[5];
-            case TYPE_GEHENNAS:
-                return m_auiEncounter[6];
-            case TYPE_LUCIFRON:
-                return m_auiEncounter[7];
-            case TYPE_MAJORDOMO:
-                return m_auiEncounter[8];
-            case TYPE_RAGNAROS:
-                return m_auiEncounter[9];
-        }
-        return 0;
-    }
-
-    uint64 GetData64(uint32 uiData)
-    {
-        switch(uiData)
-        {
-            case DATA_SULFURON:
-                return m_uiSulfuronGUID;
-            case DATA_GOLEMAGG:
-                return m_uiGolemaggGUID;
-            case DATA_GARR:
-                return m_uiGarrGUID;
-            case DATA_MAJORDOMO:
-                return m_uiMajorDomoGUID;
-        }
-
-        return 0;
-    }
-
-    void Load(const char* chrIn)
-    {
-        if (!chrIn)
-        {
-            OUT_LOAD_INST_DATA_FAIL;
+        if (m_auiEncounter[i] != DONE)
             return;
-        }
-
-        OUT_LOAD_INST_DATA(chrIn);
-
-        std::istringstream loadStream(chrIn);
-
-        loadStream >> m_auiEncounter[0] >> m_auiEncounter[1] >> m_auiEncounter[2] >> m_auiEncounter[3]
-            >> m_auiEncounter[4] >> m_auiEncounter[5] >> m_auiEncounter[6] >> m_auiEncounter[7]
-            >> m_auiEncounter[8] >> m_auiEncounter[9];
-
-        for(uint8 i = 0; i < MAX_ENCOUNTER; ++i)
-            if (m_auiEncounter[i] == IN_PROGRESS)           // Do not load an encounter as "In Progress" - reset it instead.
-                m_auiEncounter[i] = NOT_STARTED;
-
-        OUT_LOAD_INST_DATA_COMPLETE;
     }
-};
+
+    Player* pPlayer = GetPlayerInMap();
+    if (!pPlayer)
+        return;
+
+    // Summon Majordomo
+    // If Majordomo encounter isn't done, summon at encounter place, else near Ragnaros
+    uint8 uiSummonPos = m_auiEncounter[TYPE_MAJORDOMO] == DONE ? 1 : 0;
+    if (Creature* pMajordomo = pPlayer->SummonCreature(m_aMajordomoLocations[uiSummonPos].m_uiEntry, m_aMajordomoLocations[uiSummonPos].m_fX, m_aMajordomoLocations[uiSummonPos].m_fY, m_aMajordomoLocations[uiSummonPos].m_fZ, m_aMajordomoLocations[uiSummonPos].m_fO, TEMPSUMMON_MANUAL_DESPAWN, 2*HOUR*IN_MILLISECONDS))
+    {
+        if (uiSummonPos)                                    // Majordomo encounter already done, set faction
+        {
+            pMajordomo->setFaction(FACTION_MAJORDOMO_FRIENDLY);
+            pMajordomo->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE);
+            pMajordomo->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+        }
+        else                                                // Else yell and summon adds
+        {
+            if (!bByPlayerEnter)
+                DoScriptText(SAY_MAJORDOMO_SPAWN, pMajordomo);
+
+            for (uint8 i = 0; i < MAX_MAJORDOMO_ADDS; ++i)
+                pMajordomo->SummonCreature(m_aBosspawnLocs[i].m_uiEntry, m_aBosspawnLocs[i].m_fX, m_aBosspawnLocs[i].m_fY, m_aBosspawnLocs[i].m_fZ, m_aBosspawnLocs[i].m_fO, TEMPSUMMON_MANUAL_DESPAWN, DAY*IN_MILLISECONDS);
+        }
+    }
+}
+
+void instance_molten_core::Load(const char* chrIn)
+{
+    if (!chrIn)
+    {
+        OUT_LOAD_INST_DATA_FAIL;
+        return;
+    }
+
+    OUT_LOAD_INST_DATA(chrIn);
+
+    std::istringstream loadStream(chrIn);
+
+    loadStream >> m_auiEncounter[0] >> m_auiEncounter[1] >> m_auiEncounter[2] >> m_auiEncounter[3]
+    >> m_auiEncounter[4] >> m_auiEncounter[5] >> m_auiEncounter[6] >> m_auiEncounter[7]
+    >> m_auiEncounter[8] >> m_auiEncounter[9];
+
+    for(uint8 i = 0; i < MAX_ENCOUNTER; ++i)
+    {
+        if (m_auiEncounter[i] == IN_PROGRESS)
+            m_auiEncounter[i] = NOT_STARTED;
+    }
+
+    OUT_LOAD_INST_DATA_COMPLETE;
+}
 
 InstanceData* GetInstance_instance_molten_core(Map* pMap)
 {
@@ -279,9 +244,10 @@ InstanceData* GetInstance_instance_molten_core(Map* pMap)
 
 void AddSC_instance_molten_core()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "instance_molten_core";
-    newscript->GetInstanceData = &GetInstance_instance_molten_core;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "instance_molten_core";
+    pNewScript->GetInstanceData = &GetInstance_instance_molten_core;
+    pNewScript->RegisterSelf();
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -32,10 +32,10 @@ EndScriptData */
 #define EMOTE_HAMMER                    -1554012
 
 #define SPELL_SHADOW_POWER              35322
-#define H_SPELL_SHADOW_POWER            39193
+#define SPELL_SHADOW_POWER_H            39193
 #define SPELL_HAMMER_PUNCH              35326
 #define SPELL_JACKHAMMER                35327
-#define H_SPELL_JACKHAMMER              39194
+#define SPELL_JACKHAMMER_H              39194
 #define SPELL_STREAM_OF_MACHINE_FLUID   35311
 
 struct MANGOS_DLL_DECL boss_gatewatcher_iron_handAI : public ScriptedAI
@@ -93,7 +93,7 @@ struct MANGOS_DLL_DECL boss_gatewatcher_iron_handAI : public ScriptedAI
         //Shadow Power
         if (Shadow_Power_Timer < diff)
         {
-            DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_SHADOW_POWER : H_SPELL_SHADOW_POWER);
+            DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_SHADOW_POWER : SPELL_SHADOW_POWER_H);
             Shadow_Power_Timer = urand(20000, 28000);
         }else Shadow_Power_Timer -= diff;
 
@@ -102,7 +102,7 @@ struct MANGOS_DLL_DECL boss_gatewatcher_iron_handAI : public ScriptedAI
         {
             //TODO: expect cast this about 5 times in a row (?), announce it by emote only once
             DoScriptText(EMOTE_HAMMER, m_creature);
-            DoCastSpellIfCan(m_creature->getVictim(), m_bIsRegularMode ? SPELL_JACKHAMMER : H_SPELL_JACKHAMMER);
+            DoCastSpellIfCan(m_creature->getVictim(), m_bIsRegularMode ? SPELL_JACKHAMMER : SPELL_JACKHAMMER_H);
 
             //chance to yell, but not same time as emote (after spell in fact casted)
             if (urand(0, 4))
@@ -128,9 +128,10 @@ CreatureAI* GetAI_boss_gatewatcher_iron_hand(Creature* pCreature)
 
 void AddSC_boss_gatewatcher_iron_hand()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_gatewatcher_iron_hand";
-    newscript->GetAI = &GetAI_boss_gatewatcher_iron_hand;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_gatewatcher_iron_hand";
+    pNewScript->GetAI = &GetAI_boss_gatewatcher_iron_hand;
+    pNewScript->RegisterSelf();
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -157,7 +157,9 @@ struct MANGOS_DLL_DECL boss_warlord_kalithreshAI : public ScriptedAI
             {
                 DoScriptText(SAY_REGEN, m_creature);
                 DoCastSpellIfCan(m_creature,SPELL_WARLORDS_RAGE);
-                ((mob_naga_distillerAI*)pDistiller->AI())->StartRageGen(m_creature);
+
+                if (mob_naga_distillerAI* pDistillerAI = dynamic_cast<mob_naga_distillerAI*>(pDistiller->AI()))
+                    pDistillerAI->StartRageGen(m_creature);
             }
             Rage_Timer = urand(3000, 18000);
         }else Rage_Timer -= diff;
@@ -172,7 +174,7 @@ struct MANGOS_DLL_DECL boss_warlord_kalithreshAI : public ScriptedAI
         //Impale_Timer
         if (Impale_Timer < diff)
         {
-            if (Unit* target = SelectUnit(SELECT_TARGET_RANDOM,0))
+            if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
                 DoCastSpellIfCan(target,SPELL_IMPALE);
 
             Impale_Timer = urand(7500, 12500);
@@ -194,15 +196,15 @@ CreatureAI* GetAI_boss_warlord_kalithresh(Creature* pCreature)
 
 void AddSC_boss_warlord_kalithresh()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "mob_naga_distiller";
-    newscript->GetAI = &GetAI_mob_naga_distiller;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_naga_distiller";
+    pNewScript->GetAI = &GetAI_mob_naga_distiller;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_warlord_kalithresh";
-    newscript->GetAI = &GetAI_boss_warlord_kalithresh;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_warlord_kalithresh";
+    pNewScript->GetAI = &GetAI_boss_warlord_kalithresh;
+    pNewScript->RegisterSelf();
 }

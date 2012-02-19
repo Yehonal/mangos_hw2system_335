@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,93 +17,131 @@
 /* ScriptData
 SDName: Boss_Moam
 SD%Complete: 100
-SDComment: VERIFY SCRIPT AND SQL
+SDComment:
 SDCategory: Ruins of Ahn'Qiraj
 EndScriptData */
 
 #include "precompiled.h"
 
-#define EMOTE_AGGRO             -1509000
-#define EMOTE_MANA_FULL         -1509001
+enum
+{
+    EMOTE_AGGRO              = -1509000,
+    EMOTE_MANA_FULL          = -1509001,
+    EMOTE_ENERGIZING         = -1509028,
 
-#define SPELL_TRAMPLE           15550
-#define SPELL_DRAINMANA         27256
-#define SPELL_ARCANEERUPTION    25672
-#define SPELL_SUMMONMANA        25681
-#define SPELL_GRDRSLEEP         24360                       //Greater Dreamless Sleep
+    SPELL_TRAMPLE            = 15550,
+    SPELL_DRAIN_MANA         = 25671,
+    SPELL_ARCANE_ERUPTION    = 25672,
+    SPELL_SUMMON_MANAFIEND_1 = 25681,
+    SPELL_SUMMON_MANAFIEND_2 = 25682,
+    SPELL_SUMMON_MANAFIEND_3 = 25683,
+    SPELL_ENERGIZE           = 25685,
+
+    PHASE_ATTACKING          = 0,
+    PHASE_ENERGIZING         = 1
+};
 
 struct MANGOS_DLL_DECL boss_moamAI : public ScriptedAI
 {
     boss_moamAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    Unit *pTarget;
-    uint32 TRAMPLE_Timer;
-    uint32 DRAINMANA_Timer;
-    uint32 SUMMONMANA_Timer;
-    uint32 i;
-    uint32 j;
+    uint8 m_uiPhase;
+
+    uint32 m_uiTrampleTimer;
+    uint32 m_uiManaDrainTimer;
+    uint32 m_uiCheckoutManaTimer;
+    uint32 m_uiSummonManaFiendsTimer;
 
     void Reset()
     {
-        i=0;
-        j=0;
-        pTarget = NULL;
-        TRAMPLE_Timer = 30000;
-        DRAINMANA_Timer = 30000;
+        m_uiTrampleTimer            = 9000;
+        m_uiManaDrainTimer          = 3000;
+        m_uiSummonManaFiendsTimer   = 90000;
+        m_uiCheckoutManaTimer       = 1500;
+        m_uiPhase                   = PHASE_ATTACKING;
+        m_creature->SetPower(POWER_MANA, 0);
+        m_creature->SetMaxPower(POWER_MANA, 0);
     }
 
-    void Aggro(Unit *who)
+    void Aggro(Unit* pWho)
     {
         DoScriptText(EMOTE_AGGRO, m_creature);
-        pTarget = who;
+        m_creature->SetMaxPower(POWER_MANA, m_creature->GetCreatureInfo()->maxmana);
     }
 
-    void UpdateAI(const uint32 diff)
+    void UpdateAI(const uint32 uiDiff)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //If we are 100%MANA cast Arcane Erruption
-        //if (j==1 && m_creature->GetMana()*100 / m_creature->GetMaxMana() == 100 && !m_creature->IsNonMeleeSpellCasted(false))
+        switch(m_uiPhase)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_ARCANEERUPTION);
-            DoScriptText(EMOTE_MANA_FULL, m_creature);
+            case PHASE_ATTACKING:
+                if (m_uiCheckoutManaTimer <= uiDiff)
+                {
+                    m_uiCheckoutManaTimer = 1500;
+                    if (m_creature->GetPower(POWER_MANA) * 100 / m_creature->GetMaxPower(POWER_MANA) > 75.0f)
+                    {
+                        DoCastSpellIfCan(m_creature, SPELL_ENERGIZE);
+                        DoScriptText(EMOTE_ENERGIZING, m_creature);
+                        m_uiPhase = PHASE_ENERGIZING;
+                        return;
+                    }
+                }
+                else
+                    m_uiCheckoutManaTimer -= uiDiff;
+
+                if (m_uiSummonManaFiendsTimer <= uiDiff)
+                {
+                    DoCastSpellIfCan(m_creature->getVictim(), SPELL_SUMMON_MANAFIEND_1, CAST_TRIGGERED);
+                    DoCastSpellIfCan(m_creature->getVictim(), SPELL_SUMMON_MANAFIEND_2, CAST_TRIGGERED);
+                    DoCastSpellIfCan(m_creature->getVictim(), SPELL_SUMMON_MANAFIEND_3, CAST_TRIGGERED);
+                    m_uiSummonManaFiendsTimer = 90000;
+                }
+                else
+                    m_uiSummonManaFiendsTimer -= uiDiff;
+
+                if (m_uiManaDrainTimer <= uiDiff)
+                {
+                    if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_DRAIN_MANA, SELECT_FLAG_POWER_MANA))
+                    {
+                        if (DoCastSpellIfCan(pTarget, SPELL_DRAIN_MANA) == CAST_OK)
+                            m_uiManaDrainTimer = urand(2000, 6000);
+                    }
+                }
+                else
+                    m_uiManaDrainTimer -= uiDiff;
+
+                if (m_uiTrampleTimer <= uiDiff)
+                {
+                    DoCastSpellIfCan(m_creature->getVictim(), SPELL_TRAMPLE);
+                    m_uiTrampleTimer = 15000;
+                }
+                else
+                    m_uiTrampleTimer -= uiDiff;
+
+                DoMeleeAttackIfReady();
+                break;
+            case PHASE_ENERGIZING:
+                if (m_uiCheckoutManaTimer <= uiDiff)
+                {
+                    m_uiCheckoutManaTimer = 1500;
+                    if (m_creature->GetPower(POWER_MANA) == m_creature->GetMaxPower(POWER_MANA))
+                    {
+                        m_creature->RemoveAurasDueToSpell(SPELL_ENERGIZE);
+                        DoCastSpellIfCan(m_creature, SPELL_ARCANE_ERUPTION);
+                        DoScriptText(EMOTE_MANA_FULL, m_creature);
+                        m_uiPhase = PHASE_ATTACKING;
+                        return;
+                    }
+                }
+                else
+                    m_uiCheckoutManaTimer -= uiDiff;
+                break;
         }
-
-        //If we are <50%HP cast MANA FIEND (Summon Mana) and Sleep
-        //if (i==0 && m_creature->GetHealthPercent() <= 50.0f && !m_creature->IsNonMeleeSpellCasted(false))
-        {
-            i=1;
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_SUMMONMANA);
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_GRDRSLEEP);
-        }
-
-        //SUMMONMANA_Timer
-        if (i==1 && SUMMONMANA_Timer < diff)
-        {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_SUMMONMANA);
-            SUMMONMANA_Timer = 90000;
-        }else SUMMONMANA_Timer -= diff;
-
-        //TRAMPLE_Timer
-        if (TRAMPLE_Timer < diff)
-        {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_TRAMPLE);
-            j=1;
-
-            TRAMPLE_Timer = 30000;
-        }else TRAMPLE_Timer -= diff;
-
-        //DRAINMANA_Timer
-        if (DRAINMANA_Timer < diff)
-        {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_DRAINMANA);
-            DRAINMANA_Timer = 30000;
-        }else DRAINMANA_Timer -= diff;
-
-        DoMeleeAttackIfReady();
     }
 };
+
 CreatureAI* GetAI_boss_moam(Creature* pCreature)
 {
     return new boss_moamAI(pCreature);
@@ -111,9 +149,10 @@ CreatureAI* GetAI_boss_moam(Creature* pCreature)
 
 void AddSC_boss_moam()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_moam";
-    newscript->GetAI = &GetAI_boss_moam;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_moam";
+    pNewScript->GetAI = &GetAI_boss_moam;
+    pNewScript->RegisterSelf();
 }

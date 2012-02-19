@@ -1,5 +1,4 @@
 #include "precompiled.h"
-#include "simple_ai.h"
 #include "ZZ_ScriptsPersonali.h"
 
 // OTHER
@@ -125,7 +124,7 @@ struct MANGOS_DLL_DECL guardian1_AI : public ScriptedAI
         m_creature->ClearInCombat();
         m_creature->DeleteThreatList();
         m_creature->CombatStop(true);
-        m_creature->LoadCreaturesAddon();
+        m_creature->LoadCreatureAddon(true);
         changeMovement(m_creature);
     }
 

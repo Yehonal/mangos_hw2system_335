@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -39,12 +39,14 @@ enum
     SAY_BLAU_SLAY           = -1533049,
     SAY_BLAU_DEATH          = -1533050,
 
+    EMOTE_UNYIELDING_PAIN   = -1533156,                     // NYI
+
     SPELL_MARK_OF_BLAUMEUX  = 28833,
     SPELL_UNYILDING_PAIN    = 57381,
     SPELL_VOIDZONE          = 28863,
-    H_SPELL_VOIDZONE        = 57463,
+    SPELL_VOIDZONE_H        = 57463,
     SPELL_SHADOW_BOLT       = 57374,
-    H_SPELL_SHADOW_BOLT     = 57464,
+    SPELL_SHADOW_BOLT_H     = 57464,
 
     //baron rivendare
     SAY_RIVE_AGGRO1         = -1533065,
@@ -60,7 +62,7 @@ enum
 
     SPELL_MARK_OF_RIVENDARE = 28834,
     SPELL_UNHOLY_SHADOW     = 28882,
-    H_SPELL_UNHOLY_SHADOW   = 57369,
+    SPELL_UNHOLY_SHADOW_H   = 57369,
 
     //thane korthazz
     SAY_KORT_AGGRO          = -1533051,
@@ -83,11 +85,13 @@ enum
     SAY_ZELI_SLAY           = -1533063,
     SAY_ZELI_DEATH          = -1533064,
 
+    EMOTE_CONDEMATION       = -1533157,                     // NYI
+
     SPELL_MARK_OF_ZELIEK    = 28835,
     SPELL_HOLY_WRATH        = 28883,
-    H_SPELL_HOLY_WRATH      = 57466,
+    SPELL_HOLY_WRATH_H      = 57466,
     SPELL_HOLY_BOLT         = 57376,
-    H_SPELL_HOLY_BOLT       = 57465,
+    SPELL_HOLY_BOLT_H       = 57465,
 
     // horseman spirits
     NPC_SPIRIT_OF_BLAUMEUX    = 16776,
@@ -375,25 +379,25 @@ CreatureAI* GetAI_boss_sir_zeliek(Creature* pCreature)
 
 void AddSC_boss_four_horsemen()
 {
-    Script* NewScript;
+    Script* pNewScript;
 
-    NewScript = new Script;
-    NewScript->Name = "boss_lady_blaumeux";
-    NewScript->GetAI = &GetAI_boss_lady_blaumeux;
-    NewScript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_lady_blaumeux";
+    pNewScript->GetAI = &GetAI_boss_lady_blaumeux;
+    pNewScript->RegisterSelf();
 
-    NewScript = new Script;
-    NewScript->Name = "boss_rivendare_naxx";
-    NewScript->GetAI = &GetAI_boss_rivendare_naxx;
-    NewScript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_rivendare_naxx";
+    pNewScript->GetAI = &GetAI_boss_rivendare_naxx;
+    pNewScript->RegisterSelf();
 
-    NewScript = new Script;
-    NewScript->Name = "boss_thane_korthazz";
-    NewScript->GetAI = &GetAI_boss_thane_korthazz;
-    NewScript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_thane_korthazz";
+    pNewScript->GetAI = &GetAI_boss_thane_korthazz;
+    pNewScript->RegisterSelf();
 
-    NewScript = new Script;
-    NewScript->Name = "boss_sir_zeliek";
-    NewScript->GetAI = &GetAI_boss_sir_zeliek;
-    NewScript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_sir_zeliek";
+    pNewScript->GetAI = &GetAI_boss_sir_zeliek;
+    pNewScript->RegisterSelf();
 }

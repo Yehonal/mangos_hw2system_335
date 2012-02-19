@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -69,7 +69,7 @@ struct MANGOS_DLL_DECL boss_venoxisAI : public ScriptedAI
 
     bool m_bPhaseTwo;
     bool m_bInBerserk;
-    
+
     float m_fDefaultSize;
 
     void Reset()
@@ -179,8 +179,8 @@ struct MANGOS_DLL_DECL boss_venoxisAI : public ScriptedAI
                 m_uiTargetsInRangeCount = 0;
                 for(uint8 i = 0; i < 10; ++i)
                 {
-                    if (Unit* pTarget = SelectUnit(SELECT_TARGET_TOPAGGRO,i))
-                        if (m_creature->IsWithinDistInMap(pTarget, ATTACK_DISTANCE))
+                    if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO,i))
+                        if (m_creature->CanReachWithMeleeAttack(pTarget))
                             ++m_uiTargetsInRangeCount;
                 }
 
@@ -199,7 +199,7 @@ struct MANGOS_DLL_DECL boss_venoxisAI : public ScriptedAI
 
             if (m_uiHolyFire_Timer < uiDiff && m_uiTargetsInRangeCount < 3)
             {
-                if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM,0))
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
                     DoCastSpellIfCan(pTarget, SPELL_HOLY_FIRE);
 
                 m_uiHolyFire_Timer = 8000;
@@ -219,7 +219,7 @@ struct MANGOS_DLL_DECL boss_venoxisAI : public ScriptedAI
 
             if (m_uiVenomSpit_Timer < uiDiff)
             {
-                if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM,0))
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
                     DoCastSpellIfCan(pTarget, SPELL_VENOMSPIT);
 
                 m_uiVenomSpit_Timer = urand(15000, 20000);
@@ -229,7 +229,7 @@ struct MANGOS_DLL_DECL boss_venoxisAI : public ScriptedAI
 
             if (m_uiParasitic_Timer < uiDiff)
             {
-                if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM,0))
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
                     DoCastSpellIfCan(pTarget, SPELL_PARASITIC);
 
                 m_uiParasitic_Timer = 10000;
@@ -257,9 +257,10 @@ CreatureAI* GetAI_boss_venoxis(Creature* pCreature)
 
 void AddSC_boss_venoxis()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_venoxis";
-    newscript->GetAI = &GetAI_boss_venoxis;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_venoxis";
+    pNewScript->GetAI = &GetAI_boss_venoxis;
+    pNewScript->RegisterSelf();
 }

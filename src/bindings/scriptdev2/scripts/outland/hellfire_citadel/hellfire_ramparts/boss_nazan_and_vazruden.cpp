@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,8 +16,8 @@
 
 /* ScriptData
 SDName: Boss_Nazan_And_Vazruden
-SD%Complete: 30
-SDComment: Encounter is not complete. TODO: re-check script when MovementInform call from core work as expected.
+SD%Complete: 95
+SDComment: Bellowing Roar Timer (heroic) needs some love
 SDCategory: Hellfire Citadel, Hellfire Ramparts
 EndScriptData */
 
@@ -36,29 +36,34 @@ enum
     SAY_DEATH               = -1543024,
     EMOTE_DESCEND           = -1543025,
 
+    SPELL_SUMMON_VAZRUDEN   = 30717,
+
     //vazruden
-    SPELL_REVENGE           = 40392,
+    SPELL_REVENGE           = 19130,
+    SPELL_REVENGE_H         = 40392,
 
     //nazan
-    SPELL_FIREBALL          = 30691,
-    SPELL_H_FIREBALL        = 36920,
+    SPELL_FIREBALL          = 30691,                        // This and the next while flying (dmg values will change in cata)
+    SPELL_FIREBALL_B        = 33793,
+    SPELL_FIREBALL_H        = 32491,
+    SPELL_FIREBALL_B_H      = 33794,
+    SPELL_FIREBALL_LAND     = 34653,                        // While landed
+    SPELL_FIREBALL_LAND_H   = 36920,
 
     SPELL_CONE_OF_FIRE      = 30926,
-    SPELL_H_CONE_OF_FIRE    = 36921,
+    SPELL_CONE_OF_FIRE_H    = 36921,
 
-    SPELL_H_BELLOW_ROAR     = 39427,
+    SPELL_BELLOW_ROAR_H     = 39427,
 
     //misc
     POINT_ID_CENTER         = 100,
-    POINT_ID_WAITING        = 101,
+    POINT_ID_FLYING         = 101,
     POINT_ID_COMBAT         = 102,
 
-    NPC_VAZRUDEN_HERALD     = 17307,
     NPC_NAZAN               = 17536,
-    NPC_VAZRUDEN            = 17537
 };
 
-const float afCenterPos[3] = {-1399.401f, 1736.365f, 86.008f}; //moves here to drop off nazan
+const float afCenterPos[3] = {-1399.401f, 1736.365f, 87.008f}; //moves here to drop off nazan
 const float afCombatPos[3] = {-1413.848f, 1754.019f, 83.146f}; //moves here when decending
 
 struct MANGOS_DLL_DECL boss_vazrudenAI : public ScriptedAI
@@ -73,11 +78,13 @@ struct MANGOS_DLL_DECL boss_vazrudenAI : public ScriptedAI
     ScriptedInstance* m_pInstance;
     bool m_bIsRegularMode;
 
+    uint32 m_uiRevengeTimer;
     bool m_bHealthBelow;
 
     void Reset()
     {
         m_bHealthBelow = false;
+        m_uiRevengeTimer = urand(5500, 8400);
     }
 
     void Aggro(Unit* pWho)
@@ -98,6 +105,12 @@ struct MANGOS_DLL_DECL boss_vazrudenAI : public ScriptedAI
             m_pInstance->SetData(TYPE_VAZRUDEN, DONE);
     }
 
+    void JustReachedHome()
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_VAZRUDEN, FAIL);
+    }
+
     void KilledUnit(Unit* pVictim)
     {
         DoScriptText(urand(0, 1) ? SAY_KILL1 : SAY_KILL2, m_creature);
@@ -105,13 +118,10 @@ struct MANGOS_DLL_DECL boss_vazrudenAI : public ScriptedAI
 
     void PrepareAndDescendMount()
     {
-        if (Creature* pHerald = m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_HERALD)))
+        if (Creature* pHerald = m_pInstance->GetSingleCreatureFromStorage(NPC_VAZRUDEN_HERALD))
         {
-            if (pHerald->HasSplineFlag(SPLINEFLAG_WALKMODE))
-                pHerald->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
-
+            pHerald->SetWalk(false);
             pHerald->GetMotionMaster()->MovePoint(POINT_ID_COMBAT, afCombatPos[0], afCombatPos[1], afCombatPos[2]);
-
             DoScriptText(EMOTE_DESCEND, pHerald);
         }
     }
@@ -128,6 +138,14 @@ struct MANGOS_DLL_DECL boss_vazrudenAI : public ScriptedAI
 
             m_bHealthBelow = true;
         }
+
+        if (m_uiRevengeTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature->getVictim(), m_bIsRegularMode ? SPELL_REVENGE : SPELL_REVENGE_H) == CAST_OK)
+                m_uiRevengeTimer = urand(11400, 14300);
+        }
+        else
+            m_uiRevengeTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -154,7 +172,15 @@ struct MANGOS_DLL_DECL boss_vazruden_heraldAI : public ScriptedAI
     ScriptedInstance* m_pInstance;
     bool m_bIsRegularMode;
 
+    bool m_bIsEventInProgress;
     uint32 m_uiMovementTimer;
+    uint32 m_uiFireballTimer;
+    uint32 m_uiFireballBTimer;
+    uint32 m_uiConeOfFireTimer;
+    uint32 m_uiBellowingRoarTimer;
+
+    ObjectGuid m_lastSeenPlayerGuid;
+    ObjectGuid m_vazrudenGuid;
 
     void Reset()
     {
@@ -164,10 +190,28 @@ struct MANGOS_DLL_DECL boss_vazruden_heraldAI : public ScriptedAI
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
 
         m_uiMovementTimer = 0;
+        m_bIsEventInProgress = false;
+        m_lastSeenPlayerGuid.Clear();
+        m_vazrudenGuid.Clear();
+        m_uiFireballTimer = 0;
+        m_uiFireballBTimer = 2100;
+        m_uiConeOfFireTimer = urand(8100, 19700);
+        m_uiBellowingRoarTimer = 100;                       // TODO Guesswork, though such an AoE fear soon after landing seems fitting
+
+        // see boss_onyxia
+        // sort of a hack, it is unclear how this really work but the values appear to be valid
+        m_creature->SetByteValue(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_ALWAYS_STAND | UNIT_BYTE1_FLAG_UNK_2);
+        m_creature->SetLevitate(true);
     }
 
     void MoveInLineOfSight(Unit* pWho)
     {
+        if (m_bIsEventInProgress && !m_lastSeenPlayerGuid && pWho->GetTypeId() == TYPEID_PLAYER && pWho->isAlive() && !((Player*)pWho)->isGameMaster())
+        {
+            if (m_creature->IsWithinDistInMap(pWho, 40.0f))
+                m_lastSeenPlayerGuid = pWho->GetObjectGuid();
+        }
+
         if (m_pInstance && m_pInstance->GetData(TYPE_NAZAN) != IN_PROGRESS)
             return;
 
@@ -181,24 +225,47 @@ struct MANGOS_DLL_DECL boss_vazruden_heraldAI : public ScriptedAI
 
         if (uiType == WAYPOINT_MOTION_TYPE)
         {
-            if (m_uiMovementTimer)
+            if (m_uiMovementTimer || m_bIsEventInProgress)
                 return;
 
             if (m_pInstance->GetData(TYPE_NAZAN) == SPECIAL)
             {
                 m_creature->SetCombatStartPosition(m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ());
                 m_uiMovementTimer = 1000;
+                m_bIsEventInProgress = true;
             }
         }
 
         if (uiType == POINT_MOTION_TYPE)
         {
-            if (uiPointId == POINT_ID_CENTER)
-                DoSplit();
-            else if (uiPointId == POINT_ID_COMBAT)
+            switch (uiPointId)
             {
-                m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-                m_pInstance->SetData(TYPE_NAZAN, IN_PROGRESS);
+                case POINT_ID_CENTER:
+                    DoSplit();
+                    break;
+                case POINT_ID_COMBAT:
+                {
+                    m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+                    m_pInstance->SetData(TYPE_NAZAN, IN_PROGRESS);
+
+                    // Landing
+                    // undo flying
+                    m_creature->SetByteValue(UNIT_FIELD_BYTES_1, 3, 0);
+                    m_creature->SetLevitate(false);
+
+                    Player* pPlayer = m_creature->GetMap()->GetPlayer(m_lastSeenPlayerGuid);
+                    if (pPlayer && pPlayer->isAlive())
+                        AttackStart(pPlayer);
+
+                    // Initialize for combat
+                    m_uiFireballTimer = urand(5200, 16500);
+
+                    break;
+                }
+                case POINT_ID_FLYING:
+                    if (m_bIsEventInProgress)               // Additional check for wipe case, while nazan is flying to this point
+                        m_uiFireballTimer = 1;
+                    break;
             }
         }
     }
@@ -206,35 +273,43 @@ struct MANGOS_DLL_DECL boss_vazruden_heraldAI : public ScriptedAI
     void DoMoveToCenter()
     {
         DoScriptText(SAY_INTRO, m_creature);
-
-        if (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() == WAYPOINT_MOTION_TYPE)
-        {
-            m_creature->GetMotionMaster()->MovementExpired();
-            m_creature->GetMotionMaster()->MoveIdle();
-        }
-
         m_creature->GetMotionMaster()->MovePoint(POINT_ID_CENTER, afCenterPos[0], afCenterPos[1], afCenterPos[2]);
     }
 
-    void DoMoveToHold()
+    void DoMoveToAir()
     {
         float fX, fY, fZ;
         m_creature->GetCombatStartPosition(fX, fY, fZ);
 
-        m_creature->GetMotionMaster()->MovePoint(POINT_ID_WAITING, fX, fY, fZ);
+        // Remove Idle MMGen
+        if (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE)
+            m_creature->GetMotionMaster()->MovementExpired(false);
+
+        m_creature->GetMotionMaster()->MovePoint(POINT_ID_FLYING, fX, fY, fZ);
     }
 
     void DoSplit()
     {
         m_creature->UpdateEntry(NPC_NAZAN);
 
-        m_creature->SummonCreature(NPC_VAZRUDEN, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_DEAD_DESPAWN, 0);
+        DoCastSpellIfCan(m_creature, SPELL_SUMMON_VAZRUDEN);
 
         m_uiMovementTimer = 3000;
+
+        // Let him idle for now
+        m_creature->GetMotionMaster()->MoveIdle();
     }
 
     void JustSummoned(Creature* pSummoned)
     {
+        if (pSummoned->GetEntry() != NPC_VAZRUDEN)
+            return;
+
+        if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_lastSeenPlayerGuid))
+            pSummoned->AI()->AttackStart(pPlayer);
+
+        m_vazrudenGuid = pSummoned->GetObjectGuid();
+
         if (m_pInstance)
             m_pInstance->SetData(TYPE_VAZRUDEN, IN_PROGRESS);
     }
@@ -245,25 +320,97 @@ struct MANGOS_DLL_DECL boss_vazruden_heraldAI : public ScriptedAI
             m_pInstance->SetData(TYPE_NAZAN, DONE);
     }
 
+    void JustReachedHome()
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_NAZAN, FAIL);
+    }
+
     void UpdateAI(const uint32 uiDiff)
     {
-        if (!m_creature->getVictim() && m_uiMovementTimer)
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
         {
-            if (m_uiMovementTimer <= uiDiff)
+            if (m_uiMovementTimer)
             {
-                if (m_pInstance)
+                if (m_uiMovementTimer <= uiDiff)
                 {
-                    if (m_pInstance->GetData(TYPE_VAZRUDEN) == IN_PROGRESS)
-                        DoMoveToHold();
-                    else
-                        DoMoveToCenter();
+                    if (m_pInstance)
+                    {
+                        if (m_pInstance->GetData(TYPE_VAZRUDEN) == IN_PROGRESS)
+                            DoMoveToAir();
+                        else
+                            DoMoveToCenter();
+                    }
+                    m_uiMovementTimer = 0;
                 }
-                m_uiMovementTimer = 0;
-            } else m_uiMovementTimer -= uiDiff;
+                else
+                    m_uiMovementTimer -= uiDiff;
+            }
+
+            if (m_vazrudenGuid && m_uiFireballTimer)
+            {
+                if (m_uiFireballTimer <= uiDiff)
+                {
+                    if (Creature* pVazruden = m_creature->GetMap()->GetCreature(m_vazrudenGuid))
+                    {
+                        if (Unit* pEnemy = pVazruden->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                        {
+                            if (DoCastSpellIfCan(pEnemy, m_bIsRegularMode ? SPELL_FIREBALL : SPELL_FIREBALL_H, 0, pVazruden->GetObjectGuid()) == CAST_OK)
+                                m_uiFireballTimer = urand(2100, 7300);
+                        }
+                    }
+                }
+                else
+                    m_uiFireballTimer -= uiDiff;
+
+                if (m_uiFireballBTimer < uiDiff)
+                {
+                    if (Creature* pVazruden = m_creature->GetMap()->GetCreature(m_vazrudenGuid))
+                    {
+                        if (Unit* pEnemy = pVazruden->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                        {
+                            if (DoCastSpellIfCan(pEnemy, m_bIsRegularMode ? SPELL_FIREBALL_B : SPELL_FIREBALL_B_H, 0, pVazruden->GetObjectGuid()) == CAST_OK)
+                                m_uiFireballBTimer = 15700;
+                        }
+                    }
+                }
+                else
+                    m_uiFireballBTimer -= uiDiff;
+            }
+
+            return;
         }
 
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
+        // In Combat
+        if (m_uiFireballTimer < uiDiff)
+        {
+            if (Unit* pEnemy = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+            {
+                if (DoCastSpellIfCan(pEnemy, m_bIsRegularMode ? SPELL_FIREBALL_LAND : SPELL_FIREBALL_LAND_H) == CAST_OK)
+                    m_uiFireballTimer = urand(7300, 13200);
+            }
+        }
+        else
+            m_uiFireballTimer -= uiDiff;
+
+        if (m_uiConeOfFireTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature->getVictim(), m_bIsRegularMode ? SPELL_CONE_OF_FIRE : SPELL_CONE_OF_FIRE_H) == CAST_OK)
+                m_uiConeOfFireTimer = urand(7300, 13200);
+        }
+        else
+            m_uiConeOfFireTimer -= uiDiff;
+
+        if (!m_bIsRegularMode)
+        {
+            if (m_uiBellowingRoarTimer < uiDiff)
+            {
+                if (DoCastSpellIfCan(m_creature, SPELL_BELLOW_ROAR_H) == CAST_OK)
+                    m_uiBellowingRoarTimer = urand(8000, 12000); // TODO Guesswork, 8s cooldown
+            }
+            else
+                m_uiBellowingRoarTimer -= uiDiff;
+        }
 
         DoMeleeAttackIfReady();
     }
@@ -276,15 +423,15 @@ CreatureAI* GetAI_boss_vazruden_herald(Creature* pCreature)
 
 void AddSC_boss_nazan_and_vazruden()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_vazruden";
-    newscript->GetAI = &GetAI_boss_vazruden;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_vazruden";
+    pNewScript->GetAI = &GetAI_boss_vazruden;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_vazruden_herald";
-    newscript->GetAI = &GetAI_boss_vazruden_herald;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_vazruden_herald";
+    pNewScript->GetAI = &GetAI_boss_vazruden_herald;
+    pNewScript->RegisterSelf();
 }

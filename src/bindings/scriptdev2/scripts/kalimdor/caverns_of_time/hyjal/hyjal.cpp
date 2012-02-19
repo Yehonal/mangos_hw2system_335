@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -83,7 +83,7 @@ bool GossipHello_npc_jaina_proudmoore(Player* pPlayer, Creature* pCreature)
         }
     }
 
-    pPlayer->SEND_GOSSIP_MENU(907, pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(907, pCreature->GetObjectGuid());
     return true;
 }
 
@@ -155,7 +155,7 @@ bool GossipHello_npc_thrall(Player* pPlayer, Creature* pCreature)
         }
     }
 
-    pPlayer->SEND_GOSSIP_MENU(907, pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(907, pCreature->GetObjectGuid());
     return true;
 }
 
@@ -192,11 +192,11 @@ bool GossipHello_npc_tyrande_whisperwind(Player* pPlayer, Creature* pCreature)
     if (ScriptedInstance* pInstance = (ScriptedInstance*)pCreature->GetInstanceData())
     {
         // Only let them get item if Azgalor is dead.
-        if (pInstance->GetData(TYPE_AZGALOR) == DONE && !pPlayer->HasItemCount(ITEM_TEAR_OF_GODDESS,1))
+        if (pInstance->GetData(TYPE_AZGALOR) == DONE && !pPlayer->HasItemCount(ITEM_TEAR_OF_GODDESS, 1))
             pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_TYRANDE, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
     }
 
-    pPlayer->SEND_GOSSIP_MENU(907, pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(907, pCreature->GetObjectGuid());
     return true;
 }
 
@@ -214,25 +214,25 @@ bool GossipSelect_npc_tyrande_whisperwind(Player* pPlayer, Creature* pCreature, 
 
 void AddSC_hyjal()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_jaina_proudmoore";
-    newscript->GetAI = &GetAI_npc_jaina_proudmoore;
-    newscript->pGossipHello = &GossipHello_npc_jaina_proudmoore;
-    newscript->pGossipSelect = &GossipSelect_npc_jaina_proudmoore;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_jaina_proudmoore";
+    pNewScript->GetAI = &GetAI_npc_jaina_proudmoore;
+    pNewScript->pGossipHello = &GossipHello_npc_jaina_proudmoore;
+    pNewScript->pGossipSelect = &GossipSelect_npc_jaina_proudmoore;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_thrall";
-    newscript->GetAI = &GetAI_npc_thrall;
-    newscript->pGossipHello = &GossipHello_npc_thrall;
-    newscript->pGossipSelect = &GossipSelect_npc_thrall;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_thrall";
+    pNewScript->GetAI = &GetAI_npc_thrall;
+    pNewScript->pGossipHello = &GossipHello_npc_thrall;
+    pNewScript->pGossipSelect = &GossipSelect_npc_thrall;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_tyrande_whisperwind";
-    newscript->pGossipHello = &GossipHello_npc_tyrande_whisperwind;
-    newscript->pGossipSelect = &GossipSelect_npc_tyrande_whisperwind;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_tyrande_whisperwind";
+    pNewScript->pGossipHello = &GossipHello_npc_tyrande_whisperwind;
+    pNewScript->pGossipSelect = &GossipSelect_npc_tyrande_whisperwind;
+    pNewScript->RegisterSelf();
 }

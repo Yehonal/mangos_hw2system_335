@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -24,90 +24,116 @@ EndScriptData */
 #include "precompiled.h"
 #include "hellfire_ramparts.h"
 
-struct MANGOS_DLL_DECL instance_ramparts : public ScriptedInstance
+instance_ramparts::instance_ramparts(Map* pMap) : ScriptedInstance(pMap),
+    m_uiSentryCounter(0)
 {
-    instance_ramparts(Map* pMap) : ScriptedInstance(pMap) {Initialize();}
+    Initialize();
+}
 
-    uint32 m_auiEncounter[MAX_ENCOUNTER];
-    uint32 m_uiSentryCounter;
-    uint64 m_uiChestNGUID;
-    uint64 m_uiChestHGUID;
-    uint64 m_uiHeraldGUID;
+void instance_ramparts::Initialize()
+{
+    memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
+}
 
-    void Initialize()
+void instance_ramparts::OnCreatureCreate(Creature* pCreature)
+{
+    switch (pCreature->GetEntry())
     {
-        memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
+        case NPC_VAZRUDEN_HERALD:
+        case NPC_VAZRUDEN:
+            m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+            break;
+        case NPC_HELLFIRE_SENTRY:
+            m_lSentryGUIDs.push_back(pCreature->GetObjectGuid());
+            break;
+    }
+}
 
-        m_uiSentryCounter = 0;
-        m_uiChestNGUID = 0;
-        m_uiChestHGUID = 0;
-        m_uiHeraldGUID = 0;
+void instance_ramparts::OnObjectCreate(GameObject* pGo)
+{
+    switch (pGo->GetEntry())
+    {
+        case GO_FEL_IRON_CHEST:
+        case GO_FEL_IRON_CHEST_H:
+            m_mGoEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
+            break;
+    }
+}
+
+void instance_ramparts::SetData(uint32 uiType, uint32 uiData)
+{
+    debug_log("SD2: Instance Ramparts: SetData received for type %u with data %u",uiType,uiData);
+
+    switch (uiType)
+    {
+        case TYPE_VAZRUDEN:
+            if (uiData == DONE && m_auiEncounter[1] == DONE)
+                DoRespawnGameObject(instance->IsRegularDifficulty() ? GO_FEL_IRON_CHEST : GO_FEL_IRON_CHEST_H, HOUR);
+            if (uiData == FAIL && m_auiEncounter[0] != FAIL)
+                DoFailVazruden();
+            m_auiEncounter[0] = uiData;
+            break;
+        case TYPE_NAZAN:
+            if (uiData == SPECIAL)
+            {
+                ++m_uiSentryCounter;
+
+                if (m_uiSentryCounter == 2)
+                    m_auiEncounter[1] = uiData;
+
+                return;
+            }
+            if (uiData == DONE && m_auiEncounter[0] == DONE)
+                DoRespawnGameObject(instance->IsRegularDifficulty() ? GO_FEL_IRON_CHEST : GO_FEL_IRON_CHEST_H, HOUR);
+            if (uiData == FAIL && m_auiEncounter[1] != FAIL)
+                DoFailVazruden();
+
+            m_auiEncounter[1] = uiData;
+            break;
+    }
+}
+
+uint32 instance_ramparts::GetData(uint32 uiType)
+{
+    if (uiType == TYPE_VAZRUDEN)
+        return m_auiEncounter[0];
+
+    if (uiType == TYPE_NAZAN)
+        return m_auiEncounter[1];
+
+    return 0;
+}
+
+void instance_ramparts::DoFailVazruden()
+{
+    // Store FAIL for both types
+    m_auiEncounter[0] = FAIL;
+    m_auiEncounter[1] = FAIL;
+
+    // Restore Sentries (counter and respawn them)
+    m_uiSentryCounter = 0;
+    for (GUIDList::const_iterator itr = m_lSentryGUIDs.begin(); itr != m_lSentryGUIDs.end(); ++itr)
+    {
+        if (Creature* pSentry = instance->GetCreature(*itr))
+            pSentry->Respawn();
     }
 
-    void OnCreatureCreate(Creature* pCreature)
+    // Respawn or Reset Vazruden the herald
+    if (Creature* pVazruden = GetSingleCreatureFromStorage(NPC_VAZRUDEN_HERALD))
     {
-        if (pCreature->GetEntry() == 17307)
-            m_uiHeraldGUID = pCreature->GetGUID();
-    }
-
-    void OnObjectCreate(GameObject* pGo)
-    {
-        switch(pGo->GetEntry())
+        if (!pVazruden->isAlive())
+            pVazruden->Respawn();
+        else
         {
-            case 185168: m_uiChestNGUID = pGo->GetGUID(); break;
-            case 185169: m_uiChestHGUID = pGo->GetGUID(); break;
+            if (ScriptedAI* pVazrudenAI = dynamic_cast<ScriptedAI*> (pVazruden->AI()))
+                pVazrudenAI->Reset();
         }
     }
 
-    void SetData(uint32 uiType, uint32 uiData)
-    {
-        debug_log("SD2: Instance Ramparts: SetData received for type %u with data %u",uiType,uiData);
-
-        switch(uiType)
-        {
-            case TYPE_VAZRUDEN:
-                if (uiData == DONE && m_auiEncounter[1] == DONE)
-                    DoRespawnGameObject(instance->IsRegularDifficulty() ? m_uiChestNGUID : m_uiChestHGUID, HOUR*IN_MILISECONDS);
-                m_auiEncounter[0] = uiData;
-                break;
-            case TYPE_NAZAN:
-                if (uiData == SPECIAL)
-                {
-                    ++m_uiSentryCounter;
-
-                    if (m_uiSentryCounter == 2)
-                        m_auiEncounter[1] = uiData;
-                }
-                if (uiData == DONE && m_auiEncounter[0] == DONE)
-                {
-                    DoRespawnGameObject(instance->IsRegularDifficulty() ? m_uiChestNGUID : m_uiChestHGUID, HOUR*IN_MILISECONDS);
-                    m_auiEncounter[1] = uiData;
-                }
-                if (uiData == IN_PROGRESS)
-                    m_auiEncounter[1] = uiData;
-                break;
-        }
-    }
-
-    uint32 GetData(uint32 uiType)
-    {
-        if (uiType == TYPE_VAZRUDEN)
-            return m_auiEncounter[0];
-
-        if (uiType == TYPE_NAZAN)
-            return m_auiEncounter[1];
-
-        return 0;
-    }
-
-    uint64 GetData64(uint32 uiData)
-    {
-        if (uiData == DATA_HERALD)
-            return m_uiHeraldGUID;
-
-        return 0;
-    }
-};
+    // Despawn Vazruden
+    if (Creature* pVazruden = GetSingleCreatureFromStorage(NPC_VAZRUDEN))
+        pVazruden->ForcedDespawn();
+}
 
 InstanceData* GetInstanceData_instance_ramparts(Map* pMap)
 {
@@ -117,6 +143,7 @@ InstanceData* GetInstanceData_instance_ramparts(Map* pMap)
 void AddSC_instance_ramparts()
 {
     Script* pNewScript;
+
     pNewScript = new Script;
     pNewScript->Name = "instance_ramparts";
     pNewScript->GetInstanceData = &GetInstanceData_instance_ramparts;

@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -132,13 +132,13 @@ struct MANGOS_DLL_DECL boss_morogrim_tidewalkerAI : public ScriptedAI
     {
         if (pSummoned->GetEntry() == NPC_TIDEWALKER_LURKER)
         {
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 pSummoned->AI()->AttackStart(pTarget);
         }
 
         if (pSummoned->GetEntry() == NPC_WATER_GLOBULE)
         {
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 pSummoned->GetMotionMaster()->MoveFollow(pTarget, 0.0f, 0.0f);
         }
     }
@@ -196,11 +196,11 @@ struct MANGOS_DLL_DECL boss_morogrim_tidewalkerAI : public ScriptedAI
             if (m_uiWateryGrave_Timer < uiDiff)
             {
                 //Teleport 4 players under the waterfalls
-                for(uint8 i = 0; i < 4; ++i)
+                for (uint8 i = 0; i < 4; ++i)
                 {
-                    Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 1);
+                    Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1, SPELL_WATERY_GRAVE_1, SELECT_FLAG_PLAYER);
 
-                    if (pTarget && pTarget->GetTypeId() == TYPEID_PLAYER && !pTarget->HasAuraType(SPELL_AURA_MOD_STUN) && pTarget->IsWithinDistInMap(m_creature, 45.0f))
+                    if (pTarget && !pTarget->HasAuraType(SPELL_AURA_MOD_STUN))
                     {
                         switch(i)
                         {
@@ -277,7 +277,7 @@ struct MANGOS_DLL_DECL mob_water_globuleAI : public ScriptedAI
 
         if (m_uiCheck_Timer < uiDiff)
         {
-            if (m_creature->IsWithinDistInMap(m_creature->getVictim(), ATTACK_DISTANCE))
+            if (m_creature->CanReachWithMeleeAttack(m_creature->getVictim()))
             {
                 m_creature->DealDamage(m_creature->getVictim(), 4000+rand()%2000, NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_FROST, NULL, false);
 
@@ -303,15 +303,15 @@ CreatureAI* GetAI_mob_water_globule(Creature* pCreature)
 
 void AddSC_boss_morogrim_tidewalker()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_morogrim_tidewalker";
-    newscript->GetAI = &GetAI_boss_morogrim_tidewalker;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_morogrim_tidewalker";
+    pNewScript->GetAI = &GetAI_boss_morogrim_tidewalker;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_water_globule";
-    newscript->GetAI = &GetAI_mob_water_globule;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_water_globule";
+    pNewScript->GetAI = &GetAI_mob_water_globule;
+    pNewScript->RegisterSelf();
 }

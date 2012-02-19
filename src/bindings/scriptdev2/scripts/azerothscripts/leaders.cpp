@@ -13,7 +13,7 @@
 * along with this program; if not, write to the Free Software
 * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
-
+/*
 #include "precompiled.h"
 #include "simple_ai.h"
 
@@ -38,6 +38,7 @@ CreatureAI* GetAI_leaders(Creature *_Creature)
         ai->Spell[2].Cooldown = 21071;                 
         ai->Spell[2].First_Cast = 8000;            
         ai->Spell[2].Cast_Target_Type = CAST_SELF;
+        /home/giuseppe/WORKSPACE/works-emu-wow/repositories/mangos/mangos_master_hw2system/src/bindings/scriptdev2/scripts/azerothscripts/leaders.cpp:18:23: fatal error: simple_ai.h: File o directory non esistente
 
 	ai->EnterEvadeMode();
 
@@ -54,3 +55,4 @@ void AddSC_leaders()
     newscript->RegisterSelf();
 }
 
+*/

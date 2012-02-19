@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -72,13 +72,14 @@ enum
 const float DISTANCE_KIGGLER    = 20.0f;
 const float DISTANCE_KROSH      = 30.0f;
 
+static const uint32 aCouncilMember[] = {NPC_BLINDEYE, NPC_KIGGLER, NPC_KROSH, NPC_OLM};
+
 //High King Maulgar AI
 struct MANGOS_DLL_DECL boss_high_king_maulgarAI : public ScriptedAI
 {
     boss_high_king_maulgarAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
         m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        memset(&m_auiCouncil, 0, sizeof(m_auiCouncil));
         Reset();
     }
 
@@ -93,8 +94,6 @@ struct MANGOS_DLL_DECL boss_high_king_maulgarAI : public ScriptedAI
 
     bool m_bPhase2;
 
-    uint64 m_auiCouncil[MAX_COUNCIL];                       // Council GUIDs
-
     void Reset()
     {
         m_uiArcingSmash_Timer   = urand(8000, 14000);
@@ -108,9 +107,12 @@ struct MANGOS_DLL_DECL boss_high_king_maulgarAI : public ScriptedAI
 
     void JustReachedHome()
     {
+        if (!m_pInstance)
+            return;
+
         for (uint8 i = 0; i < MAX_COUNCIL; ++i)
         {
-            if (Creature* pCreature = (Creature*)Unit::GetUnit((*m_creature), m_auiCouncil[i]))
+            if (Creature* pCreature = m_pInstance->GetSingleCreatureFromStorage(aCouncilMember[i]))
             {
                 if (!pCreature->isAlive())
                     pCreature->Respawn();
@@ -119,11 +121,10 @@ struct MANGOS_DLL_DECL boss_high_king_maulgarAI : public ScriptedAI
             }
         }
 
-        if (m_pInstance && m_pInstance->GetData(TYPE_MAULGAR_EVENT) == IN_PROGRESS)
-            m_pInstance->SetData(TYPE_MAULGAR_EVENT, NOT_STARTED);
+        m_pInstance->SetData(TYPE_MAULGAR_EVENT, FAIL);
     }
 
-    void KilledUnit()
+    void KilledUnit(Unit* pVictim)
     {
         switch(urand(0, 2))
         {
@@ -149,26 +150,20 @@ struct MANGOS_DLL_DECL boss_high_king_maulgarAI : public ScriptedAI
         if (!m_pInstance)
             return;
 
-        GetCouncil();
-
         DoScriptText(SAY_AGGRO, m_creature);
 
-        m_creature->CallForHelp(50.0f);
+        m_pInstance->SetData(TYPE_MAULGAR_EVENT, IN_PROGRESS);
 
-        if (m_pInstance->GetData(TYPE_MAULGAR_EVENT) == NOT_STARTED)
-            m_pInstance->SetData(TYPE_MAULGAR_EVENT, IN_PROGRESS);
-    }
-
-    void GetCouncil()
-    {
-        if (!m_pInstance)
-            return;
-
-        //get council member's guid to respawn them if needed
-        m_auiCouncil[0] = m_pInstance->GetData64(DATA_KIGGLER);
-        m_auiCouncil[1] = m_pInstance->GetData64(DATA_BLINDEYE);
-        m_auiCouncil[2] = m_pInstance->GetData64(DATA_OLM);
-        m_auiCouncil[3] = m_pInstance->GetData64(DATA_KROSH);
+        for (uint8 i = 0; i < MAX_COUNCIL; ++i)
+        {
+            if (Creature* pCreature = m_pInstance->GetSingleCreatureFromStorage(aCouncilMember[i]))
+            {
+                if (!pCreature->isAlive())
+                    pCreature->Respawn();
+                if (!pCreature->getVictim())
+                    pCreature->AI()->AttackStart(pWho);
+            }
+        }
     }
 
     void EventCouncilDeath()
@@ -188,17 +183,10 @@ struct MANGOS_DLL_DECL boss_high_king_maulgarAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //someone evaded!
-        if (m_pInstance && m_pInstance->GetData(TYPE_MAULGAR_EVENT) == NOT_STARTED)
-        {
-            EnterEvadeMode();
-            return;
-        }
-
         //m_uiArcingSmash_Timer
         if (m_uiArcingSmash_Timer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(), SPELL_ARCING_SMASH);
+            DoCastSpellIfCan(m_creature, SPELL_ARCING_SMASH);
             m_uiArcingSmash_Timer = urand(8000, 12000);
         }
         else
@@ -207,7 +195,7 @@ struct MANGOS_DLL_DECL boss_high_king_maulgarAI : public ScriptedAI
         //m_uiWhirlwind_Timer
         if (m_uiWhirlwind_Timer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(), SPELL_WHIRLWIND);
+            DoCastSpellIfCan(m_creature, SPELL_WHIRLWIND);
             m_uiWhirlwind_Timer = urand(30000, 40000);
         }
         else
@@ -235,7 +223,7 @@ struct MANGOS_DLL_DECL boss_high_king_maulgarAI : public ScriptedAI
             //m_uiCharge_Timer
             if (m_uiCharge_Timer < uiDiff)
             {
-                if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 1))
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
                     DoCastSpellIfCan(pTarget, SPELL_CHARGE);
 
                 m_uiCharge_Timer = urand(14000, 20000);
@@ -269,16 +257,22 @@ struct MANGOS_DLL_DECL Council_Base_AI : public ScriptedAI
 
     void JustReachedHome()
     {
-        if (m_pInstance && m_pInstance->GetData(TYPE_MAULGAR_EVENT) == IN_PROGRESS)
-            m_pInstance->SetData(TYPE_MAULGAR_EVENT, NOT_STARTED);
+        if (!m_pInstance)
+            return;
+
+        Creature* pMaulgar = m_pInstance->GetSingleCreatureFromStorage(NPC_MAULGAR);
+        if (pMaulgar && pMaulgar->isAlive() && pMaulgar->getVictim())
+            pMaulgar->AI()->EnterEvadeMode();
     }
 
     void Aggro(Unit *pWho)
     {
-        if (m_pInstance && m_pInstance->GetData(TYPE_MAULGAR_EVENT) == NOT_STARTED)
-            m_pInstance->SetData(TYPE_MAULGAR_EVENT, IN_PROGRESS);
+        if (!m_pInstance)
+            return;
 
-        m_creature->CallForHelp(50.0f);
+        Creature* pMaulgar = m_pInstance->GetSingleCreatureFromStorage(NPC_MAULGAR);
+        if (pMaulgar && pMaulgar->isAlive() && !pMaulgar->getVictim())
+            pMaulgar->AI()->AttackStart((pWho));
     }
 
     void JustDied(Unit* pVictim)
@@ -286,9 +280,8 @@ struct MANGOS_DLL_DECL Council_Base_AI : public ScriptedAI
         if (!m_pInstance)
             return;
 
-        Creature* pMaulgar = (Creature*)Unit::GetUnit((*m_creature), m_pInstance->GetData64(DATA_MAULGAR));
-
-        if (pMaulgar->isAlive())
+        Creature* pMaulgar = m_pInstance->GetSingleCreatureFromStorage(NPC_MAULGAR);
+        if (pMaulgar && pMaulgar->isAlive())
         {
             if (boss_high_king_maulgarAI* pMaulgarAI = dynamic_cast<boss_high_king_maulgarAI*>(pMaulgar->AI()))
                 pMaulgarAI->EventCouncilDeath();
@@ -318,13 +311,6 @@ struct MANGOS_DLL_DECL boss_olm_the_summonerAI : public Council_Base_AI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //someone evaded!
-        if (m_pInstance && m_pInstance->GetData(TYPE_MAULGAR_EVENT) == NOT_STARTED)
-        {
-            EnterEvadeMode();
-            return;
-        }
-
         //m_uiDarkDecay_Timer
         if (m_uiDarkDecay_Timer < uiDiff)
         {
@@ -346,7 +332,7 @@ struct MANGOS_DLL_DECL boss_olm_the_summonerAI : public Council_Base_AI
         //m_uiSummon_Timer
         if (m_uiSummon_Timer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(), SPELL_SUMMON_WILD_FELHUNTER);
+            DoCastSpellIfCan(m_creature, SPELL_SUMMON_WILD_FELHUNTER);
             m_uiSummon_Timer = urand(25000, 35000);
         }
         else
@@ -408,16 +394,9 @@ struct MANGOS_DLL_DECL boss_kiggler_the_crazedAI : public Council_Base_AI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //someone evaded!
-        if (m_pInstance && m_pInstance->GetData(TYPE_MAULGAR_EVENT) == NOT_STARTED)
-        {
-            EnterEvadeMode();
-            return;
-        }
-
         if (m_uiGreatherPolymorph_Timer < uiDiff)
         {
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 DoCastSpellIfCan(pTarget, SPELL_GREATER_POLYMORPH);
             m_uiGreatherPolymorph_Timer = urand(15000, 20000);
         }
@@ -445,7 +424,7 @@ struct MANGOS_DLL_DECL boss_kiggler_the_crazedAI : public Council_Base_AI
         //ArcaneExplosion_Timer
         if (m_uiArcaneExplosion_Timer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(), SPELL_ARCANE_EXPLOSION);
+            DoCastSpellIfCan(m_creature, SPELL_ARCANE_EXPLOSION);
             m_uiArcaneExplosion_Timer = 30000;
         }
         else
@@ -476,13 +455,6 @@ struct MANGOS_DLL_DECL boss_blindeye_the_seerAI : public Council_Base_AI
         //Return since we have no target
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
-
-        //someone evaded!
-        if (m_pInstance && m_pInstance->GetData(TYPE_MAULGAR_EVENT) == NOT_STARTED)
-        {
-            EnterEvadeMode();
-            return;
-        }
 
         //m_uiGreaterPowerWordShield_Timer
         if (m_uiGreaterPowerWordShield_Timer < uiDiff)
@@ -552,13 +524,6 @@ struct MANGOS_DLL_DECL boss_krosh_firehandAI : public Council_Base_AI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //someone evaded!
-        if (m_pInstance && m_pInstance->GetData(TYPE_MAULGAR_EVENT) == NOT_STARTED)
-        {
-            EnterEvadeMode();
-            return;
-        }
-
         //m_uiGreaterFireball_Timer
         if (m_uiGreaterFireball_Timer < uiDiff)
         {
@@ -571,8 +536,7 @@ struct MANGOS_DLL_DECL boss_krosh_firehandAI : public Council_Base_AI
         //SpellShield_Timer
         if (m_uiSpellShield_Timer < uiDiff)
         {
-            m_creature->InterruptNonMeleeSpells(false);
-            DoCastSpellIfCan(m_creature->getVictim(), SPELL_SPELLSHIELD);
+            DoCastSpellIfCan(m_creature, SPELL_SPELLSHIELD, CAST_INTERRUPT_PREVIOUS);
             m_uiSpellShield_Timer = 30000;
         }
         else
@@ -581,28 +545,20 @@ struct MANGOS_DLL_DECL boss_krosh_firehandAI : public Council_Base_AI
         //BlastWave_Timer
         if (m_uiBlastWave_Timer < uiDiff)
         {
-            bool bInRange = false;
-            Unit* pTarget = NULL;
-
-            ThreatList const& tList = m_creature->getThreatManager().getThreatList();
-            for (ThreatList::const_iterator i = tList.begin();i != tList.end(); ++i)
+            std::vector<ObjectGuid> vGuids;
+            m_creature->FillGuidsListFromThreatList(vGuids);
+            for (std::vector<ObjectGuid>::const_iterator i = vGuids.begin(); i != vGuids.end(); ++i)
             {
-                Unit* pUnit = Unit::GetUnit((*m_creature), (*i)->getUnitGuid());
+                Unit* pUnit = m_creature->GetMap()->GetUnit(*i);
+
                 if (pUnit && pUnit->IsWithinDistInMap(m_creature, 15.0f))
                 {
-                    bInRange = true;
-                    pTarget = pUnit;
+                    DoCastSpellIfCan(m_creature, SPELL_BLAST_WAVE, CAST_INTERRUPT_PREVIOUS);
                     break;
                 }
             }
 
             m_uiBlastWave_Timer = 6000;
-
-            if (bInRange)
-            {
-                m_creature->InterruptNonMeleeSpells(false);
-                DoCastSpellIfCan(pTarget, SPELL_BLAST_WAVE);
-            }
         }
         else
             m_uiBlastWave_Timer -= uiDiff;
@@ -636,30 +592,30 @@ CreatureAI *GetAI_boss_krosh_firehand(Creature* pCreature)
 
 void AddSC_boss_high_king_maulgar()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_high_king_maulgar";
-    newscript->GetAI = &GetAI_boss_high_king_maulgar;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_high_king_maulgar";
+    pNewScript->GetAI = &GetAI_boss_high_king_maulgar;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_kiggler_the_crazed";
-    newscript->GetAI = &GetAI_boss_kiggler_the_crazed;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_kiggler_the_crazed";
+    pNewScript->GetAI = &GetAI_boss_kiggler_the_crazed;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_blindeye_the_seer";
-    newscript->GetAI = &GetAI_boss_blindeye_the_seer;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_blindeye_the_seer";
+    pNewScript->GetAI = &GetAI_boss_blindeye_the_seer;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_olm_the_summoner";
-    newscript->GetAI = &GetAI_boss_olm_the_summoner;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_olm_the_summoner";
+    pNewScript->GetAI = &GetAI_boss_olm_the_summoner;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_krosh_firehand";
-    newscript->GetAI = &GetAI_boss_krosh_firehand;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_krosh_firehand";
+    pNewScript->GetAI = &GetAI_boss_krosh_firehand;
+    pNewScript->RegisterSelf();
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -26,6 +26,8 @@ EndScriptData */
 
 enum
 {
+    MAX_GUESTS          = 4,
+
     SAY_AGGRO           = -1532011,
     SAY_SPECIAL_1       = -1532012,
     SAY_SPECIAL_2       = -1532013,
@@ -41,7 +43,7 @@ enum
     SPELL_FRENZY        = 37023
 };
 
-const float afLocations[4][4]=
+static const float afLocations[4][MAX_GUESTS]=
 {
     {-10991.0f, -1884.33f, 81.73f, 0.614315f},
     {-10989.4f, -1885.88f, 81.73f, 0.904913f},
@@ -49,7 +51,7 @@ const float afLocations[4][4]=
     {-10975.9f, -1885.81f, 81.73f, 2.253890f}
 };
 
-const uint32 auiAdds[6]=
+static const uint32 auiAdds[6]=
 {
     17007,
     19872,
@@ -70,8 +72,8 @@ struct MANGOS_DLL_DECL boss_moroesAI : public ScriptedAI
 
     ScriptedInstance* m_pInstance;
 
-    uint64 m_auiAddGUID[4];
-    uint32 m_auiAddId[4];
+    ObjectGuid m_aAddGuid[MAX_GUESTS];
+    uint32 m_auiAddId[MAX_GUESTS];
 
     uint32 m_uiVanish_Timer;
     uint32 m_uiBlind_Timer;
@@ -157,18 +159,18 @@ struct MANGOS_DLL_DECL boss_moroesAI : public ScriptedAI
         {
             std::vector<uint32> vAddList;
 
-            for(uint8 i = 0; i < 6; ++i)
+            for (uint8 i = 0; i < 6; ++i)
                 vAddList.push_back(auiAdds[i]);
 
-            while(vAddList.size() > 4)
+            while (vAddList.size() > MAX_GUESTS)
                 vAddList.erase((vAddList.begin())+(rand()%vAddList.size()));
 
             uint8 i = 0;
-            for(std::vector<uint32>::iterator itr = vAddList.begin(); itr != vAddList.end(); ++itr, ++i)
+            for (std::vector<uint32>::iterator itr = vAddList.begin(); itr != vAddList.end(); ++itr, ++i)
             {
                 if (Creature* pCreature = m_creature->SummonCreature(*itr, afLocations[i][0], afLocations[i][1], afLocations[i][2], afLocations[i][3], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10000))
                 {
-                    m_auiAddGUID[i] = pCreature->GetGUID();
+                    m_aAddGuid[i] = pCreature->GetObjectGuid();
                     m_auiAddId[i]   = *itr;
                 }
             }
@@ -177,9 +179,9 @@ struct MANGOS_DLL_DECL boss_moroesAI : public ScriptedAI
         }
         else
         {
-            for(uint8 i = 0; i < 4; ++i)
+            for (uint8 i = 0; i < MAX_GUESTS; ++i)
             {
-                if (Creature* pCreature = (Creature*)Unit::GetUnit((*m_creature), m_auiAddGUID[i]))
+                if (Creature* pCreature = m_creature->GetMap()->GetCreature(m_aAddGuid[i]))
                 {
                     if (!pCreature->isAlive())              // Exists but is dead
                     {
@@ -194,7 +196,7 @@ struct MANGOS_DLL_DECL boss_moroesAI : public ScriptedAI
                 else
                 {                                           // Does not exist
                     if (Creature* pCreature = m_creature->SummonCreature(m_auiAddId[i], afLocations[i][0], afLocations[i][1], afLocations[i][2], afLocations[i][3], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10000))
-                        m_auiAddGUID[i] = pCreature->GetGUID();
+                        m_aAddGuid[i] = pCreature->GetObjectGuid();
                 }
             }
         }
@@ -202,13 +204,13 @@ struct MANGOS_DLL_DECL boss_moroesAI : public ScriptedAI
 
     void AddsAttack()
     {
-        for(uint8 i = 0; i < 4; ++i)
+        for(uint8 i = 0; i < MAX_GUESTS; ++i)
         {
-            if (m_auiAddGUID[i])
+            if (m_aAddGuid[i])
             {
-                Unit* pTemp = Unit::GetUnit((*m_creature), m_auiAddGUID[i]);
+                Creature* pTemp = m_creature->GetMap()->GetCreature(m_aAddGuid[i]);
                 if (pTemp && pTemp->isAlive())
-                    ((Creature*)pTemp)->AI()->AttackStart(m_creature->getVictim());
+                    pTemp->AI()->AttackStart(m_creature->getVictim());
                 else
                     EnterEvadeMode();
             }
@@ -231,13 +233,13 @@ struct MANGOS_DLL_DECL boss_moroesAI : public ScriptedAI
 
         if (m_uiCheckAdds_Timer < uiDiff)
         {
-            for (uint8 i = 0; i < 4; ++i)
+            for (uint8 i = 0; i < MAX_GUESTS; ++i)
             {
-                if (m_auiAddGUID[i])
+                if (m_aAddGuid[i])
                 {
-                    Unit* pTemp = Unit::GetUnit((*m_creature), m_auiAddGUID[i]);
+                    Creature* pTemp = m_creature->GetMap()->GetCreature(m_aAddGuid[i]);
                     if (pTemp && pTemp->isAlive() && (!pTemp->SelectHostileTarget() || !pTemp->getVictim()))
-                        ((Creature*)pTemp)->AI()->AttackStart(m_creature->getVictim());
+                        pTemp->AI()->AttackStart(m_creature->getVictim());
                 }
             }
             m_uiCheckAdds_Timer = 5000;
@@ -267,7 +269,7 @@ struct MANGOS_DLL_DECL boss_moroesAI : public ScriptedAI
                 {
                     DoScriptText(urand(0, 1) ? SAY_SPECIAL_1 : SAY_SPECIAL_2, m_creature);
 
-                    if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+                    if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                         pTarget->CastSpell(pTarget, SPELL_GARROTE, true);
 
                     m_creature->setFaction(16);
@@ -291,25 +293,7 @@ struct MANGOS_DLL_DECL boss_moroesAI : public ScriptedAI
 
             if (m_uiBlind_Timer < uiDiff)
             {
-                Unit* pTarget = NULL;
-
-                ThreatList const& vThreatList = m_creature->getThreatManager().getThreatList();
-                if (vThreatList.empty())
-                    return;
-
-                std::vector<Unit*> vTargetList;
-
-                for (ThreatList::const_iterator itr = vThreatList.begin();itr != vThreatList.end(); ++itr)
-                {
-                    pTarget = Unit::GetUnit(*m_creature, (*itr)->getUnitGuid());
-                    if (pTarget && pTarget->IsWithinDist(m_creature, ATTACK_DISTANCE, false))
-                        vTargetList.push_back(pTarget);
-                }
-
-                if (!vTargetList.empty())
-                    pTarget = *(vTargetList.begin()+rand()%vTargetList.size());
-
-                if (pTarget)
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_BLIND, SELECT_FLAG_PLAYER))
                     DoCastSpellIfCan(pTarget, SPELL_BLIND);
 
                 m_uiBlind_Timer = 40000;
@@ -327,12 +311,10 @@ struct MANGOS_DLL_DECL boss_moroes_guestAI : public ScriptedAI
 {
     ScriptedInstance* m_pInstance;
 
-    uint64 m_auiGuestGUID[4];
+    ObjectGuid m_aGuestGuid[MAX_GUESTS];
 
     boss_moroes_guestAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        memset(&m_auiGuestGUID, 0, sizeof(m_auiGuestGUID));
-
         m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
         AcquireGUID();
         Reset();
@@ -349,31 +331,36 @@ struct MANGOS_DLL_DECL boss_moroes_guestAI : public ScriptedAI
         if (!m_pInstance)
             return;
 
-        m_auiGuestGUID[0] = m_pInstance->GetData64(DATA_MOROES);
-
-        if (Creature* pMoroes = (Creature*)Unit::GetUnit((*m_creature), m_auiGuestGUID[0]))
+        if (Creature* pMoroes = m_pInstance->GetSingleCreatureFromStorage(NPC_MOROES))
         {
+            m_aGuestGuid[0] = pMoroes->GetObjectGuid();
+
             for(uint8 i = 0; i < 3; ++i)
             {
-                uint64 uiGUID = ((boss_moroesAI*)pMoroes->AI())->m_auiAddGUID[i];
-                if (uiGUID && uiGUID != m_creature->GetGUID())
-                    m_auiGuestGUID[i+1] = uiGUID;
+                ObjectGuid addGuid;
+
+                if (boss_moroesAI* pMoroesAI = dynamic_cast<boss_moroesAI*>(pMoroes->AI()))
+                    addGuid = pMoroesAI->m_aAddGuid[i];
+
+                if (addGuid && addGuid != m_creature->GetObjectGuid())
+                    m_aGuestGuid[i+1] = addGuid;
             }
         }
     }
 
     Unit* SelectTarget()
     {
-        if (uint64 uiTempGUID = m_auiGuestGUID[rand()%4])
+        if (ObjectGuid tempGuid = m_aGuestGuid[urand(0, MAX_GUESTS-1)])
         {
-            Unit* pUnit = Unit::GetUnit((*m_creature), uiTempGUID);
-            if (pUnit && pUnit->isAlive())
-                return pUnit;
+            Creature* pTemp = m_creature->GetMap()->GetCreature(tempGuid);
+            if (pTemp && pTemp->isAlive())
+                return pTemp;
         }
 
         return m_creature;
     }
 
+    // TODO double check this design! - with momentarily system DoMeleeAttackIfReady is called before the spells are handled
     void UpdateAI(const uint32 uiDiff)
     {
         if (m_pInstance && !m_pInstance->GetData(TYPE_MOROES))
@@ -426,8 +413,7 @@ struct MANGOS_DLL_DECL boss_baroness_dorothea_millstipeAI : public boss_moroes_g
 
         if (m_uiManaBurn_Timer < uiDiff)
         {
-            Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0);
-            if (pTarget && pTarget->getPowerType() == POWER_MANA)
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_MANABURN, SELECT_FLAG_POWER_MANA))
                 DoCastSpellIfCan(pTarget, SPELL_MANABURN);
 
             m_uiManaBurn_Timer = 5000;                      //3 sec cast
@@ -437,7 +423,7 @@ struct MANGOS_DLL_DECL boss_baroness_dorothea_millstipeAI : public boss_moroes_g
 
         if (m_uiShadowWordPain_Timer < uiDiff)
         {
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
             {
                 DoCastSpellIfCan(pTarget, SPELL_SWPAIN);
                 m_uiShadowWordPain_Timer = 7000;
@@ -564,7 +550,7 @@ struct MANGOS_DLL_DECL boss_lady_catriona_von_indiAI : public boss_moroes_guestA
 
         if (m_uiDispelMagic_Timer < uiDiff)
         {
-            if (Unit* pTarget = urand(0, 1) ? SelectTarget() : SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pTarget = urand(0, 1) ? SelectTarget() : m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 DoCastSpellIfCan(pTarget, SPELL_DISPELMAGIC);
 
             m_uiDispelMagic_Timer = 25000;
@@ -799,40 +785,40 @@ CreatureAI* GetAI_lord_crispin_ference(Creature* pCreature)
 
 void AddSC_boss_moroes()
 {
-    Script* newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_moroes";
-    newscript->GetAI = &GetAI_boss_moroes;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_moroes";
+    pNewScript->GetAI = &GetAI_boss_moroes;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_baroness_dorothea_millstipe";
-    newscript->GetAI = &GetAI_baroness_dorothea_millstipe;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_baroness_dorothea_millstipe";
+    pNewScript->GetAI = &GetAI_baroness_dorothea_millstipe;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_baron_rafe_dreuger";
-    newscript->GetAI = &GetAI_baron_rafe_dreuger;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_baron_rafe_dreuger";
+    pNewScript->GetAI = &GetAI_baron_rafe_dreuger;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_lady_catriona_von_indi";
-    newscript->GetAI = &GetAI_lady_catriona_von_indi;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_lady_catriona_von_indi";
+    pNewScript->GetAI = &GetAI_lady_catriona_von_indi;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_lady_keira_berrybuck";
-    newscript->GetAI = &GetAI_lady_keira_berrybuck;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_lady_keira_berrybuck";
+    pNewScript->GetAI = &GetAI_lady_keira_berrybuck;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_lord_robin_daris";
-    newscript->GetAI = &GetAI_lord_robin_daris;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_lord_robin_daris";
+    pNewScript->GetAI = &GetAI_lord_robin_daris;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_lord_crispin_ference";
-    newscript->GetAI = &GetAI_lord_crispin_ference;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_lord_crispin_ference";
+    pNewScript->GetAI = &GetAI_lord_crispin_ference;
+    pNewScript->RegisterSelf();
 }

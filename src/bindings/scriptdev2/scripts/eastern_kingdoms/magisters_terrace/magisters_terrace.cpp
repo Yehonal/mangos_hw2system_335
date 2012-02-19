@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -70,7 +70,7 @@ struct MANGOS_DLL_DECL npc_kalecgosAI : public ScriptedAI
             return;
 
         if (uiPointId == POINT_ID_LAND)
-            m_uiTransformTimer = MINUTE*IN_MILISECONDS;
+            m_uiTransformTimer = MINUTE*IN_MILLISECONDS;
     }
 
     // some targeting issues with the spell, so use this workaround as temporary solution
@@ -93,7 +93,7 @@ struct MANGOS_DLL_DECL npc_kalecgosAI : public ScriptedAI
             if (Player* pPlayer = i->getSource())
             {
                 if (pSpell && pSpell->EffectMiscValue[0])
-                    pPlayer->KilledMonsterCredit(pSpell->EffectMiscValue[0], 0);
+                    pPlayer->KilledMonsterCredit(pSpell->EffectMiscValue[0]);
             }
         }
     }
@@ -125,10 +125,10 @@ CreatureAI* GetAI_npc_kalecgos(Creature* pCreature)
 bool GossipHello_npc_kalecgos(Player* pPlayer, Creature* pCreature)
 {
     if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetGUID());
+        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
 
     pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_KAEL_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
-    pPlayer->SEND_GOSSIP_MENU(12498, pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(12498, pCreature->GetObjectGuid());
 
     return true;
 }
@@ -139,22 +139,22 @@ bool GossipSelect_npc_kalecgos(Player* pPlayer, Creature* pCreature, uint32 uiSe
     {
         case GOSSIP_ACTION_INFO_DEF:
             pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_KAEL_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-            pPlayer->SEND_GOSSIP_MENU(12500, pCreature->GetGUID());
+            pPlayer->SEND_GOSSIP_MENU(12500, pCreature->GetObjectGuid());
             break;
         case GOSSIP_ACTION_INFO_DEF+1:
             pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_KAEL_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
-            pPlayer->SEND_GOSSIP_MENU(12502, pCreature->GetGUID());
+            pPlayer->SEND_GOSSIP_MENU(12502, pCreature->GetObjectGuid());
             break;
         case GOSSIP_ACTION_INFO_DEF+2:
             pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_KAEL_4, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
-            pPlayer->SEND_GOSSIP_MENU(12606, pCreature->GetGUID());
+            pPlayer->SEND_GOSSIP_MENU(12606, pCreature->GetObjectGuid());
             break;
         case GOSSIP_ACTION_INFO_DEF+3:
             pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_KAEL_5, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 4);
-            pPlayer->SEND_GOSSIP_MENU(12607, pCreature->GetGUID());
+            pPlayer->SEND_GOSSIP_MENU(12607, pCreature->GetObjectGuid());
             break;
         case GOSSIP_ACTION_INFO_DEF+4:
-            pPlayer->SEND_GOSSIP_MENU(12608, pCreature->GetGUID());
+            pPlayer->SEND_GOSSIP_MENU(12608, pCreature->GetObjectGuid());
             break;
     }
 
@@ -163,12 +163,12 @@ bool GossipSelect_npc_kalecgos(Player* pPlayer, Creature* pCreature, uint32 uiSe
 
 void AddSC_magisters_terrace()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_kalecgos";
-    newscript->GetAI = &GetAI_npc_kalecgos;
-    newscript->pGossipHello = &GossipHello_npc_kalecgos;
-    newscript->pGossipSelect = &GossipSelect_npc_kalecgos;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_kalecgos";
+    pNewScript->GetAI = &GetAI_npc_kalecgos;
+    pNewScript->pGossipHello = &GossipHello_npc_kalecgos;
+    pNewScript->pGossipSelect = &GossipSelect_npc_kalecgos;
+    pNewScript->RegisterSelf();
 }

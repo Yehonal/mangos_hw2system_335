@@ -122,7 +122,7 @@ struct MANGOS_DLL_DECL boss_alarAI : public ScriptedAI
 			case 2:
 				DoCast(m_creature->getVictim(),SPELL_FLAME_BREATH);
 			case 0:
-				target = SelectUnit(SELECT_TARGET_RANDOM, 0);
+				target = m_creature->SelectRandomUnfriendlyTarget();
 				DoCast(target,SPELL_FIRE_RAIN);
 			}
             aoefire_timer = 18000;
@@ -131,7 +131,7 @@ struct MANGOS_DLL_DECL boss_alarAI : public ScriptedAI
 
         if (singlefire_timer < diff)
         {
-			target2 = SelectUnit(SELECT_TARGET_RANDOM, 0);
+			target2 = m_creature->SelectRandomUnfriendlyTarget();
 			switch(rand()%3)
 			{
 			case 1:
@@ -187,7 +187,7 @@ struct MANGOS_DLL_DECL boss_alarAI : public ScriptedAI
 
 };
 
-CreatureAI* GetAI_boss_alar(Creature *_Creature)
+CreatureAI* GetAI_boss_alar_azsc(Creature *_Creature)
 {
     return new boss_alarAI (_Creature);
 }
@@ -197,6 +197,6 @@ void AddSC_boss_alar_azsc()
     Script *newscript;
     newscript = new Script;
     newscript->Name="boss_alar_azsc";
-    newscript->GetAI = GetAI_boss_alar;
+    newscript->GetAI = GetAI_boss_alar_azsc;
     newscript->RegisterSelf();
 }

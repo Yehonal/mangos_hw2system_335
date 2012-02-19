@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -34,7 +34,7 @@ EndScriptData */
 #define SPELL_HASTE             31458
 #define SPELL_MORTAL_WOUND      31464
 #define SPELL_WING_BUFFET       31475
-#define H_SPELL_WING_BUFFET     38593
+#define SPELL_WING_BUFFET_H     38593
 #define SPELL_REFLECT           38592                       //Not Implemented (Heroic mod)
 
 struct MANGOS_DLL_DECL boss_temporusAI : public ScriptedAI
@@ -118,7 +118,7 @@ struct MANGOS_DLL_DECL boss_temporusAI : public ScriptedAI
         //Wing ruffet
         if (WingBuffet_Timer < diff)
         {
-            DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_WING_BUFFET : H_SPELL_WING_BUFFET);
+            DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_WING_BUFFET : SPELL_WING_BUFFET_H);
             WingBuffet_Timer = urand(20000, 30000);
         }else WingBuffet_Timer -= diff;
 
@@ -142,9 +142,10 @@ CreatureAI* GetAI_boss_temporus(Creature* pCreature)
 
 void AddSC_boss_temporus()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_temporus";
-    newscript->GetAI = &GetAI_boss_temporus;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_temporus";
+    pNewScript->GetAI = &GetAI_boss_temporus;
+    pNewScript->RegisterSelf();
 }

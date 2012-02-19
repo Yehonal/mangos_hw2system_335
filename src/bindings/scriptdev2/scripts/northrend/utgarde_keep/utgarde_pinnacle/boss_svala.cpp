@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -114,7 +114,7 @@ struct MANGOS_DLL_DECL boss_svalaAI : public ScriptedAI
                 m_pInstance->SetData(TYPE_SVALA, SPECIAL);
 
                 float fX, fY, fZ;
-                m_creature->GetClosePoint(fX, fY, fZ, m_creature->GetObjectSize(), 16.0f, 0.0f);
+                m_creature->GetClosePoint(fX, fY, fZ, m_creature->GetObjectBoundingRadius(), 16.0f, 0.0f);
 
                 // we assume m_creature is spawned in proper location
                 m_creature->SummonCreature(NPC_ARTHAS_IMAGE, fX, fY, fZ, 0.0f, TEMPSUMMON_TIMED_DESPAWN, 60000);
@@ -128,9 +128,7 @@ struct MANGOS_DLL_DECL boss_svalaAI : public ScriptedAI
 
     void Aggro(Unit* pWho)
     {
-        if (m_creature->HasSplineFlag(SPLINEFLAG_FLYING))
-            m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
-
+        m_creature->SetLevitate(false);
         DoScriptText(SAY_AGGRO, m_creature);
     }
 
@@ -184,10 +182,8 @@ struct MANGOS_DLL_DECL boss_svalaAI : public ScriptedAI
         float fX, fZ, fY;
         m_creature->GetRespawnCoord(fX, fY, fZ);
 
-        m_creature->AddSplineFlag(SPLINEFLAG_FLYING);
-
-        m_creature->SendMonsterMoveWithSpeed(fX, fY, fZ + 5.0f, m_uiIntroTimer);
-        m_creature->GetMap()->CreatureRelocation(m_creature, fX, fY, fZ + 5.0f, m_creature->GetOrientation());
+        m_creature->SetLevitate(true);
+        m_creature->GetMotionMaster()->MovePoint(0, fX, fY, fZ + 5.0f);
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -248,7 +244,7 @@ CreatureAI* GetAI_boss_svala(Creature* pCreature)
     return new boss_svalaAI(pCreature);
 }
 
-bool AreaTrigger_at_svala_intro(Player* pPlayer, AreaTriggerEntry* pAt)
+bool AreaTrigger_at_svala_intro(Player* pPlayer, AreaTriggerEntry const* pAt)
 {
     if (ScriptedInstance* pInstance = (ScriptedInstance*)pPlayer->GetInstanceData())
     {
@@ -261,15 +257,15 @@ bool AreaTrigger_at_svala_intro(Player* pPlayer, AreaTriggerEntry* pAt)
 
 void AddSC_boss_svala()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_svala";
-    newscript->GetAI = &GetAI_boss_svala;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_svala";
+    pNewScript->GetAI = &GetAI_boss_svala;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "at_svala_intro";
-    newscript->pAreaTrigger = &AreaTrigger_at_svala_intro;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "at_svala_intro";
+    pNewScript->pAreaTrigger = &AreaTrigger_at_svala_intro;
+    pNewScript->RegisterSelf();
 }

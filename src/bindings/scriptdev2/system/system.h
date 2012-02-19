@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
 * This program is free software licensed under GPL version 2
 * Please see the included DOCS/LICENSE.TXT for more information */
 
@@ -6,33 +6,18 @@
 #define SC_SYSTEM_H
 
 extern DatabaseType SD2Database;
-extern std::string  strSD2Version;                          //version info from database
+extern std::string  strSD2Version;                          //version info: database entry and revision
 
 #define TEXT_SOURCE_RANGE -1000000                          //the amount of entries each text source has available
 
-//TODO: find better namings and definitions.
-//N=Neutral, A=Alliance, H=Horde.
-//NEUTRAL or FRIEND = Hostility to player surroundings (not a good definition)
-//ACTIVE or PASSIVE = Hostility to environment surroundings.
-enum eEscortFaction
-{
-    FACTION_ESCORT_A_NEUTRAL_PASSIVE    = 10,
-    FACTION_ESCORT_H_NEUTRAL_PASSIVE    = 33,
-    FACTION_ESCORT_N_NEUTRAL_PASSIVE    = 113,
+#define TEXT_SOURCE_TEXT_START      TEXT_SOURCE_RANGE
+#define TEXT_SOURCE_TEXT_END        TEXT_SOURCE_RANGE*2 + 1
 
-    FACTION_ESCORT_A_NEUTRAL_ACTIVE     = 231,
-    FACTION_ESCORT_H_NEUTRAL_ACTIVE     = 232,
-    FACTION_ESCORT_N_NEUTRAL_ACTIVE     = 250,
+#define TEXT_SOURCE_CUSTOM_START    TEXT_SOURCE_RANGE*2
+#define TEXT_SOURCE_CUSTOM_END      TEXT_SOURCE_RANGE*3 + 1
 
-    FACTION_ESCORT_N_FRIEND_PASSIVE     = 290,
-    FACTION_ESCORT_N_FRIEND_ACTIVE      = 495,
-
-    FACTION_ESCORT_A_PASSIVE            = 774,
-    FACTION_ESCORT_H_PASSIVE            = 775,
-
-    FACTION_ESCORT_N_ACTIVE             = 1986,
-    FACTION_ESCORT_H_ACTIVE             = 2046
-};
+#define TEXT_SOURCE_GOSSIP_START    TEXT_SOURCE_RANGE*3
+#define TEXT_SOURCE_GOSSIP_END      TEXT_SOURCE_RANGE*4 + 1
 
 struct ScriptPointMove
 {
@@ -70,6 +55,7 @@ class SystemMgr
         void LoadVersion();
         void LoadScriptTexts();
         void LoadScriptTextsCustom();
+        void LoadScriptGossipTexts();
         void LoadScriptWaypoints();
 
         //Retrive from storage

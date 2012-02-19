@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
 * This program is free software licensed under GPL version 2
 * Please see the included DOCS/LICENSE.TXT for more information */
 
@@ -12,14 +12,11 @@
 #include "sc_instance.h"
 
 #ifdef WIN32
-#include <windows.h>
-BOOL APIENTRY DllMain( HANDLE hModule,
-DWORD  ul_reason_for_call,
-LPVOID lpReserved
-)
-{
-    return true;
-}
+#  include <windows.h>
+    BOOL APIENTRY DllMain(HANDLE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
+    {
+        return true;
+    }
 #endif
 
 #endif

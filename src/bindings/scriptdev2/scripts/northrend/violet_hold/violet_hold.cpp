@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -36,7 +36,7 @@ EndContentData */
 ## go_activation_crystal
 ######*/
 
-bool GOHello_go_activation_crystal(Player* pPlayer, GameObject* pGo)
+bool GOUse_go_activation_crystal(Player* pPlayer, GameObject* pGo)
 {
     if (instance_violet_hold* pInstance = (instance_violet_hold*)pGo->GetInstanceData())
         pInstance->ProcessActivationCrystal(pPlayer);
@@ -72,12 +72,12 @@ enum
     SAY_BEGIN                   = -1608000,
     SAY_LOCK_DOOR               = -1608001,
 
+    GOSSIP_ITEM_INTRO           = -3608000,
+    GOSSIP_ITEM_START           = -3608001,
+
     GOSSIP_TEXT_ID_INTRO        = 13853,
     GOSSIP_TEXT_ID_START        = 13854,
 };
-
-#define GOSSIP_ITEM_INTRO       "Activate the crystals when we get in trouble, right?"
-#define GOSSIP_ITEM_START       "Get your people to safety, we'll keep the Blue Dragonflight's forces at bay."
 
 struct MANGOS_DLL_DECL npc_sinclariAI : public npc_escortAI
 {
@@ -117,8 +117,10 @@ struct MANGOS_DLL_DECL npc_sinclariAI : public npc_escortAI
 
     void JustRespawned()
     {
-        if (m_pInstance)
+        if (m_pInstance && m_pInstance->GetData(TYPE_MAIN) != DONE)
             m_pInstance->SetData(TYPE_MAIN, NOT_STARTED);
+
+        npc_escortAI::JustRespawned();                      // Needed, to reset escort state, waypoints, etc
     }
 };
 
@@ -129,8 +131,8 @@ CreatureAI* GetAI_npc_sinclari(Creature* pCreature)
 
 bool GossipHello_npc_sinclari(Player* pPlayer, Creature* pCreature)
 {
-    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_INTRO, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-    pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXT_ID_INTRO, pCreature->GetGUID());
+    pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_INTRO, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
+    pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXT_ID_INTRO, pCreature->GetObjectGuid());
     return true;
 }
 
@@ -142,8 +144,8 @@ bool GossipSelect_npc_sinclari(Player* pPlayer, Creature* pCreature, uint32 uiSe
         {
             if (pInstance->GetData(TYPE_MAIN) == NOT_STARTED)
             {
-                pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_START, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
-                pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXT_ID_START, pCreature->GetGUID());
+                pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_START, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
+                pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXT_ID_START, pCreature->GetObjectGuid());
             }
         }
         else
@@ -161,7 +163,7 @@ bool GossipSelect_npc_sinclari(Player* pPlayer, Creature* pCreature, uint32 uiSe
                 pInstance->SetData(TYPE_MAIN, SPECIAL);
 
                 if (npc_sinclariAI* pEscortAI = dynamic_cast<npc_sinclariAI*>(pCreature->AI()))
-                    pEscortAI->Start(false);
+                    pEscortAI->Start();
             }
         }
         else
@@ -186,7 +188,7 @@ struct MANGOS_DLL_DECL npc_teleportation_portalAI : public ScriptedAI
 
     instance_violet_hold* m_pInstance;
 
-    std::set<uint64> m_lMobSet;
+    GUIDSet m_lMobSet;
 
     bool m_bNeedInvisible;
     bool m_bIntro;
@@ -212,14 +214,21 @@ struct MANGOS_DLL_DECL npc_teleportation_portalAI : public ScriptedAI
         }
         else if (m_creature->GetEntry() == NPC_PORTAL)
         {
-            m_creature->SummonCreature(m_pInstance->GetRandomPortalEliteEntry(), 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 600*IN_MILISECONDS);
-            m_creature->CastSpell(m_creature, SPELL_PORTAL_PERIODIC, true);
+            if (m_pInstance && m_pInstance->GetCurrentPortalNumber() == 18)
+            {
+                m_creature->SummonCreature(NPC_CYANIGOSA, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 600*IN_MILLISECONDS);
+            }
+            else
+            {
+                m_creature->SummonCreature(m_pInstance->GetRandomPortalEliteEntry(), 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 600*IN_MILLISECONDS);
+                m_creature->CastSpell(m_creature, SPELL_PORTAL_PERIODIC, true);
+            }
         }
         else if (m_pInstance->IsCurrentPortalForTrash())
         {
             for(uint8 i = 0; i < 4; ++i)
             {
-                uint32 uiSummonId;
+                uint32 uiSummonId = 0;
 
                 switch(i)
                 {
@@ -229,14 +238,14 @@ struct MANGOS_DLL_DECL npc_teleportation_portalAI : public ScriptedAI
                     case 3: uiSummonId = NPC_AZURE_STALKER; break;
                 }
 
-                m_creature->SummonCreature(uiSummonId, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 600*IN_MILISECONDS);
+                m_creature->SummonCreature(uiSummonId, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 600*IN_MILLISECONDS);
             }
 
             m_bNeedInvisible = true;
         }
         else
         {
-            m_creature->SummonCreature(NPC_AZURE_SABOTEUR, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 600*IN_MILISECONDS);
+            m_creature->SummonCreature(NPC_AZURE_SABOTEUR, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 600*IN_MILLISECONDS);
             m_bNeedInvisible = true;
         }
     }
@@ -255,19 +264,55 @@ struct MANGOS_DLL_DECL npc_teleportation_portalAI : public ScriptedAI
                 break;
             case NPC_AZURE_CAPTAIN:
                 DoScriptText(EMOTE_DRAGONFLIGHT_PORTAL, pSummoned);
-                m_lMobSet.insert(pSummoned->GetGUID());
+                m_lMobSet.insert(pSummoned->GetObjectGuid());
                 break;
             case NPC_AZURE_RAIDER:
             case NPC_AZURE_SORCEROR:
             case NPC_AZURE_STALKER:
-                m_lMobSet.insert(pSummoned->GetGUID());
+                m_lMobSet.insert(pSummoned->GetObjectGuid());
                 return;
+            case NPC_AZURE_SABOTEUR:
+            {
+                if (!m_pInstance)
+                    return;
+                const BossInformation* pData = m_pInstance->GetBossInformation();
+                if (pData)
+                    pSummoned->GetMotionMaster()->MovePoint(pData->uiWayPointId, pData->fX, pData->fY, pData->fZ);
+                return;
+            }
             default:
                 return;
         }
 
         if (m_pInstance)
             m_pInstance->SetData(TYPE_PORTAL, SPECIAL);
+    }
+
+    void SummonedMovementInform(Creature* pSummoned, uint32 uiMotionType, uint32 uiPointId)
+    {
+        if (uiMotionType != POINT_MOTION_TYPE && pSummoned->GetEntry() != NPC_AZURE_SABOTEUR)
+            return;
+
+        if (uiPointId == 1)
+        {
+            pSummoned->CastSpell(pSummoned, SPELL_SHIELD_DISRUPTION, false);
+            if (m_pInstance)
+            {
+                if (const BossInformation* pData = m_pInstance->GetBossInformation())
+                {
+                    if (Creature* pBoss = m_pInstance->GetSingleCreatureFromStorage(m_pInstance->GetData(pData->uiType) != DONE ? pData->uiEntry : pData->uiGhostEntry))
+                    {
+                        m_pInstance->UpdateCellForBoss(pData->uiEntry);
+                        if (pData->iSayEntry)
+                            DoScriptText(pData->iSayEntry, pBoss);
+
+                        // TODO, adds for Erekem? Opening their Cells? Reset flags on FAIL?
+                        pBoss->GetMotionMaster()->MovePoint(1, pData->fX, pData->fY, pData->fZ);
+                        pBoss->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
+                    }
+                }
+            }
+        }
     }
 
     void SummonedCreatureJustDied(Creature* pSummoned)
@@ -282,7 +327,7 @@ struct MANGOS_DLL_DECL npc_teleportation_portalAI : public ScriptedAI
             case NPC_AZURE_SORCEROR:
             case NPC_AZURE_STALKER:
             {
-                m_lMobSet.erase(pSummoned->GetGUID());
+                m_lMobSet.erase(pSummoned->GetObjectGuid());
 
                 if (!m_lMobSet.empty())
                     return;
@@ -350,7 +395,7 @@ bool EffectDummyCreature_npc_teleportation_portal(Unit* pCaster, uint32 uiSpellI
     if (uiSpellId == SPELL_PORTAL_PERIODIC && uiEffIndex == EFFECT_INDEX_0)
     {
         if (instance_violet_hold* pInstance = (instance_violet_hold*)pCreatureTarget->GetInstanceData())
-            pCreatureTarget->SummonCreature(pInstance->GetRandomMobForNormalPortal(), 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 600*IN_MILISECONDS);
+            pCreatureTarget->SummonCreature(pInstance->GetRandomMobForNormalPortal(), 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 600*IN_MILLISECONDS);
 
         //always return true when we are handling this spell and effect
         return true;
@@ -361,28 +406,28 @@ bool EffectDummyCreature_npc_teleportation_portal(Unit* pCaster, uint32 uiSpellI
 
 void AddSC_violet_hold()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "go_activation_crystal";
-    newscript->pGOHello = &GOHello_go_activation_crystal;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_activation_crystal";
+    pNewScript->pGOUse = &GOUse_go_activation_crystal;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_door_seal";
-    newscript->pEffectDummyCreature = &EffectDummyCreature_npc_door_seal;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_door_seal";
+    pNewScript->pEffectDummyNPC = &EffectDummyCreature_npc_door_seal;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_sinclari";
-    newscript->GetAI = &GetAI_npc_sinclari;
-    newscript->pGossipHello = &GossipHello_npc_sinclari;
-    newscript->pGossipSelect = &GossipSelect_npc_sinclari;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_sinclari";
+    pNewScript->GetAI = &GetAI_npc_sinclari;
+    pNewScript->pGossipHello = &GossipHello_npc_sinclari;
+    pNewScript->pGossipSelect = &GossipSelect_npc_sinclari;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_teleportation_portal";
-    newscript->GetAI = &GetAI_npc_teleportation_portal;
-    newscript->pEffectDummyCreature = &EffectDummyCreature_npc_teleportation_portal;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_teleportation_portal";
+    pNewScript->GetAI = &GetAI_npc_teleportation_portal;
+    pNewScript->pEffectDummyNPC = &EffectDummyCreature_npc_teleportation_portal;
+    pNewScript->RegisterSelf();
 }

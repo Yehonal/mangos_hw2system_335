@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -36,7 +36,7 @@ EndScriptData */
 #define SPELL_MANA_TAP                  36021
 #define SPELL_ARCANE_TORRENT            36022
 #define SPELL_DOMINATION                35280
-#define H_SPELL_ARCANE_EXPLOSION        15453
+#define SPELL_ARCANE_EXPLOSION_H        15453
 #define SPELL_FRENZY                    36992
 
 #define SPELL_SUMMON_NETHER_WRAITH_1    35285               //Spells work, but not implemented
@@ -105,7 +105,7 @@ struct MANGOS_DLL_DECL boss_pathaleon_the_calculatorAI : public ScriptedAI
             for(int i = 0; i < 3; ++i)
             {
                 Unit* target = NULL;
-                target = SelectUnit(SELECT_TARGET_RANDOM,0);
+                target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0);
                 Creature* Wraith = m_creature->SummonCreature(21062,m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(),0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 25000);
                 if (target && Wraith)
                     Wraith->AI()->AttackStart(target);
@@ -130,7 +130,7 @@ struct MANGOS_DLL_DECL boss_pathaleon_the_calculatorAI : public ScriptedAI
 
         if (Domination_Timer < diff)
         {
-            if (Unit* target = SelectUnit(SELECT_TARGET_RANDOM,1))
+            if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,1))
             {
                 DoScriptText(urand(0, 1) ? SAY_DOMINATION_1 : SAY_DOMINATION_2, m_creature);
                 DoCastSpellIfCan(target,SPELL_DOMINATION);
@@ -144,7 +144,7 @@ struct MANGOS_DLL_DECL boss_pathaleon_the_calculatorAI : public ScriptedAI
         {
             if (ArcaneExplosion_Timer < diff)
             {
-                DoCastSpellIfCan(m_creature->getVictim(),H_SPELL_ARCANE_EXPLOSION);
+                DoCastSpellIfCan(m_creature->getVictim(),SPELL_ARCANE_EXPLOSION_H);
                 ArcaneExplosion_Timer = urand(10000, 14000);
             }else ArcaneExplosion_Timer -= diff;
         }
@@ -190,7 +190,7 @@ struct MANGOS_DLL_DECL mob_nether_wraithAI : public ScriptedAI
 
         if (ArcaneMissiles_Timer < diff)
         {
-            if (Unit* target = SelectUnit(SELECT_TARGET_RANDOM,1))
+            if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,1))
                 DoCastSpellIfCan(target,SPELL_ARCANE_MISSILES);
             else
                 DoCastSpellIfCan(m_creature->getVictim(),SPELL_ARCANE_MISSILES);
@@ -211,7 +211,7 @@ struct MANGOS_DLL_DECL mob_nether_wraithAI : public ScriptedAI
         {
             if (Die_Timer < diff)
             {
-                m_creature->setDeathState(JUST_DIED);
+                m_creature->SetDeathState(JUST_DIED);
                 m_creature->RemoveCorpse();
             }else Die_Timer -= diff;
         }
@@ -226,14 +226,15 @@ CreatureAI* GetAI_mob_nether_wraith(Creature* pCreature)
 
 void AddSC_boss_pathaleon_the_calculator()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_pathaleon_the_calculator";
-    newscript->GetAI = &GetAI_boss_pathaleon_the_calculator;
-    newscript->RegisterSelf();
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "mob_nether_wraith";
-    newscript->GetAI = &GetAI_mob_nether_wraith;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_pathaleon_the_calculator";
+    pNewScript->GetAI = &GetAI_boss_pathaleon_the_calculator;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "mob_nether_wraith";
+    pNewScript->GetAI = &GetAI_mob_nether_wraith;
+    pNewScript->RegisterSelf();
 }

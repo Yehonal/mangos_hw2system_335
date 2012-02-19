@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -45,7 +45,7 @@ struct MANGOS_DLL_DECL boss_high_botanist_freywinnAI : public ScriptedAI
 {
     boss_high_botanist_freywinnAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    std::list<uint64> Adds_List;
+    GUIDList Adds_List;
 
     uint32 SummonSeedling_Timer;
     uint32 TreeForm_Timer;
@@ -72,7 +72,7 @@ struct MANGOS_DLL_DECL boss_high_botanist_freywinnAI : public ScriptedAI
     void JustSummoned(Creature *summoned)
     {
         if (summoned->GetEntry() == ENTRY_FRAYER)
-            Adds_List.push_back(summoned->GetGUID());
+            Adds_List.push_back(summoned->GetObjectGuid());
     }
 
     void DoSummonSeedling()
@@ -124,18 +124,15 @@ struct MANGOS_DLL_DECL boss_high_botanist_freywinnAI : public ScriptedAI
         {
             if (MoveCheck_Timer < diff)
             {
-                if (!Adds_List.empty())
+                for(GUIDList::iterator itr = Adds_List.begin(); itr != Adds_List.end(); ++itr)
                 {
-                    for(std::list<uint64>::iterator itr = Adds_List.begin(); itr != Adds_List.end(); ++itr)
+                    if (Creature* pTemp = m_creature->GetMap()->GetCreature(*itr))
                     {
-                        if (Unit *temp = Unit::GetUnit(*m_creature,*itr))
+                        if (!pTemp->isAlive())
                         {
-                            if (!temp->isAlive())
-                            {
-                                Adds_List.erase(itr);
-                                ++DeadAddsCount;
-                                break;
-                            }
+                            Adds_List.erase(itr);
+                            ++DeadAddsCount;
+                            break;
                         }
                     }
                 }
@@ -181,10 +178,10 @@ CreatureAI* GetAI_boss_high_botanist_freywinn(Creature* pCreature)
 
 void AddSC_boss_high_botanist_freywinn()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_high_botanist_freywinn";
-    newscript->GetAI = &GetAI_boss_high_botanist_freywinn;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_high_botanist_freywinn";
+    pNewScript->GetAI = &GetAI_boss_high_botanist_freywinn;
+    pNewScript->RegisterSelf();
 }

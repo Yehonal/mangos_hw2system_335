@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -31,11 +31,10 @@ struct MANGOS_DLL_DECL mob_treantAI  : public ScriptedAI
 {
     mob_treantAI (Creature* pCreature) : ScriptedAI(pCreature)
     {
-        WarpGuid = 0;
         Reset();
     }
 
-    uint64 WarpGuid;
+    ObjectGuid m_warpGuid;
 
     void Reset()
     {
@@ -49,7 +48,7 @@ struct MANGOS_DLL_DECL mob_treantAI  : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        if (m_creature->getVictim()->GetGUID() != WarpGuid)
+        if (m_creature->getVictim()->GetObjectGuid() != m_warpGuid)
             DoMeleeAttackIfReady();
     }
 };
@@ -97,7 +96,7 @@ struct MANGOS_DLL_DECL boss_warp_splinterAI : public ScriptedAI
     uint32 Arcane_Volley_Timer;
     uint32 CheckTreantLOS_Timer;
     uint32 TreantLife_Timer;
-    uint64 Treant_GUIDs[6];
+    ObjectGuid m_aTreantGuid[6];
 
     float Treant_Spawn_Pos_X;
     float Treant_Spawn_Pos_Y;
@@ -111,7 +110,7 @@ struct MANGOS_DLL_DECL boss_warp_splinterAI : public ScriptedAI
         TreantLife_Timer = 999999;
 
         for(int i = 0; i < 6; ++i)
-            Treant_GUIDs[i] = 0;
+            m_aTreantGuid[i].Clear();
 
         m_creature->SetSpeedRate(MOVE_RUN, 0.7f);
     }
@@ -143,13 +142,14 @@ struct MANGOS_DLL_DECL boss_warp_splinterAI : public ScriptedAI
             //float Z = m_creature->GetPositionZ();
             float O = - m_creature->GetAngle(X,Y);
 
-            Creature* pTreant = m_creature->SummonCreature(CREATURE_TREANT,treant_pos[i][0],treant_pos[i][1],treant_pos[i][2],O,TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN,40000);
-            if (pTreant)
+            if (Creature* pTreant = m_creature->SummonCreature(CREATURE_TREANT,treant_pos[i][0],treant_pos[i][1],treant_pos[i][2],O,TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN,40000))
             {
                 //pTreant->GetMotionMaster()->Mutate(new TargetedMovementGenerator<Creature>(*m_creature));
                 pTreant->AddThreat(m_creature);
-                Treant_GUIDs[i] = pTreant->GetGUID();
-                ((mob_treantAI*)pTreant->AI())->WarpGuid = m_creature->GetGUID();
+                m_aTreantGuid[i] = pTreant->GetObjectGuid();
+
+                if (mob_treantAI* pTreantAI = dynamic_cast<mob_treantAI*>(pTreant->AI()))
+                    pTreantAI->m_warpGuid = m_creature->GetObjectGuid();
             }
         }
 
@@ -161,7 +161,7 @@ struct MANGOS_DLL_DECL boss_warp_splinterAI : public ScriptedAI
     {
         for(int i=0; i<6; ++i)
         {
-            Unit *pTreant = Unit::GetUnit(*m_creature, Treant_GUIDs[i]);
+            Creature* pTreant = m_creature->GetMap()->GetCreature(m_aTreantGuid[i]);
 
             if (pTreant)
             {
@@ -169,7 +169,7 @@ struct MANGOS_DLL_DECL boss_warp_splinterAI : public ScriptedAI
                 {
                     // 2) Heal Warp Splinter
                     int32 CurrentHP_Treant = (int32)pTreant->GetHealth();
-                    m_creature->CastCustomSpell(m_creature,SPELL_HEAL_FATHER,&CurrentHP_Treant, 0, 0, true,0 ,0, m_creature->GetGUID());
+                    m_creature->CastCustomSpell(m_creature, SPELL_HEAL_FATHER, &CurrentHP_Treant, 0, 0, true, 0 ,0, m_creature->GetObjectGuid());
 
                     // 3) Kill Treant
                     pTreant->DealDamage(pTreant, pTreant->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
@@ -227,15 +227,15 @@ CreatureAI* GetAI_mob_treant(Creature* pCreature)
 
 void AddSC_boss_warp_splinter()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_warp_splinter";
-    newscript->GetAI = &GetAI_boss_warp_splinter;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_warp_splinter";
+    pNewScript->GetAI = &GetAI_boss_warp_splinter;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_warp_splinter_treant";
-    newscript->GetAI = &GetAI_mob_treant;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_warp_splinter_treant";
+    pNewScript->GetAI = &GetAI_mob_treant;
+    pNewScript->RegisterSelf();
 }

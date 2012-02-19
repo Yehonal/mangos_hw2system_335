@@ -28,7 +28,7 @@
 #define SPELL_FROSTNOVA		5403	// fa tipo 100 di danno, e stunna tutti i player in 10yard per 10 secondi
 
 #define SAY_FROSTNOVA	"il freddo entra nel profondo delle vostre anime... non resisterete!"
-#define SAY_BEFORENOVA	"non siate frettolosi... non vi salverà"
+#define SAY_BEFORENOVA	"non siate frettolosi... non vi salverï¿½"
 #define SAY_DIECIPERC	"NON RIUSCIRETE A VINCERMI, SONO SUPERIORE A VOI MORTALI!"
 #define SAY_KILL	"non potete nulla contro di me"
 #define SAY_DEATH	"... accadra' anche a voi"
@@ -110,7 +110,7 @@ struct MANGOS_DLL_DECL boss_netherspiteAI : public ScriptedAI
 
         if(spell_timer < diff)
         {
-            target = SelectUnit(SELECT_TARGET_RANDOM, 0);
+            target = m_creature->SelectRandomUnfriendlyTarget();
 
         switch(rand()%4)
         {
@@ -165,7 +165,7 @@ struct MANGOS_DLL_DECL boss_netherspiteAI : public ScriptedAI
 
 };
 
-CreatureAI* GetAI_boss_netherspite(Creature *_Creature)
+CreatureAI* GetAI_boss_netherspite_azsc(Creature *_Creature)
 {
     return new boss_netherspiteAI (_Creature);
 }
@@ -175,7 +175,7 @@ void AddSC_boss_netherspite_azsc()
     Script *newscript;
     newscript = new Script;
     newscript->Name="boss_netherspite_azsc";
-    newscript->GetAI = GetAI_boss_netherspite;
+    newscript->GetAI = GetAI_boss_netherspite_azsc;
     newscript->RegisterSelf();
 }
 

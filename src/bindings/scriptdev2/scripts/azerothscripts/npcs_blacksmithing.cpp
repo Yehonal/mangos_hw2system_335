@@ -61,13 +61,13 @@ bool GossipHello_npcs_blacksmithing(Player *player, Creature *_Creature )
     switch (_Creature->GetEntry())
     {
         case 11191: //Lilith the Lithe - Master Hammersmith
-            player->PlayerTalkClass->SendGossipMenu(7245,_Creature->GetGUID());
+            player->PlayerTalkClass->SendGossipMenu(7245,_Creature->GetObjectGuid());
             break;
         case 11192: //Kilram - Master Axesmith
-            player->PlayerTalkClass->SendGossipMenu(7243,_Creature->GetGUID());
+            player->PlayerTalkClass->SendGossipMenu(7243,_Creature->GetObjectGuid());
             break;
         case 11193: //Seril Scourgebane - Master Swordsmith
-            player->PlayerTalkClass->SendGossipMenu(7247,_Creature->GetGUID());
+            player->PlayerTalkClass->SendGossipMenu(7247,_Creature->GetObjectGuid());
             break;  
     }
     return true;
@@ -84,42 +84,42 @@ void SendDefaultMenu_npcs_blacksmithing(Player *player, Creature *_Creature, uin
                     if (player->HasSpell(17041) || player->HasSpell(17039))
                     {
                         player->CLOSE_GOSSIP_MENU();
-                        //player->PlayerTalkClass->SendGossipMenu(xxx,_Creature->GetGUID());
+                        //player->PlayerTalkClass->SendGossipMenu(xxx,_Creature->GetObjectGuid());
                     }
                     else 
                     {
                         player->CLOSE_GOSSIP_MENU();
                         _Creature->CastSpell(player, 39099, true);
                         player->SetQuestStatus(5305,QUEST_STATUS_COMPLETE);
-                        //player->PlayerTalkClass->SendGossipMenu(xxx,_Creature->GetGUID());
+                        //player->PlayerTalkClass->SendGossipMenu(xxx,_Creature->GetObjectGuid());
                     }
                     break;
                 case 11192: //Kilram - Master Axesmith
                     if (player->HasSpell(17040) || player->HasSpell(17039))
                     {
                         player->CLOSE_GOSSIP_MENU();
-                        //player->PlayerTalkClass->SendGossipMenu(xxx,_Creature->GetGUID());
+                        //player->PlayerTalkClass->SendGossipMenu(xxx,_Creature->GetObjectGuid());
                     }
                     else
                     {
                         player->CLOSE_GOSSIP_MENU();
                         _Creature->CastSpell(player, 39098, true);
                         player->SetQuestStatus(5306,QUEST_STATUS_COMPLETE);
-                        //player->PlayerTalkClass->SendGossipMenu(xxx,_Creature->GetGUID());
+                        //player->PlayerTalkClass->SendGossipMenu(xxx,_Creature->GetObjectGuid());
                     }
                     break;
                 case 11193: //Seril Scourgebane - Master Swordsmith
                     if (player->HasSpell(17041) || player->HasSpell(17040))
                     {
                         player->CLOSE_GOSSIP_MENU();
-                        //player->PlayerTalkClass->SendGossipMenu(xxx,_Creature->GetGUID());
+                        //player->PlayerTalkClass->SendGossipMenu(xxx,_Creature->GetObjectGuid());
                     }
                     else
                     {
                         player->CLOSE_GOSSIP_MENU();
                         _Creature->CastSpell(player, 39097, true);
                         player->SetQuestStatus(5307,QUEST_STATUS_COMPLETE);
-                        //player->PlayerTalkClass->SendGossipMenu(xxx,_Creature->GetGUID());
+                        //player->PlayerTalkClass->SendGossipMenu(xxx,_Creature->GetObjectGuid());
                     }
                     break;
             }
@@ -135,7 +135,7 @@ void SendDefaultMenu_npcs_blacksmithing(Player *player, Creature *_Creature, uin
             if (player->GetMoney() < cost) 
             {
                 player->SendBuyError( BUY_ERR_NOT_ENOUGHT_MONEY, _Creature, 0, 0);
-                //player->PlayerTalkClass->SendGossipMenu(xxx,_Creature->GetGUID());
+                //player->PlayerTalkClass->SendGossipMenu(xxx,_Creature->GetObjectGuid());
                 return;
             }
             if (player->HasSpell(17039))
@@ -145,7 +145,7 @@ void SendDefaultMenu_npcs_blacksmithing(Player *player, Creature *_Creature, uin
             else if (player->HasSpell(17041))
                 player->removeSpell(17041);
             player->ModifyMoney(-(int32)cost);
-            //player->PlayerTalkClass->SendGossipMenu(xxx,_Creature->GetGUID());
+            //player->PlayerTalkClass->SendGossipMenu(xxx,_Creature->GetObjectGuid());
             break;
     }
     return;

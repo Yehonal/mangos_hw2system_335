@@ -16,7 +16,7 @@
 
 #include "precompiled.h"
 
-#define SPELL_ROAR	36922	// aoe fear x 4 secondi. il timer è offylike.
+#define SPELL_ROAR	36922	// aoe fear x 4 secondi. il timer ï¿½ offylike.
 #define SPELL_CHARRED_EARTH	30129	// 21k di danno over 30 secondi... li avverto.
 #define SPELL_CLEAVE	31345	// il cleave + debole. ogni 25 secondi xk ogni 20 gli faccio fare lo smoking blast
 #define SPELL_ASH	30130	// riduce canche to hit con tt del 30%. dura 40 secondi
@@ -27,8 +27,8 @@
 
 #define SAY_RICHIAMO	"STATE OSANDO TROPPO!"
 #define SAY_VOTOSULREGISTRO	"BRUCIATE TRA LE ANTICHE FIAMME DI MEDIVH!"
-#define SAY_KILL	"cenere! questa è la fine che vi aspetta!"
-#define SAY_AGGRO1	"Com'è possibile? Voi non siete Medivh!"
+#define SAY_KILL	"cenere! questa ï¿½ la fine che vi aspetta!"
+#define SAY_AGGRO1	"Com'ï¿½ possibile? Voi non siete Medivh!"
 #define SAY_AGGRO2	"Chi osa evocarmi?"
 
 struct MANGOS_DLL_DECL boss_nightbaneAI : public ScriptedAI
@@ -123,7 +123,7 @@ struct MANGOS_DLL_DECL boss_nightbaneAI : public ScriptedAI
 
         if(ash_timer < diff)
         {
-            target = SelectUnit(SELECT_TARGET_RANDOM, 0);
+            target = m_creature->SelectRandomUnfriendlyTarget();
             DoCast(target,SPELL_ASH);
             ash_timer = 32000;
         }
@@ -149,7 +149,7 @@ struct MANGOS_DLL_DECL boss_nightbaneAI : public ScriptedAI
             switch(rand()%2)
             {
              case 0:
-                 target2 = SelectUnit(SELECT_TARGET_RANDOM, 0);
+                 target2 = m_creature->SelectRandomUnfriendlyTarget();
                  DoCast(target2,SPELL_BLAST);
                  break;
              case 1:
@@ -190,7 +190,7 @@ struct MANGOS_DLL_DECL boss_nightbaneAI : public ScriptedAI
 
 };
 
-CreatureAI* GetAI_boss_nightbane(Creature *_Creature)
+CreatureAI* GetAI_boss_nightbane_azsc(Creature *_Creature)
 {
     return new boss_nightbaneAI (_Creature);
 }
@@ -200,6 +200,6 @@ void AddSC_boss_nightbane_azsc()
     Script *newscript;
     newscript = new Script;
     newscript->Name="boss_nightbane_azsc";
-    newscript->GetAI = GetAI_boss_nightbane;
+    newscript->GetAI = GetAI_boss_nightbane_azsc;
     newscript->RegisterSelf();
 }

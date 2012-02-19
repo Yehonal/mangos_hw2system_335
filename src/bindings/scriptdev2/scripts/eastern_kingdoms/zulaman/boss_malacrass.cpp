@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,8 +16,8 @@
 
 /* ScriptData
 SDName: Boss_Malacrass
-SD%Complete: 10
-SDComment: Contain adds and adds selection
+SD%Complete: 70
+SDComment: Contain adds and adds selection; Stolen abilities timers need improvement
 SDCategory: Zul'Aman
 EndScriptData */
 
@@ -38,15 +38,22 @@ enum
     SAY_ADD_DIED3               = -1568054,
     SAY_DEATH                   = -1568055,
 
+    /* Notes about the event:
+     * The boss casts siphon soul right after he finishes the spirit bolts channel, which takes 10 sec
+     * The siphon soul is a channeled spell for 30 sec during which the boss uses some class abilities of the target
+     * Basically the boss casts a dummy spell which chooses a random target on which it casts the actuall channel spell
+     * The drain power spell acts as a enrage timer. It's cast each 30 seconds after the boss' health is below 80%
+     */
     SPELL_SPIRIT_BOLTS          = 43383,
+    SPELL_SIPHON_SOUL_DUMMY     = 43498,
     SPELL_SIPHON_SOUL           = 43501,
     SPELL_DRAIN_POWER           = 44131,
 
     //for various powers he uses after using soul drain
     //Death Knight
     SPELL_DK_DEATH_AND_DECAY    = 61603,
-    SPELL_DK_PLAGUE_STRIKE      = 61606,
-    SPELL_DK_MARK_OF_BLOOD      = 61600,
+    SPELL_DK_PLAGUE_STRIKE      = 61600,
+    SPELL_DK_MARK_OF_BLOOD      = 61606,
 
     //Druid
     SPELL_DR_THORNS             = 43420,
@@ -80,7 +87,7 @@ enum
     //Rogue
     SPELL_RO_WOUND_POISON       = 39665,
     SPELL_RO_BLIND              = 43433,
-    SPELL_RO_SLICE_DICE         = 43457,
+    SPELL_RO_SLICE_DICE         = 43547,
 
     //Shaman
     SPELL_SH_CHAIN_LIGHT        = 43435,
@@ -98,7 +105,11 @@ enum
     SPELL_WR_SPELL_REFLECT      = 43443,
 
     //misc
-    //WEAPON_ID                   = 33494,                    //weapon equip id, must be set by database.
+    TARGET_TYPE_RANDOM          = 0,
+    TARGET_TYPE_VICTIM          = 1,
+    TARGET_TYPE_SELF            = 2,
+    TARGET_TYPE_FRIENDLY        = 3,
+
     MAX_ACTIVE_ADDS             = 4
 };
 
@@ -123,29 +134,110 @@ SpawnGroup m_auiSpawnEntry[] =
     {24246, 24247},                                         //Darkheart / Koragg
 };
 
+struct PlayerAbilityStruct
+{
+    uint32 m_uiSpellId;
+    uint8 m_uiTargetType;
+    uint32 m_uiInitialTimer, m_uiCooldown;
+};
+
+// Classes are in the same order as they are in DBC
+static PlayerAbilityStruct m_aMalacrassStolenAbility[][4] =
+{
+    {   // 0* shadow priest - exception: it seems that the priest has two specs. We use this slot for the shadow priest
+        {SPELL_PR_MIND_CONTROL,     TARGET_TYPE_RANDOM,   15000, 30000},
+        {SPELL_PR_MIND_BLAST,       TARGET_TYPE_RANDOM,   23000, 30000},
+        {SPELL_PR_SW_DEATH,         TARGET_TYPE_RANDOM,   5000,  16000}
+    },
+    {   // 1 warrior
+        {SPELL_WR_SPELL_REFLECT,    TARGET_TYPE_SELF,     2000,  30000},
+        {SPELL_WR_WHIRLWIND,        TARGET_TYPE_SELF,     10000, 30000},
+        {SPELL_WR_MORTAL_STRIKE,    TARGET_TYPE_VICTIM,   6000,  15000}
+    },
+    {   // 2 paladin
+        {SPELL_PA_CONSECRATION,     TARGET_TYPE_SELF,     10000, 30000},
+        {SPELL_PA_HOLY_LIGHT,       TARGET_TYPE_FRIENDLY, 17000, 30000},
+        {SPELL_PA_AVENGING_WRATH,   TARGET_TYPE_SELF,     0,     30000}
+    },
+    {   // 3 hunter
+        {SPELL_HU_EXPLOSIVE_TRAP,   TARGET_TYPE_SELF,     12000, 30000},
+        {SPELL_HU_FREEZING_TRAP,    TARGET_TYPE_SELF,     3000,  30000},
+        {SPELL_HU_SNAKE_TRAP,       TARGET_TYPE_SELF,     21000, 30000}
+    },
+    {   // 4 rogue
+        {SPELL_RO_WOUND_POISON,     TARGET_TYPE_VICTIM,   3000,  17000},
+        {SPELL_RO_SLICE_DICE,       TARGET_TYPE_SELF,     17000, 30000},
+        {SPELL_RO_BLIND,            TARGET_TYPE_RANDOM,   12000, 30000}
+    },
+    {   // 5 priest
+        {SPELL_PR_PAIN_SUPP,        TARGET_TYPE_FRIENDLY, 24000, 30000},
+        {SPELL_PR_HEAL,             TARGET_TYPE_FRIENDLY, 16000, 30000},
+        {SPELL_PR_PSYCHIC_SCREAM,   TARGET_TYPE_RANDOM,   8000,  30000}
+    },
+    {   // 6 death knight
+        {SPELL_DK_DEATH_AND_DECAY,  TARGET_TYPE_RANDOM,   25000, 30000},
+        {SPELL_DK_PLAGUE_STRIKE,    TARGET_TYPE_VICTIM,   5000,  17000},
+        {SPELL_DK_MARK_OF_BLOOD,    TARGET_TYPE_RANDOM,   14000, 30000}
+    },
+    {   // 7 shaman
+        {SPELL_SH_FIRE_NOVA,        TARGET_TYPE_SELF,     25000, 30000},
+        {SPELL_SH_HEALING_WAVE,     TARGET_TYPE_FRIENDLY, 15000, 30000},
+        {SPELL_SH_CHAIN_LIGHT,      TARGET_TYPE_RANDOM,   4000,  16000}
+    },
+    {   // 8 mage
+        {SPELL_MG_FIREBALL,         TARGET_TYPE_RANDOM,   8000,  30000},
+        {SPELL_MG_FROSTBOLT,        TARGET_TYPE_RANDOM,   25000, 30000},
+        {SPELL_MG_ICE_LANCE,        TARGET_TYPE_RANDOM,   2000,  18000},
+        {SPELL_MG_FROST_NOVA,       TARGET_TYPE_SELF,     17000, 30000}
+    },
+    {   // 9 warlock
+        {SPELL_WL_CURSE_OF_DOOM,    TARGET_TYPE_RANDOM,   0,     30000},
+        {SPELL_WL_RAIN_OF_FIRE,     TARGET_TYPE_RANDOM,   16000, 30000},
+        {SPELL_WL_UNSTABLE_AFFL,    TARGET_TYPE_RANDOM,   8000,  13000}
+    },
+    {   // 10 unused - no class in DBC here
+    },
+    {   // 11 druid
+        {SPELL_DR_LIFEBLOOM,        TARGET_TYPE_FRIENDLY, 15000, 30000},
+        {SPELL_DR_THORNS,           TARGET_TYPE_SELF,     0,     30000},
+        {SPELL_DR_MOONFIRE,         TARGET_TYPE_RANDOM,   8000,  13000}
+    }
+};
+
 struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
 {
     boss_malacrassAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
         m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        memset(&m_auiAddGUIDs, 0, sizeof(m_auiAddGUIDs));
         m_lAddsEntryList.clear();
         Reset();
     }
 
     ScriptedInstance* m_pInstance;
 
+    uint32 m_uiSpiritBoltsTimer;
+    uint32 m_uiDrainPowerTimer;
+    uint32 m_uiSiphonSoulTimer;
+    uint32 m_uiPlayerAbilityTimer;
+    uint8 m_uiPlayerClass;
+
+    bool m_bCanUsePlayerSpell;
+
+    std::vector<uint32> m_vPlayerSpellTimer;
     std::list<uint32> m_lAddsEntryList;
-    uint64 m_auiAddGUIDs[MAX_ACTIVE_ADDS];
+    ObjectGuid m_aAddGuid[MAX_ACTIVE_ADDS];
 
     void Reset()
     {
+        m_uiSpiritBoltsTimer    = 30000;
+        m_uiDrainPowerTimer     = 0;
+        m_uiSiphonSoulTimer     = 40000;
+        m_uiPlayerAbilityTimer  = 10000;
+        m_uiPlayerClass         = 0;
+
+        m_bCanUsePlayerSpell    = false;
+
         InitializeAdds();
-
-        if (!m_pInstance)
-            return;
-
-        m_pInstance->SetData(TYPE_MALACRASS, NOT_STARTED);
     }
 
     void JustReachedHome()
@@ -155,7 +247,7 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
 
         for(uint8 i = 0; i < MAX_ACTIVE_ADDS; ++i)
         {
-            if (Creature* pAdd = (Creature*)Unit::GetUnit(*m_creature, m_auiAddGUIDs[i]))
+            if (Creature* pAdd = m_creature->GetMap()->GetCreature(m_aAddGuid[i]))
                 pAdd->AI()->EnterEvadeMode();
         }
     }
@@ -179,7 +271,7 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
             for(std::list<uint32>::iterator itr = m_lAddsEntryList.begin(); itr != m_lAddsEntryList.end(); ++itr)
             {
                 if (Creature* pAdd = m_creature->SummonCreature((*itr), m_afAddPosX[j], ADD_POS_Y, ADD_POS_Z, ADD_ORIENT, TEMPSUMMON_CORPSE_DESPAWN, 0))
-                    m_auiAddGUIDs[j] = pAdd->GetGUID();
+                    m_aAddGuid[j] = pAdd->GetObjectGuid();
 
                 ++j;
             }
@@ -188,13 +280,13 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
         {
             for(std::list<uint32>::iterator itr = m_lAddsEntryList.begin(); itr != m_lAddsEntryList.end(); ++itr)
             {
-                Unit* pAdd = Unit::GetUnit(*m_creature, m_auiAddGUIDs[j]);
+                Creature* pAdd = m_creature->GetMap()->GetCreature(m_aAddGuid[j]);
 
                 //object already removed, not exist
                 if (!pAdd)
                 {
-                    if (Creature* pAdd = m_creature->SummonCreature((*itr), m_afAddPosX[j], ADD_POS_Y, ADD_POS_Z, ADD_ORIENT, TEMPSUMMON_CORPSE_DESPAWN, 0))
-                        m_auiAddGUIDs[j] = pAdd->GetGUID();
+                    if (pAdd = m_creature->SummonCreature((*itr), m_afAddPosX[j], ADD_POS_Y, ADD_POS_Z, ADD_ORIENT, TEMPSUMMON_CORPSE_DESPAWN, 0))
+                        m_aAddGuid[j] = pAdd->GetObjectGuid();
                 }
                 ++j;
             }
@@ -203,8 +295,6 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
 
     void Aggro(Unit* pWho)
     {
-        m_creature->SetInCombatWithZone();
-
         DoScriptText(SAY_AGGRO, m_creature);
         AddsAttack(pWho);
 
@@ -218,7 +308,7 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
     {
         for(uint8 i = 0; i < MAX_ACTIVE_ADDS; ++i)
         {
-            if (Creature* pAdd = (Creature*)Unit::GetUnit(*m_creature, m_auiAddGUIDs[i]))
+            if (Creature* pAdd = m_creature->GetMap()->GetCreature(m_aAddGuid[i]))
             {
                 if (!pAdd->getVictim())
                     pAdd->AI()->AttackStart(pWho);
@@ -245,25 +335,132 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
         m_pInstance->SetData(TYPE_MALACRASS, DONE);
     }
 
+    void SpellHitTarget(Unit* pTarget, const SpellEntry* pSpell)
+    {
+        // Set the player's class when hit with soul siphon
+        if (pTarget->GetTypeId() == TYPEID_PLAYER && pSpell->Id == SPELL_SIPHON_SOUL)
+        {
+            m_uiPlayerClass = ((Player*)pTarget)->getClass();
+            m_bCanUsePlayerSpell = true;
+
+            // In case the player it's priest we can choose either a holy priest or a shadow priest
+            if (m_uiPlayerClass == CLASS_PRIEST)
+                m_uiPlayerClass = urand(0, 1) ? CLASS_PRIEST : 0;
+
+            // Init the spell timers
+            uint8 m_uiMaxSpells = m_uiPlayerClass == CLASS_MAGE ? 4 : 3;
+
+            m_vPlayerSpellTimer.clear();
+            m_vPlayerSpellTimer.reserve(m_uiMaxSpells);
+            for (uint8 i = 0; i < m_uiMaxSpells; ++i)
+                m_vPlayerSpellTimer.push_back(m_aMalacrassStolenAbility[m_uiPlayerClass][i].m_uiInitialTimer);
+        }
+    }
+
     void CleanAdds()
     {
         for(uint8 i = 0; i < MAX_ACTIVE_ADDS; ++i)
         {
-            if (Creature* pAdd = (Creature*)Unit::GetUnit(*m_creature, m_auiAddGUIDs[i]))
+            if (Creature* pAdd = m_creature->GetMap()->GetCreature(m_aAddGuid[i]))
             {
                 pAdd->AI()->EnterEvadeMode();
-                pAdd->setDeathState(JUST_DIED);
+                pAdd->SetDeathState(JUST_DIED);
             }
         }
 
-        memset(&m_auiAddGUIDs, 0, sizeof(m_auiAddGUIDs));
+        for (uint8 i = 0; i < MAX_ACTIVE_ADDS; ++i)
+            m_aAddGuid[i].Clear();
+
         m_lAddsEntryList.clear();
+    }
+
+    bool CanUseSpecialAbility(uint32 uiSpellIndex)
+    {
+        Unit* pTarget = NULL;
+
+        switch(m_aMalacrassStolenAbility[m_uiPlayerClass][uiSpellIndex].m_uiTargetType)
+        {
+            case TARGET_TYPE_SELF:
+                pTarget = m_creature;
+                break;
+            case TARGET_TYPE_VICTIM:
+                pTarget = m_creature->getVictim();
+                break;
+            case TARGET_TYPE_RANDOM:
+                pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
+                break;
+            case TARGET_TYPE_FRIENDLY:
+                pTarget = DoSelectLowestHpFriendly(50.0f);
+                break;
+        }
+
+        if (pTarget)
+        {
+            if (DoCastSpellIfCan(pTarget, m_aMalacrassStolenAbility[m_uiPlayerClass][uiSpellIndex].m_uiSpellId, CAST_TRIGGERED) == CAST_OK)
+                return true;
+        }
+
+        return false;
     }
 
     void UpdateAI(const uint32 uiDiff)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
+
+        // Acts as an enrage timer
+        if (m_creature->GetHealthPercent() < 80.0f)
+        {
+            if (m_uiDrainPowerTimer < uiDiff)
+            {
+                if (DoCastSpellIfCan(m_creature, SPELL_DRAIN_POWER) == CAST_OK)
+                {
+                    DoScriptText(SAY_DRAIN_POWER, m_creature);
+                    m_uiDrainPowerTimer = 30000;
+                }
+            }
+            else
+                m_uiDrainPowerTimer -= uiDiff;
+        }
+
+        if (m_uiSpiritBoltsTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature, SPELL_SPIRIT_BOLTS) == CAST_OK)
+            {
+                DoScriptText(SAY_SPIRIT_BOLTS, m_creature);
+                m_bCanUsePlayerSpell = false;
+                m_uiSpiritBoltsTimer = 40000;
+            }
+        }
+        else
+            m_uiSpiritBoltsTimer -= uiDiff;
+
+        if (m_uiSiphonSoulTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature, SPELL_SIPHON_SOUL_DUMMY) == CAST_OK)
+            {
+                DoScriptText(SAY_SOUL_SIPHON, m_creature);
+                m_uiSiphonSoulTimer = 40000;
+            }
+        }
+        else
+            m_uiSiphonSoulTimer -= uiDiff;
+
+        // Use abilities only during the siphon soul phases
+        if (m_bCanUsePlayerSpell)
+        {
+            // Loop through all abilities
+            for (uint8 i = 0; i < m_vPlayerSpellTimer.size(); ++i)
+            {
+                if (m_vPlayerSpellTimer[i] < uiDiff)
+                {
+                    if (CanUseSpecialAbility(i))
+                        m_vPlayerSpellTimer[i] = m_aMalacrassStolenAbility[m_uiPlayerClass][i].m_uiCooldown;
+                }
+                else
+                    m_vPlayerSpellTimer[i] -= uiDiff;
+            }
+        }
 
         DoMeleeAttackIfReady();
     }
@@ -301,8 +498,8 @@ struct MANGOS_DLL_DECL boss_malacrass_addAI : public ScriptedAI
         if (!m_pInstance)
             return;
 
-        if (Creature* pMalacrass = (Creature*)Unit::GetUnit(*m_creature, m_pInstance->GetData64(DATA_MALACRASS)))
-            ((boss_malacrassAI*)pMalacrass->AI())->KilledUnit(pVictim);
+        if (Creature* pMalacrass = m_pInstance->GetSingleCreatureFromStorage(NPC_MALACRASS))
+            pMalacrass->AI()->KilledUnit(pVictim);
     }
 
     void JustDied(Unit* pKiller)
@@ -310,7 +507,7 @@ struct MANGOS_DLL_DECL boss_malacrass_addAI : public ScriptedAI
         if (!m_pInstance)
             return;
 
-        if (Unit* pMalacrass = Unit::GetUnit(*m_creature, m_pInstance->GetData64(DATA_MALACRASS)))
+        if (Creature* pMalacrass = m_pInstance->GetSingleCreatureFromStorage(NPC_MALACRASS))
         {
             switch(urand(0, 2))
             {
@@ -319,37 +516,6 @@ struct MANGOS_DLL_DECL boss_malacrass_addAI : public ScriptedAI
                 case 2: DoScriptText(SAY_ADD_DIED3, pMalacrass); break;
             }
         }
-    }
-
-    bool IsEnemyPlayerInRangeForSpell(uint32 uiSpellId)
-    {
-        SpellEntry const* pSpell = GetSpellStore()->LookupEntry(uiSpellId);
-
-        //if spell not valid
-        if (!pSpell)
-            return false;
-
-        //spell known, so lookup using rangeIndex
-        SpellRangeEntry const* pSpellRange = GetSpellRangeStore()->LookupEntry(pSpell->rangeIndex);
-
-        //not valid, so return
-        if (!pSpellRange)
-            return false;
-
-        ThreatList const& tList = m_creature->getThreatManager().getThreatList();
-        for (ThreatList::const_iterator iter = tList.begin();iter != tList.end(); ++iter)
-        {
-            Unit* pTarget = Unit::GetUnit((*m_creature), (*iter)->getUnitGuid());
-
-            if (pTarget && pTarget->GetTypeId() == TYPEID_PLAYER)
-            {
-                //if target further away than maxrange or closer than minrange, statement is false
-                if (m_creature->IsInRange(pTarget, pSpellRange->minRange, pSpellRange->maxRange))
-                    return true;
-            }
-        }
-
-        return false;
     }
 };
 
@@ -455,7 +621,7 @@ struct MANGOS_DLL_DECL mob_alyson_antilleAI : public boss_malacrass_addAI
 
         if (m_uiArcaneTorrentTimer < uiDiff)
         {
-            if (IsEnemyPlayerInRangeForSpell(SPELL_ARCANE_TORRENT))
+            if (m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, uint32(0), SELECT_FLAG_PLAYER | SELECT_FLAG_IN_MELEE_RANGE))
             {
                 DoCastSpellIfCan(m_creature, SPELL_ARCANE_TORRENT);
                 m_uiArcaneTorrentTimer = 60000;
@@ -503,7 +669,7 @@ struct MANGOS_DLL_DECL mob_alyson_antilleAI : public boss_malacrass_addAI
             if (!lTempList.empty())
                 pTarget = *(lTempList.begin());
             else
-                pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0);
+                pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
 
             if (pTarget)
                 DoCastSpellIfCan(pTarget, SPELL_DISPEL_MAGIC);
@@ -601,7 +767,7 @@ struct MANGOS_DLL_DECL mob_lord_raadanAI : public boss_malacrass_addAI
 
         if (m_uiThunderclapTimer < uiDiff)
         {
-            if (IsEnemyPlayerInRangeForSpell(SPELL_THUNDERCLAP))
+            if (m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 0, SPELL_THUNDERCLAP, SELECT_FLAG_PLAYER))
             {
                 DoCastSpellIfCan(m_creature->getVictim(), SPELL_THUNDERCLAP);
                 m_uiThunderclapTimer = 12000;
@@ -652,9 +818,9 @@ struct MANGOS_DLL_DECL mob_darkheartAI : public boss_malacrass_addAI
 
         if (m_uiPsychicWailTimer < uiDiff)
         {
-            if (IsEnemyPlayerInRangeForSpell(SPELL_PSYCHIC_WAIL))
+            if (m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 0, uint32(0), SELECT_FLAG_PLAYER | SELECT_FLAG_IN_MELEE_RANGE))
             {
-                DoCastSpellIfCan(m_creature->getVictim(), SPELL_PSYCHIC_WAIL);
+                DoCastSpellIfCan(m_creature, SPELL_PSYCHIC_WAIL);
                 m_uiPsychicWailTimer = 12000;
             }
             else
@@ -710,7 +876,7 @@ struct MANGOS_DLL_DECL mob_slitherAI : public boss_malacrass_addAI
 
         if (m_uiVenomSpitTimer < uiDiff)
         {
-            if (Unit* pVictim = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pVictim = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 DoCastSpellIfCan(pVictim, SPELL_VENOM_SPIT);
 
             m_uiVenomSpitTimer = 2500;
@@ -799,7 +965,7 @@ struct MANGOS_DLL_DECL mob_koraggAI : public boss_malacrass_addAI
 
         if (m_uiColdStareTimer < uiDiff)
         {
-            if (Unit* pVictim = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pVictim = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 DoCastSpellIfCan(pVictim, SPELL_COLD_STARE);
 
             m_uiColdStareTimer = 12000;
@@ -818,50 +984,50 @@ CreatureAI* GetAI_mob_koragg(Creature* pCreature)
 
 void AddSC_boss_malacrass()
 {
-    Script* newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_malacrass";
-    newscript->GetAI = &GetAI_boss_malacrass;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_malacrass";
+    pNewScript->GetAI = &GetAI_boss_malacrass;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_thurg";
-    newscript->GetAI = &GetAI_mob_thurg;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_thurg";
+    pNewScript->GetAI = &GetAI_mob_thurg;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_gazakroth";
-    newscript->GetAI = &GetAI_mob_gazakroth;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_gazakroth";
+    pNewScript->GetAI = &GetAI_mob_gazakroth;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_lord_raadan";
-    newscript->GetAI = &GetAI_mob_lord_raadan;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_lord_raadan";
+    pNewScript->GetAI = &GetAI_mob_lord_raadan;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_darkheart";
-    newscript->GetAI = &GetAI_mob_darkheart;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_darkheart";
+    pNewScript->GetAI = &GetAI_mob_darkheart;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_slither";
-    newscript->GetAI = &GetAI_mob_slither;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_slither";
+    pNewScript->GetAI = &GetAI_mob_slither;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_fenstalker";
-    newscript->GetAI = &GetAI_mob_fenstalker;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_fenstalker";
+    pNewScript->GetAI = &GetAI_mob_fenstalker;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_koragg";
-    newscript->GetAI = &GetAI_mob_koragg;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_koragg";
+    pNewScript->GetAI = &GetAI_mob_koragg;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_alyson_antille";
-    newscript->GetAI = &GetAI_mob_alyson_antille;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_alyson_antille";
+    pNewScript->GetAI = &GetAI_mob_alyson_antille;
+    pNewScript->RegisterSelf();
 }

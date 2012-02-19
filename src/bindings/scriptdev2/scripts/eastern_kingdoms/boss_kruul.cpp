@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -58,7 +58,7 @@ struct MANGOS_DLL_DECL boss_kruulAI : public ScriptedAI
         Hound_Timer = 8000;
     }
 
-    void KilledUnit()
+    void KilledUnit(Unit* pVictim)
     {
         // When a player, pet or totem gets killed, Lord Kazzak casts this spell to instantly regenerate 70,000 health.
         DoCastSpellIfCan(m_creature,SPELL_CAPTURESOUL);
@@ -83,7 +83,7 @@ struct MANGOS_DLL_DECL boss_kruulAI : public ScriptedAI
         Rand = 0;
         Summoned = DoSpawnCreature(19207, RandX, RandY, 0, 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 300000);
         if (Summoned)
-            ((CreatureAI*)Summoned->AI())->AttackStart(victim);
+            Summoned->AI()->AttackStart(victim);
     }
 
     void UpdateAI(const uint32 diff)
@@ -170,9 +170,10 @@ CreatureAI* GetAI_boss_kruul(Creature* pCreature)
 
 void AddSC_boss_kruul()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_kruul";
-    newscript->GetAI = &GetAI_boss_kruul;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_kruul";
+    pNewScript->GetAI = &GetAI_boss_kruul;
+    pNewScript->RegisterSelf();
 }

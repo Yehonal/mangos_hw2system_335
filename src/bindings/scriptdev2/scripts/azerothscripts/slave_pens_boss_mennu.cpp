@@ -104,7 +104,7 @@ struct MANGOS_DLL_DECL boss_mennuAI : public ScriptedAI
         if (Impale_Timer < diff)
         {
             Unit* target = NULL;
-            target = SelectUnit(SELECT_TARGET_RANDOM,0);
+            target = m_creature->SelectRandomUnfriendlyTarget();
 
             
             DoCast(target,SPELL_IMPALE);
@@ -123,7 +123,7 @@ struct MANGOS_DLL_DECL boss_mennuAI : public ScriptedAI
 
 };
 
-CreatureAI* GetAI_boss_mennu(Creature *_Creature)
+CreatureAI* GetAI_boss_mennu_azsc(Creature *_Creature)
 {
     return new boss_mennuAI (_Creature);
 }
@@ -133,6 +133,6 @@ void AddSC_boss_mennu_azsc()
     Script *newscript;
     newscript = new Script;
     newscript->Name="boss_mennu_azsc";
-    newscript->GetAI = GetAI_boss_mennu;
+    newscript->GetAI = GetAI_boss_mennu_azsc;
     newscript->RegisterSelf();
 }

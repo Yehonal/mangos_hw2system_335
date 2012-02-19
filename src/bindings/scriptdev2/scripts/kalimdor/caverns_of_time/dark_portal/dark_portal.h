@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software licensed under GPL version 2
  * Please see the included DOCS/LICENSE.TXT for more information */
 
@@ -12,7 +12,6 @@ enum
     TYPE_MEDIVH             = 1,
     TYPE_RIFT               = 2,
 
-    DATA_MEDIVH             = 10,
     DATA_PORTAL_COUNT       = 11,
     DATA_SHIELD             = 12,
 
@@ -40,6 +39,39 @@ enum
     SPELL_RIFT_CHANNEL      = 31387,
 
     RIFT_BOSS               = 1
+};
+
+class MANGOS_DLL_DECL instance_dark_portal : public ScriptedInstance
+{
+    public:
+        instance_dark_portal(Map* pMap);
+
+        void Initialize();
+        void OnPlayerEnter(Player* pPlayer);
+        void OnCreatureCreate(Creature* pCreature);
+
+        void SetData(uint32 uiType, uint32 uiData);
+        uint32 GetData(uint32 uiType);
+
+        void Update(uint32 uiDiff);
+
+    private:
+        Creature* SummonedPortalBoss(Creature* pSource);
+        void DoSpawnPortal();
+        bool CanProgressEvent();
+        uint8 GetRiftWaveId();
+        void Clear();
+        void InitWorldState(bool bEnable = true);
+
+        uint32 m_auiEncounter[MAX_ENCOUNTER];
+
+        uint32 m_uiRiftPortalCount;
+        uint32 m_uiShieldPercent;
+        uint8 m_uiRiftWaveCount;
+        uint8 m_uiRiftWaveId;
+
+        uint32 m_uiNextPortalTimer;
+        uint8 m_uiCurrentRiftId;
 };
 
 #endif

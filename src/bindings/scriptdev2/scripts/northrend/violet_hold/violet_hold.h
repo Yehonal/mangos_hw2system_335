@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software licensed under GPL version 2
  * Please see the included DOCS/LICENSE.TXT for more information */
 
@@ -7,11 +7,19 @@
 
 enum
 {
-    MAX_ENCOUNTER               = 3,
+    MAX_ENCOUNTER               = 10,
+    MAX_MINIBOSSES              = 6,
 
-    TYPE_MAIN                   = 1,
-    TYPE_SEAL                   = 2,
-    TYPE_PORTAL                 = 3,
+    TYPE_MAIN                   = 0,
+    TYPE_SEAL                   = 1,
+    TYPE_PORTAL                 = 2,
+    TYPE_LAVANTHOR              = 3,
+    TYPE_MORAGG                 = 4,
+    TYPE_EREKEM                 = 5,
+    TYPE_ICHORON                = 6,
+    TYPE_XEVOZZ                 = 7,
+    TYPE_ZURAMAT                = 8,
+    TYPE_CYANIGOSA              = 9,
 
     WORLD_STATE_ID              = 3816,
     WORLD_STATE_SEAL            = 3815,
@@ -72,6 +80,7 @@ enum
     NPC_DEFENSE_SYSTEM          = 30837,
     NPC_DEFENSE_DUMMY_TARGET    = 30857,
 
+    // 'Ghosts' for Killed mobs after Wipe
     NPC_ARAKKOA                 = 32226,
     NPC_VOID_LORD               = 32230,
     NPC_ETHERAL                 = 32231,
@@ -98,6 +107,11 @@ enum
     SAY_SEAL_50                 = -1608003,
     SAY_SEAL_5                  = -1608004,
 
+    SAY_RELEASE_EREKEM          = -1608008,
+    SAY_RELEASE_ICHORON         = -1608009,
+    SAY_RELEASE_XEVOZZ          = -1608010,
+    SAY_RELEASE_ZURAMAT         = -1608011,
+
     EMOTE_GUARDIAN_PORTAL       = -1608005,
     EMOTE_DRAGONFLIGHT_PORTAL   = -1608006,
     EMOTE_KEEPER_PORTAL         = -1608007,
@@ -105,7 +119,7 @@ enum
     MAX_NORMAL_PORTAL           = 8
 };
 
-static float fDefenseSystemLoc[4] = {1888.146f, 803.382f, 58.604f, 3.072f};
+static const float fDefenseSystemLoc[4] = {1888.146f, 803.382f, 58.604f, 3.072f};
 
 enum ePortalType
 {
@@ -114,13 +128,13 @@ enum ePortalType
     PORTAL_TYPE_BOSS,
 };
 
-struct sPortalData
+struct PortalData
 {
     ePortalType pPortalType;
     float fX, fY, fZ, fOrient;
 };
 
-static sPortalData afPortalLocation[]=
+static const PortalData afPortalLocation[]=
 {
     {PORTAL_TYPE_NORM, 1936.07f, 803.198f, 53.3749f, 3.1241f},  //balcony
     {PORTAL_TYPE_NORM, 1877.51f, 850.104f, 44.6599f, 4.7822f},  //erekem
@@ -133,11 +147,34 @@ static sPortalData afPortalLocation[]=
     {PORTAL_TYPE_BOSS, 1890.73f, 803.309f, 38.4001f, 2.4139f},  //center
 };
 
+struct BossInformation
+{
+    uint32 uiType, uiEntry, uiGhostEntry, uiWayPointId;
+    float fX, fY, fZ;                                       // Waypoint for Saboteur
+    int32 iSayEntry;
+};
+
+struct BossSpawn
+{
+    uint32 uiEntry;
+    float fX, fY, fZ, fO;
+};
+
+static const BossInformation aBossInformation[] =
+{
+    {TYPE_EREKEM,    NPC_EREKEM,    NPC_ARAKKOA,    1, 1877.03f, 853.84f, 43.33f, SAY_RELEASE_EREKEM},
+    {TYPE_ZURAMAT,   NPC_ZURAMAT,   NPC_VOID_LORD,  1, 1922.41f, 847.95f, 47.15f, SAY_RELEASE_ZURAMAT},
+    {TYPE_XEVOZZ,    NPC_XEVOZZ,    NPC_ETHERAL,    1, 1903.61f, 838.46f, 38.72f, SAY_RELEASE_XEVOZZ},
+    {TYPE_ICHORON,   NPC_ICHORON,   NPC_SWIRLING,   1, 1915.52f, 779.13f, 35.94f, SAY_RELEASE_ICHORON},
+    {TYPE_LAVANTHOR, NPC_LAVANTHOR, NPC_LAVA_HOUND, 1, 1855.28f, 760.85f, 38.65f, 0},
+    {TYPE_MORAGG,    NPC_MORAGG,    NPC_WATCHER,    1, 1890.51f, 752.85f, 47.66f, 0}
+};
+
 class MANGOS_DLL_DECL instance_violet_hold : public ScriptedInstance
 {
     public:
         instance_violet_hold(Map* pMap);
-        ~instance_violet_hold() {}
+        ~instance_violet_hold();                            // Destructor used to free m_vRandomBosses
 
         void Initialize();
         void ResetAll();
@@ -146,7 +183,7 @@ class MANGOS_DLL_DECL instance_violet_hold : public ScriptedInstance
         void OnCreatureCreate(Creature* pCreature);
         void OnObjectCreate(GameObject* pGo);
 
-        void UpdateCellForBoss(uint32 uiBossEntry);
+        void UpdateCellForBoss(uint32 uiBossEntry, bool bForceClosing = false);
         void UpdateWorldState(bool bEnable = true);
 
         void SetIntroPortals(bool bDeactivate);
@@ -161,11 +198,12 @@ class MANGOS_DLL_DECL instance_violet_hold : public ScriptedInstance
 
         uint32 GetCurrentPortalNumber() { return m_uiWorldStatePortalCount; }
 
-        sPortalData const* GetPortalData() { return &afPortalLocation[m_uiPortalId]; }
+        PortalData const* GetPortalData() { return &afPortalLocation[m_uiPortalId]; }
+        BossInformation const* GetBossInformation(uint32 uiEntry = 0);
 
         bool IsCurrentPortalForTrash()
         {
-            if (m_uiWorldStatePortalCount % 6)
+            if (m_uiWorldStatePortalCount % MAX_MINIBOSSES)
                 return true;
 
             return false;
@@ -173,7 +211,7 @@ class MANGOS_DLL_DECL instance_violet_hold : public ScriptedInstance
 
         bool IsNextPortalForTrash()
         {
-            if ((m_uiWorldStatePortalCount+1) % 6)
+            if ((m_uiWorldStatePortalCount+1) % MAX_MINIBOSSES)
                 return true;
 
             return false;
@@ -185,31 +223,24 @@ class MANGOS_DLL_DECL instance_violet_hold : public ScriptedInstance
 
         void OnPlayerEnter(Player* pPlayer);
 
+        void OnCreatureEnterCombat(Creature* pCreature);
+        void OnCreatureEvade(Creature* pCreature);
+        void OnCreatureDeath(Creature* pCreature);
+
         void SetData(uint32 uiType, uint32 uiData);
-        uint64 GetData64(uint32 uiData);
+        uint32 GetData(uint32 uiType);
+
+        const char* Save() { return m_strInstData.c_str(); }
+        void Load(const char* chrIn);
 
         void Update(uint32 uiDiff);
 
-        typedef std::multimap<uint32, uint64> BossToCellMap;
+        typedef std::multimap<uint32, ObjectGuid> BossToCellMap;
 
     protected:
-
+        BossSpawn* CreateBossSpawnByEntry(uint32 uiEntry);
         uint32 m_auiEncounter[MAX_ENCOUNTER];
-        std::string strInstData;
-
-        uint64 m_uiSinclariGUID;
-        uint64 m_uiSinclariAltGUID;
-        uint64 m_uiErekemGUID;
-        uint64 m_uiMoraggGUID;
-        uint64 m_uiIchoronGUID;
-        uint64 m_uiXevozzGUID;
-        uint64 m_uiLavanthorGUID;
-        uint64 m_uiZuramatGUID;
-
-        uint64 m_uiCellErekemGuard_LGUID;
-        uint64 m_uiCellErekemGuard_RGUID;
-        uint64 m_uiIntroCrystalGUID;
-        uint64 m_uiDoorSealGUID;
+        std::string m_strInstData;
 
         uint32 m_uiWorldState;
         uint32 m_uiWorldStateSealCount;
@@ -221,9 +252,11 @@ class MANGOS_DLL_DECL instance_violet_hold : public ScriptedInstance
 
         BossToCellMap m_mBossToCellMap;
 
-        std::list<uint64> m_lIntroPortalList;
-        std::list<uint64> m_lGuardsList;
+        GUIDList m_lIntroPortalList;
+        GUIDList m_lGuardsList;
         std::list<uint32> m_lRandomBossList;
+
+        std::vector<BossSpawn*> m_vRandomBosses;
 };
 
 #endif

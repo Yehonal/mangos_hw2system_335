@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software licensed under GPL version 2
  * Please see the included DOCS/LICENSE.TXT for more information */
 
@@ -124,66 +124,36 @@ enum
     GOSSIP_SENDER_SEC_STABLEMASTER = 10
 };
 
-extern uint32 GetSkillLevel(Player* pPlayer,uint32 skill);
+extern uint32 GetSkillLevel(Player* pPlayer, uint32 uiSkill);
 
 // Defined fuctions to use with player.
 
 // This fuction add's a menu item,
-// a - Icon Id
-// b - Text
-// c - Sender(this is to identify the current Menu with this item)
-// d - Action (identifys this Menu Item)
-// e - Text to be displayed in pop up box
-// f - Money value in pop up box
-#define ADD_GOSSIP_ITEM(a, b, c, d)   PlayerTalkClass->GetGossipMenu().AddMenuItem(a, b, c, d, "", 0)
-#define ADD_GOSSIP_ITEM_EXTENDED(a, b, c, d, e, f, g)   PlayerTalkClass->GetGossipMenu().AddMenuItem(a, b, c, d, e, f, g)
+// Icon Id
+// Text
+// Sender(this is to identify the current Menu with this item)
+// Option id (identifies this Menu Item)
+// Text to be displayed in pop up box
+// Money value in pop up box
+// Coded
+#define ADD_GOSSIP_ITEM(uiIcon, chrText, uiSender, uiOptionId)   PlayerTalkClass->GetGossipMenu().AddMenuItem(uiIcon, chrText, uiSender, uiOptionId, "", 0)
+#define ADD_GOSSIP_ITEM_ID(uiIcon, iTextId, uiSender, uiOptionId)   PlayerTalkClass->GetGossipMenu().AddMenuItem(uiIcon, iTextId, uiSender, uiOptionId, 0, 0)
+#define ADD_GOSSIP_ITEM_EXTENDED(uiIcon, chrText, uiSender, uiOptionId, chrBoxMessage, uiBoxMoney, bCode)   PlayerTalkClass->GetGossipMenu().AddMenuItem(uiIcon, chrText, uiSender, uiOptionId, chrBoxMessage, uiBoxMoney, bCode)
 
-// This fuction Sends the current menu to show to client, a - NPCTEXTID(uint32) , b - npc guid(uint64)
-#define SEND_GOSSIP_MENU(a, b)      PlayerTalkClass->SendGossipMenu(a, b)
-
-// This fuction shows POI(point of interest) to client.
-// a - position X
-// b - position Y
-// c - Icon Id
-// d - Flags
-// e - Data
-// f - Location Name
-#define SEND_POI(a, b, c, d, e, f)      PlayerTalkClass->SendPointOfInterest(a, b, c, d, e, f)
+// This fuction Sends the current menu to show to client
+// uiTextId - NPCTEXTID (uint32)
+// guid - npc guid (ObjectGuid)
+#define SEND_GOSSIP_MENU(uiTextId, guid)      PlayerTalkClass->SendGossipMenu(uiTextId, guid)
 
 // Closes the Menu
 #define CLOSE_GOSSIP_MENU()        PlayerTalkClass->CloseGossip()
 
-// Fuction to tell to client the details
-// a - quest object
-// b - npc guid(uint64)
-// c - Activate accept(bool)
-#define SEND_QUEST_DETAILS(a, b, c)  PlayerTalkClass->SendQuestDetails(a, b, c)
-
-// Fuction to tell to client the requested items to complete quest
-// a - quest object
-// b - npc guid(uint64)
-// c - Iscompletable(bool)
-// d - close at cancel(bool) - in case single incomplite ques
-#define SEND_REQUESTEDITEMS(a, b, c, d) PlayerTalkClass->SendRequestedItems(a, b, c, d)
-
-// Fuctions to send NPC lists, a - is always the npc guid(uint64)
+// Fuctions to send NPC lists
+// a - is always the npc guid (ObjectGuid)
 #define SEND_VENDORLIST(a)         GetSession()->SendListInventory(a)
 #define SEND_TRAINERLIST(a)        GetSession()->SendTrainerList(a)
 #define SEND_BANKERLIST(a)         GetSession()->SendShowBank(a)
 #define SEND_TABARDLIST(a)         GetSession()->SendTabardVendorActivate(a)
 #define SEND_TAXILIST(a)           GetSession()->SendTaxiStatus(a)
 
-// Function to send the Auction List, a - npc guid(uint64), b - pointer to npc(Creature*)
-#define SEND_AUCTIONLIST(a, b)     GetSession()->SendAuctionHello(a, b)
-
-// Ressurect's the player if is dead.
-#define SEND_SPRESURRECT()         GetSession()->SendSpiritResurrect()
-
-// Get the player's honor rank.
-#define GET_HONORRANK()            GetHonorRank()
-// -----------------------------------
-
-// defined fuctions to use with Creature
-
-#define QUEST_DIALOG_STATUS(a, b, c)   GetSession()->getDialogStatus(a, b, c)
 #endif

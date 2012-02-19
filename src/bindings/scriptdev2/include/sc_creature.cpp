@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software licensed under GPL version 2
  * Please see the included DOCS/LICENSE.TXT for more information */
 
@@ -20,6 +20,13 @@ ScriptedAI::ScriptedAI(Creature* pCreature) : CreatureAI(pCreature),
     m_uiEvadeCheckCooldown(2500)
 {}
 
+/// This function shows if combat movement is enabled, overwrite for more info
+void ScriptedAI::GetAIInformation(ChatHandler& reader)
+{
+    reader.PSendSysMessage("ScriptedAI, combat movement is %s", reader.GetOnOffStr(m_bCombatMovement));
+}
+
+/// Return if the creature can "see" pWho
 bool ScriptedAI::IsVisible(Unit* pWho) const
 {
     if (!pWho)
@@ -28,12 +35,21 @@ bool ScriptedAI::IsVisible(Unit* pWho) const
     return m_creature->IsWithinDist(pWho, VISIBLE_RANGE) && pWho->isVisibleForOrDetect(m_creature, m_creature, true);
 }
 
+/**
+ * This function triggers the creature attacking pWho, depending on conditions like:
+ * - Can the creature start an attack?
+ * - Is pWho hostile to the creature?
+ * - Can the creature reach pWho?
+ * - Is pWho in aggro-range?
+ * If the creature can attack pWho, it will if it has no victim.
+ * Inside dungeons, the creature will get into combat with pWho, even if it has already a victim
+ */
 void ScriptedAI::MoveInLineOfSight(Unit* pWho)
 {
     if (m_creature->CanInitiateAttack() && pWho->isTargetableForAttack() &&
         m_creature->IsHostileTo(pWho) && pWho->isInAccessablePlaceFor(m_creature))
     {
-        if (!m_creature->canFly() && m_creature->GetDistanceZ(pWho) > CREATURE_Z_ATTACK_RANGE)
+        if (!m_creature->CanFly() && m_creature->GetDistanceZ(pWho) > CREATURE_Z_ATTACK_RANGE)
             return;
 
         if (m_creature->IsWithinDistInMap(pWho, m_creature->GetAttackDistance(pWho)) && m_creature->IsWithinLOSInMap(pWho))
@@ -52,12 +68,13 @@ void ScriptedAI::MoveInLineOfSight(Unit* pWho)
     }
 }
 
+/**
+ * This function sets the TargetGuid for the creature if required
+ * Also it will handle the combat movement (chase movement), depending on SetCombatMovement(bool)
+ */
 void ScriptedAI::AttackStart(Unit* pWho)
 {
-    if (!pWho)
-        return;
-
-    if (m_creature->Attack(pWho, true))
+    if (pWho && m_creature->Attack(pWho, true))             // The Attack function also uses basic checks if pWho can be attacked
     {
         m_creature->AddThreat(pWho);
         m_creature->SetInCombatWith(pWho);
@@ -68,41 +85,45 @@ void ScriptedAI::AttackStart(Unit* pWho)
     }
 }
 
+/**
+ * This function only calls Aggro, which is to be used for scripting purposes
+ */
 void ScriptedAI::EnterCombat(Unit* pEnemy)
 {
-    if (!pEnemy)
-        return;
-
-    Aggro(pEnemy);
+    if (pEnemy)
+        Aggro(pEnemy);
 }
 
-void ScriptedAI::Aggro(Unit* pEnemy)
-{
-}
-
+/**
+ * Main update function, by default let the creature behave as expected by a mob (threat management and melee dmg)
+ * Always handle here threat-management with m_creature->SelectHostileTarget()
+ * Handle (if required) melee attack with DoMeleeAttackIfReady()
+ * This is usally overwritten to support timers for ie spells
+ */
 void ScriptedAI::UpdateAI(const uint32 uiDiff)
 {
     //Check if we have a current target
     if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
         return;
 
-    if (m_creature->isAttackReady())
-    {
-        //If we are within range melee the target
-        if (m_creature->IsWithinDistInMap(m_creature->getVictim(), ATTACK_DISTANCE))
-        {
-            m_creature->AttackerStateUpdate(m_creature->getVictim());
-            m_creature->resetAttackTimer();
-        }
-    }
+    DoMeleeAttackIfReady();
 }
 
+/**
+ * This function cleans up the combat state if the creature evades
+ * It will:
+ * - Drop Auras
+ * - Drop all threat
+ * - Stop combat
+ * - Move the creature home
+ * - Clear tagging for loot
+ * - call Reset()
+ */
 void ScriptedAI::EnterEvadeMode()
 {
     m_creature->RemoveAllAuras();
     m_creature->DeleteThreatList();
     m_creature->CombatStop(true);
-    m_creature->LoadCreaturesAddon();
 
     if (m_creature->isAlive())
         m_creature->GetMotionMaster()->MoveTargetedHome();
@@ -112,6 +133,7 @@ void ScriptedAI::EnterEvadeMode()
     Reset();
 }
 
+/// This function calls Reset() to reset variables as expected
 void ScriptedAI::JustRespawned()
 {
     Reset();
@@ -130,20 +152,6 @@ void ScriptedAI::DoStartNoMovement(Unit* pVictim)
 
     m_creature->GetMotionMaster()->MoveIdle();
     m_creature->StopMoving();
-}
-
-void ScriptedAI::DoMeleeAttackIfReady()
-{
-    //Make sure our attack is ready before checking distance
-    if (m_creature->isAttackReady())
-    {
-        //If we are within range melee the target
-        if (m_creature->IsWithinDistInMap(m_creature->getVictim(), ATTACK_DISTANCE))
-        {
-            m_creature->AttackerStateUpdate(m_creature->getVictim());
-            m_creature->resetAttackTimer();
-        }
-    }
 }
 
 void ScriptedAI::DoStopAttack()
@@ -187,38 +195,7 @@ Creature* ScriptedAI::DoSpawnCreature(uint32 uiId, float fX, float fY, float fZ,
     return m_creature->SummonCreature(uiId,m_creature->GetPositionX()+fX, m_creature->GetPositionY()+fY, m_creature->GetPositionZ()+fZ, fAngle, (TempSummonType)uiType, uiDespawntime);
 }
 
-Unit* ScriptedAI::SelectUnit(SelectAggroTarget target, uint32 uiPosition)
-{
-    //ThreatList m_threatlist;
-    ThreatList const& threatlist = m_creature->getThreatManager().getThreatList();
-    ThreatList::const_iterator itr = threatlist.begin();
-    ThreatList::const_reverse_iterator ritr = threatlist.rbegin();
-
-    if (uiPosition >= threatlist.size() || threatlist.empty())
-        return NULL;
-
-    switch (target)
-    {
-        case SELECT_TARGET_RANDOM:
-            advance(itr, uiPosition +  (rand() % (threatlist.size() - uiPosition)));
-            return Unit::GetUnit((*m_creature),(*itr)->getUnitGuid());
-            break;
-
-        case SELECT_TARGET_TOPAGGRO:
-            advance(itr, uiPosition);
-            return Unit::GetUnit((*m_creature),(*itr)->getUnitGuid());
-            break;
-
-        case SELECT_TARGET_BOTTOMAGGRO:
-            advance(ritr, uiPosition);
-            return Unit::GetUnit((*m_creature),(*ritr)->getUnitGuid());
-            break;
-    }
-
-    return NULL;
-}
-
-SpellEntry const* ScriptedAI::SelectSpell(Unit* pTarget, int32 uiSchool, int32 uiMechanic, SelectTarget selectTargets, uint32 uiPowerCostMin, uint32 uiPowerCostMax, float fRangeMin, float fRangeMax, SelectEffect selectEffects)
+SpellEntry const* ScriptedAI::SelectSpell(Unit* pTarget, int32 uiSchool, int32 iMechanic, SelectTarget selectTargets, uint32 uiPowerCostMin, uint32 uiPowerCostMax, float fRangeMin, float fRangeMax, SelectEffect selectEffects)
 {
     //No target so we can't cast
     if (!pTarget)
@@ -238,7 +215,7 @@ SpellEntry const* ScriptedAI::SelectSpell(Unit* pTarget, int32 uiSchool, int32 u
     SpellRangeEntry const* pTempRange;
 
     //Check if each spell is viable(set it to null if not)
-    for (uint32 i = 0; i < 4; ++i)
+    for (uint8 i = 0; i < 4; ++i)
     {
         pTempSpell = GetSpellStore()->LookupEntry(m_creature->m_spells[i]);
 
@@ -260,7 +237,7 @@ SpellEntry const* ScriptedAI::SelectSpell(Unit* pTarget, int32 uiSchool, int32 u
             continue;
 
         //Check for spell mechanic if specified
-        if (uiMechanic >= 0 && pTempSpell->Mechanic != uiMechanic)
+        if (iMechanic >= 0 && pTempSpell->Mechanic != (uint32)iMechanic)
             continue;
 
         //Make sure that the spell uses the requested amount of power
@@ -301,7 +278,7 @@ SpellEntry const* ScriptedAI::SelectSpell(Unit* pTarget, int32 uiSchool, int32 u
     if (!uiSpellCount)
         return NULL;
 
-    return apSpell[rand()%uiSpellCount];
+    return apSpell[urand(0, uiSpellCount -1)];
 }
 
 bool ScriptedAI::CanCast(Unit* pTarget, SpellEntry const* pSpellEntry, bool bTriggered)
@@ -337,7 +314,7 @@ void FillSpellSummary()
 
     SpellEntry const* pTempSpell;
 
-    for (uint32 i=0; i < GetSpellStore()->GetNumRows(); ++i)
+    for (uint32 i = 0; i < GetSpellStore()->GetNumRows(); ++i)
     {
         SpellSummary[i].Effects = 0;
         SpellSummary[i].Targets = 0;
@@ -347,7 +324,7 @@ void FillSpellSummary()
         if (!pTempSpell)
             continue;
 
-        for (int j=0; j<3; ++j)
+        for (uint8 j = 0; j < 3; ++j)
         {
             //Spell targets self
             if (pTempSpell->EffectImplicitTargetA[j] == TARGET_SELF)
@@ -427,7 +404,7 @@ void ScriptedAI::DoResetThreat()
     ThreatList const& tList = m_creature->getThreatManager().getThreatList();
     for (ThreatList::const_iterator itr = tList.begin();itr != tList.end(); ++itr)
     {
-        Unit* pUnit = Unit::GetUnit((*m_creature), (*itr)->getUnitGuid());
+        Unit* pUnit = m_creature->GetMap()->GetUnit((*itr)->getUnitGuid());
 
         if (pUnit && m_creature->getThreatManager().getThreat(pUnit))
             m_creature->getThreatManager().modifyThreatPercent(pUnit, -100);
@@ -436,11 +413,12 @@ void ScriptedAI::DoResetThreat()
 
 void ScriptedAI::DoTeleportPlayer(Unit* pUnit, float fX, float fY, float fZ, float fO)
 {
-    if (!pUnit || pUnit->GetTypeId() != TYPEID_PLAYER)
-    {
-        if (pUnit)
-            error_log("SD2: Creature " UI64FMTD " (Entry: %u) Tried to teleport non-player unit (Type: %u GUID: " UI64FMTD ") to x: %f y:%f z: %f o: %f. Aborted.", m_creature->GetGUID(), m_creature->GetEntry(), pUnit->GetTypeId(), pUnit->GetGUID(), fX, fY, fZ, fO);
+    if (!pUnit)
+        return;
 
+    if (pUnit->GetTypeId() != TYPEID_PLAYER)
+    {
+        error_log("SD2: %s tried to teleport non-player (%s) to x: %f y:%f z: %f o: %f. Aborted.", m_creature->GetGuidStr().c_str(), pUnit->GetGuidStr().c_str(), fX, fY, fZ, fO);
         return;
     }
 
@@ -449,61 +427,36 @@ void ScriptedAI::DoTeleportPlayer(Unit* pUnit, float fX, float fY, float fZ, flo
 
 Unit* ScriptedAI::DoSelectLowestHpFriendly(float fRange, uint32 uiMinHPDiff)
 {
-    CellPair p(MaNGOS::ComputeCellPair(m_creature->GetPositionX(), m_creature->GetPositionY()));
-    Cell cell(p);
-    cell.data.Part.reserved = ALL_DISTRICT;
-    cell.SetNoCreate();
-
     Unit* pUnit = NULL;
 
-    MaNGOS::MostHPMissingInRange u_check(m_creature, fRange, uiMinHPDiff);
-    MaNGOS::UnitLastSearcher<MaNGOS::MostHPMissingInRange> searcher(m_creature, pUnit, u_check);
+    MaNGOS::MostHPMissingInRangeCheck u_check(m_creature, fRange, uiMinHPDiff);
+    MaNGOS::UnitLastSearcher<MaNGOS::MostHPMissingInRangeCheck> searcher(pUnit, u_check);
 
-    /*
-    typedef TYPELIST_4(GameObject, Creature*except pets*, DynamicObject, Corpse*Bones*) AllGridObjectTypes;
-    This means that if we only search grid then we cannot possibly return pets or players so this is safe
-    */
-    TypeContainerVisitor<MaNGOS::UnitLastSearcher<MaNGOS::MostHPMissingInRange>, GridTypeMapContainer >  grid_unit_searcher(searcher);
-
-    cell.Visit(p, grid_unit_searcher, *(m_creature->GetMap()), *m_creature, fRange);
+    Cell::VisitGridObjects(m_creature, searcher, fRange);
 
     return pUnit;
 }
 
 std::list<Creature*> ScriptedAI::DoFindFriendlyCC(float fRange)
 {
-    CellPair p(MaNGOS::ComputeCellPair(m_creature->GetPositionX(), m_creature->GetPositionY()));
-    Cell cell(p);
-    cell.data.Part.reserved = ALL_DISTRICT;
-    cell.SetNoCreate();
-
     std::list<Creature*> pList;
 
-    MaNGOS::FriendlyCCedInRange u_check(m_creature, fRange);
-    MaNGOS::CreatureListSearcher<MaNGOS::FriendlyCCedInRange> searcher(m_creature, pList, u_check);
+    MaNGOS::FriendlyCCedInRangeCheck u_check(m_creature, fRange);
+    MaNGOS::CreatureListSearcher<MaNGOS::FriendlyCCedInRangeCheck> searcher(pList, u_check);
 
-    TypeContainerVisitor<MaNGOS::CreatureListSearcher<MaNGOS::FriendlyCCedInRange>, GridTypeMapContainer >  grid_creature_searcher(searcher);
-
-    cell.Visit(p, grid_creature_searcher, *(m_creature->GetMap()), *m_creature, fRange);
+    Cell::VisitGridObjects(m_creature, searcher, fRange);
 
     return pList;
 }
 
 std::list<Creature*> ScriptedAI::DoFindFriendlyMissingBuff(float fRange, uint32 uiSpellId)
 {
-    CellPair p(MaNGOS::ComputeCellPair(m_creature->GetPositionX(), m_creature->GetPositionY()));
-    Cell cell(p);
-    cell.data.Part.reserved = ALL_DISTRICT;
-    cell.SetNoCreate();
-
     std::list<Creature*> pList;
 
-    MaNGOS::FriendlyMissingBuffInRange u_check(m_creature, fRange, uiSpellId);
-    MaNGOS::CreatureListSearcher<MaNGOS::FriendlyMissingBuffInRange> searcher(m_creature, pList, u_check);
+    MaNGOS::FriendlyMissingBuffInRangeCheck u_check(m_creature, fRange, uiSpellId);
+    MaNGOS::CreatureListSearcher<MaNGOS::FriendlyMissingBuffInRangeCheck> searcher(pList, u_check);
 
-    TypeContainerVisitor<MaNGOS::CreatureListSearcher<MaNGOS::FriendlyMissingBuffInRange>, GridTypeMapContainer >  grid_creature_searcher(searcher);
-
-    cell.Visit(p, grid_creature_searcher, *(m_creature->GetMap()), *m_creature, fRange);
+    Cell::VisitGridObjects(m_creature, searcher, fRange);
 
     return pList;
 }
@@ -512,39 +465,30 @@ Player* ScriptedAI::GetPlayerAtMinimumRange(float fMinimumRange)
 {
     Player* pPlayer = NULL;
 
-    CellPair pair(MaNGOS::ComputeCellPair(m_creature->GetPositionX(), m_creature->GetPositionY()));
-    Cell cell(pair);
-    cell.data.Part.reserved = ALL_DISTRICT;
-    cell.SetNoCreate();
+    MaNGOS::AnyPlayerInObjectRangeCheck check(m_creature, fMinimumRange);
+    MaNGOS::PlayerSearcher<MaNGOS::AnyPlayerInObjectRangeCheck> searcher(pPlayer, check);
 
-    PlayerAtMinimumRangeAway check(m_creature, fMinimumRange);
-    MaNGOS::PlayerSearcher<PlayerAtMinimumRangeAway> searcher(m_creature, pPlayer, check);
-    TypeContainerVisitor<MaNGOS::PlayerSearcher<PlayerAtMinimumRangeAway>, GridTypeMapContainer> visitor(searcher);
-
-    Map * map = m_creature->GetMap();
-    //lets limit the maximum player search distance to speed up calculations...
-    const float fMaxSearchDst = map->GetVisibilityDistance() > MAX_PLAYER_STEALTH_DETECT_RANGE ? MAX_PLAYER_STEALTH_DETECT_RANGE : map->GetVisibilityDistance();
-    cell.Visit(pair, visitor, *map, *m_creature, fMaxSearchDst);
+    Cell::VisitWorldObjects(m_creature, searcher, fMinimumRange);
 
     return pPlayer;
 }
 
-void ScriptedAI::SetEquipmentSlots(bool bLoadDefault, int32 uiMainHand, int32 uiOffHand, int32 uiRanged)
+void ScriptedAI::SetEquipmentSlots(bool bLoadDefault, int32 iMainHand, int32 iOffHand, int32 iRanged)
 {
     if (bLoadDefault)
     {
-        m_creature->LoadEquipment(m_creature->GetCreatureInfo()->equipmentId,true);
+        m_creature->LoadEquipment(m_creature->GetCreatureInfo()->equipmentId, true);
         return;
     }
 
-    if (uiMainHand >= 0)
-        m_creature->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, uint32(uiMainHand));
+    if (iMainHand >= 0)
+        m_creature->SetVirtualItem(VIRTUAL_ITEM_SLOT_0, iMainHand);
 
-    if (uiOffHand >= 0)
-        m_creature->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 1, uint32(uiOffHand));
+    if (iOffHand >= 0)
+        m_creature->SetVirtualItem(VIRTUAL_ITEM_SLOT_1, iOffHand);
 
-    if (uiRanged >= 0)
-        m_creature->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 2, uint32(uiRanged));
+    if (iRanged >= 0)
+        m_creature->SetVirtualItem(VIRTUAL_ITEM_SLOT_2, iRanged);
 }
 
 void ScriptedAI::SetCombatMovement(bool bCombatMove)
@@ -556,10 +500,13 @@ void ScriptedAI::SetCombatMovement(bool bCombatMove)
 // It is assumed the information is found elswehere and can be handled by mangos. So far no luck finding such information/way to extract it.
 enum
 {
-    NPC_BROODLORD   = 12017,
-    NPC_VOID_REAVER = 19516,
-    NPC_JAN_ALAI    = 23578,
-    NPC_SARTHARION  = 28860
+    NPC_BROODLORD               = 12017,
+    NPC_VOID_REAVER             = 19516,
+    NPC_JAN_ALAI                = 23578,
+    NPC_SARTHARION              = 28860,
+    NPC_TALON_KING_IKISS        = 18473,
+    NPC_KARGATH_BLADEFIST       = 16808,
+    NPC_ANUBARAK                = 29120,
 };
 
 bool ScriptedAI::EnterEvadeIfOutOfCombatArea(const uint32 uiDiff)
@@ -597,6 +544,22 @@ bool ScriptedAI::EnterEvadeIfOutOfCombatArea(const uint32 uiDiff)
             if (fX > 3218.86f && fX < 3275.69f && fY < 572.40f && fY > 484.68f)
                 return false;
             break;
+        case NPC_TALON_KING_IKISS:
+        {
+            float fX, fY, fZ;
+            m_creature->GetRespawnCoord(fX, fY, fZ);
+            if (m_creature->GetDistance2d(fX, fY) < 70.0f)
+                return false;
+            break;
+        }
+        case NPC_KARGATH_BLADEFIST:
+            if (fX < 255.0f && fX > 205.0f)
+                return false;
+            break;
+        case NPC_ANUBARAK:
+            if (fY < 281.0f && fY > 228.0f)
+                return false;
+            break;
         default:
             error_log("SD2: EnterEvadeIfOutOfCombatArea used for creature entry %u, but does not have any definition.", m_creature->GetEntry());
             return false;
@@ -606,12 +569,14 @@ bool ScriptedAI::EnterEvadeIfOutOfCombatArea(const uint32 uiDiff)
     return true;
 }
 
+void Scripted_NoMovementAI::GetAIInformation(ChatHandler& reader)
+{
+    reader.PSendSysMessage("Subclass of Scripted_NoMovementAI");
+}
+
 void Scripted_NoMovementAI::AttackStart(Unit* pWho)
 {
-    if (!pWho)
-        return;
-
-    if (m_creature->Attack(pWho, true))
+    if (pWho && m_creature->Attack(pWho, true))
     {
         m_creature->AddThreat(pWho);
         m_creature->SetInCombatWith(pWho);

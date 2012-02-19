@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: Netherstorm
 SD%Complete: 80
-SDComment: Quest support: 10438, 10652 (special flight paths), 10299, 10321, 10322, 10323, 10329, 10330, 10338, 10365(Shutting Down Manaforge), 10198
+SDComment: Quest support: 10438, 10299, 10321, 10322, 10323, 10329, 10330, 10337, 10338, 10365(Shutting Down Manaforge), 10198, 10191, 10924
 SDCategory: Netherstorm
 EndScriptData */
 
@@ -26,10 +26,13 @@ npc_manaforge_control_console
 go_manaforge_control_console
 npc_commander_dawnforge
 npc_protectorate_nether_drake
-npc_veronia
+npc_bessy
+npc_maxx_a_million
 EndContentData */
 
 #include "precompiled.h"
+#include "escort_ai.h"
+#include "pet_ai.h"
 
 /*######
 ## npc_manaforge_control_console
@@ -78,8 +81,8 @@ struct MANGOS_DLL_DECL npc_manaforge_control_consoleAI : public ScriptedAI
 {
     npc_manaforge_control_consoleAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    uint64 m_uiPlayerGUID;
-    uint64 m_uiConsoleGUID;
+    ObjectGuid m_playerGuid;
+    ObjectGuid m_consoleGuid;
     uint32 m_uiEventTimer;
     uint32 m_uiWaveTimer;
     uint32 m_uiPhase;
@@ -87,8 +90,8 @@ struct MANGOS_DLL_DECL npc_manaforge_control_consoleAI : public ScriptedAI
 
     void Reset()
     {
-        m_uiPlayerGUID = 0;
-        m_uiConsoleGUID = 0;
+        m_playerGuid.Clear();
+        m_consoleGuid.Clear();
         m_uiEventTimer = 3000;
         m_uiWaveTimer = 0;
         m_uiPhase = 1;
@@ -107,38 +110,33 @@ struct MANGOS_DLL_DECL npc_manaforge_control_consoleAI : public ScriptedAI
     {
         DoScriptText(EMOTE_ABORT, m_creature);
 
-        if (m_uiPlayerGUID)
+        Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid);
+
+        if (pPlayer)
         {
-            Unit* pPlayer = Unit::GetUnit((*m_creature), m_uiPlayerGUID);
-            if (pPlayer && pPlayer->GetTypeId() == TYPEID_PLAYER)
+            switch(m_creature->GetEntry())
             {
-                switch(m_creature->GetEntry())
-                {
-                    case NPC_BNAAR_C_CONSOLE:
-                        ((Player*)pPlayer)->FailQuest(QUEST_SHUTDOWN_BNAAR_ALDOR);
-                        ((Player*)pPlayer)->FailQuest(QUEST_SHUTDOWN_BNAAR_SCRYERS);
-                        break;
-                    case NPC_CORUU_C_CONSOLE:
-                        ((Player*)pPlayer)->FailQuest(QUEST_SHUTDOWN_CORUU_ALDOR);
-                        ((Player*)pPlayer)->FailQuest(QUEST_SHUTDOWN_CORUU_SCRYERS);
-                        break;
-                    case NPC_DURO_C_CONSOLE:
-                        ((Player*)pPlayer)->FailQuest(QUEST_SHUTDOWN_DURO_ALDOR);
-                        ((Player*)pPlayer)->FailQuest(QUEST_SHUTDOWN_DURO_SCRYERS);
-                        break;
-                    case NPC_ARA_C_CONSOLE:
-                        ((Player*)pPlayer)->FailQuest(QUEST_SHUTDOWN_ARA_ALDOR);
-                        ((Player*)pPlayer)->FailQuest(QUEST_SHUTDOWN_ARA_SCRYERS);
-                        break;
-                }
+                case NPC_BNAAR_C_CONSOLE:
+                    pPlayer->FailQuest(QUEST_SHUTDOWN_BNAAR_ALDOR);
+                    pPlayer->FailQuest(QUEST_SHUTDOWN_BNAAR_SCRYERS);
+                    break;
+                case NPC_CORUU_C_CONSOLE:
+                    pPlayer->FailQuest(QUEST_SHUTDOWN_CORUU_ALDOR);
+                    pPlayer->FailQuest(QUEST_SHUTDOWN_CORUU_SCRYERS);
+                    break;
+                case NPC_DURO_C_CONSOLE:
+                    pPlayer->FailQuest(QUEST_SHUTDOWN_DURO_ALDOR);
+                    pPlayer->FailQuest(QUEST_SHUTDOWN_DURO_SCRYERS);
+                    break;
+                case NPC_ARA_C_CONSOLE:
+                    pPlayer->FailQuest(QUEST_SHUTDOWN_ARA_ALDOR);
+                    pPlayer->FailQuest(QUEST_SHUTDOWN_ARA_SCRYERS);
+                    break;
             }
         }
 
-        if (m_uiConsoleGUID)
-        {
-            if (GameObject* pGo = m_creature->GetMap()->GetGameObject(m_uiConsoleGUID))
-                pGo->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE);
-        }
+        if (GameObject* pGo = m_creature->GetMap()->GetGameObject(m_consoleGuid))
+            pGo->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE);
     }
 
     void DoWaveSpawnForCreature(Creature* pCreature)
@@ -237,15 +235,17 @@ struct MANGOS_DLL_DECL npc_manaforge_control_consoleAI : public ScriptedAI
     {
         if (m_uiEventTimer < uiDiff)
         {
-            if (!m_uiPlayerGUID)
-                return;
+            Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid);
 
-            Unit* pPlayer = Unit::GetUnit((*m_creature), m_uiPlayerGUID);
             if (!pPlayer)
-                return;
+            {
+                // Reset Event
+                if (GameObject* pGo = m_creature->GetMap()->GetGameObject(m_consoleGuid))
+                    pGo->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE);
 
-            if (pPlayer->GetTypeId() != TYPEID_PLAYER)
+                m_creature->ForcedDespawn();
                 return;
+            }
 
             switch(m_uiPhase)
             {
@@ -274,13 +274,12 @@ struct MANGOS_DLL_DECL npc_manaforge_control_consoleAI : public ScriptedAI
                     break;
                 case 5:
                     DoScriptText(EMOTE_COMPLETE, m_creature, pPlayer);
-                    ((Player*)pPlayer)->KilledMonsterCredit(m_creature->GetEntry(), m_creature->GetGUID());
+                    pPlayer->KilledMonsterCredit(m_creature->GetEntry(), m_creature->GetObjectGuid());
                     DoCastSpellIfCan(m_creature, SPELL_DISABLE_VISUAL);
-                    if (m_uiConsoleGUID)
-                    {
-                        if (GameObject* pGo = m_creature->GetMap()->GetGameObject(m_uiConsoleGUID))
-                            pGo->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE);
-                    }
+
+                    if (GameObject* pGo = m_creature->GetMap()->GetGameObject(m_consoleGuid))
+                        pGo->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE);
+
                     ++m_uiPhase;
                     break;
             }
@@ -309,12 +308,12 @@ CreatureAI* GetAI_npc_manaforge_control_console(Creature* pCreature)
 ######*/
 
 // TODO: clean up this workaround when mangos adds support to do it properly (with gossip selections instead of instant summon)
-bool GOHello_go_manaforge_control_console(Player* pPlayer, GameObject* pGo)
+bool GOUse_go_manaforge_control_console(Player* pPlayer, GameObject* pGo)
 {
     if (pGo->GetGoType() == GAMEOBJECT_TYPE_QUESTGIVER)
     {
-        pPlayer->PrepareQuestMenu(pGo->GetGUID());
-        pPlayer->SendPreparedQuest(pGo->GetGUID());
+        pPlayer->PrepareQuestMenu(pGo->GetObjectGuid());
+        pPlayer->SendPreparedQuest(pGo->GetObjectGuid());
     }
 
     Creature* pManaforge = NULL;
@@ -351,8 +350,8 @@ bool GOHello_go_manaforge_control_console(Player* pPlayer, GameObject* pGo)
     {
         if (npc_manaforge_control_consoleAI* pManaforgeAI = dynamic_cast<npc_manaforge_control_consoleAI*>(pManaforge->AI()))
         {
-            pManaforgeAI->m_uiPlayerGUID = pPlayer->GetGUID();
-            pManaforgeAI->m_uiConsoleGUID = pGo->GetGUID();
+            pManaforgeAI->m_playerGuid = pPlayer->GetObjectGuid();
+            pManaforgeAI->m_consoleGuid = pGo->GetObjectGuid();
         }
 
         pGo->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE);
@@ -391,9 +390,9 @@ struct MANGOS_DLL_DECL npc_commander_dawnforgeAI : public ScriptedAI
 {
     npc_commander_dawnforgeAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset (); }
 
-    uint64 m_uiPlayerGUID;
-    uint64 m_uiArdonisGUID;
-    uint64 m_uiPathaleonGUID;
+    ObjectGuid m_playerGuid;
+    ObjectGuid m_ardonisGuid;
+    ObjectGuid m_pathaleonGuid;
 
     uint32 m_uiPhase;
     uint32 m_uiPhaseSubphase;
@@ -402,9 +401,9 @@ struct MANGOS_DLL_DECL npc_commander_dawnforgeAI : public ScriptedAI
 
     void Reset()
     {
-        m_uiPlayerGUID = 0;
-        m_uiArdonisGUID = 0;
-        m_uiPathaleonGUID = 0;
+        m_playerGuid.Clear();
+        m_ardonisGuid.Clear();
+        m_pathaleonGuid.Clear();
 
         m_uiPhase = 1;
         m_uiPhaseSubphase = 0;
@@ -415,14 +414,14 @@ struct MANGOS_DLL_DECL npc_commander_dawnforgeAI : public ScriptedAI
     void JustSummoned(Creature* pSummoned)
     {
         if (pSummoned->GetEntry() == NPC_PATHALEON_THE_CALCULATOR_IMAGE)
-            m_uiPathaleonGUID = pSummoned->GetGUID();
+            m_pathaleonGuid = pSummoned->GetObjectGuid();
     }
 
     void TurnToPathaleonsImage()
     {
-        Unit* pArdonis = Unit::GetUnit(*m_creature, m_uiArdonisGUID);
-        Unit* pPathaleon = Unit::GetUnit(*m_creature, m_uiPathaleonGUID);
-        Player* pPlayer = (Player*)Unit::GetUnit(*m_creature, m_uiPlayerGUID);
+        Creature* pArdonis = m_creature->GetMap()->GetCreature(m_ardonisGuid);
+        Creature* pPathaleon = m_creature->GetMap()->GetCreature(m_pathaleonGuid);
+        Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid);
 
         if (!pArdonis || !pPathaleon || !pPlayer)
             return;
@@ -437,9 +436,9 @@ struct MANGOS_DLL_DECL npc_commander_dawnforgeAI : public ScriptedAI
 
     void TurnToEachOther()
     {
-        if (Unit* pArdonis = Unit::GetUnit(*m_creature, m_uiArdonisGUID))
+        if (Creature* pArdonis = m_creature->GetMap()->GetCreature(m_ardonisGuid))
         {
-            Player* pPlayer = (Player*)Unit::GetUnit(*m_creature, m_uiPlayerGUID);
+            Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid);
 
             if (!pPlayer)
                 return;
@@ -462,8 +461,8 @@ struct MANGOS_DLL_DECL npc_commander_dawnforgeAI : public ScriptedAI
             if (!pArdonis)
                 return false;
 
-            m_uiArdonisGUID = pArdonis->GetGUID();
-            m_uiPlayerGUID = pPlayer->GetGUID();
+            m_ardonisGuid = pArdonis->GetObjectGuid();
+            m_playerGuid = pPlayer->GetObjectGuid();
 
             m_bIsEvent = true;
 
@@ -488,9 +487,9 @@ struct MANGOS_DLL_DECL npc_commander_dawnforgeAI : public ScriptedAI
             return;
         }
 
-        Unit* pArdonis = Unit::GetUnit(*m_creature, m_uiArdonisGUID);
-        Unit* pPathaleon = Unit::GetUnit(*m_creature, m_uiPathaleonGUID);
-        Player* pPlayer = (Player*)Unit::GetUnit(*m_creature, m_uiPlayerGUID);
+        Creature* pArdonis = m_creature->GetMap()->GetCreature(m_ardonisGuid);
+        Creature* pPathaleon = m_creature->GetMap()->GetCreature(m_pathaleonGuid);
+        Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid);
 
         if (!pArdonis || !pPlayer)
         {
@@ -597,7 +596,7 @@ CreatureAI* GetAI_npc_commander_dawnforge(Creature* pCreature)
     return new npc_commander_dawnforgeAI(pCreature);
 }
 
-bool AreaTrigger_at_commander_dawnforge(Player* pPlayer, AreaTriggerEntry *at)
+bool AreaTrigger_at_commander_dawnforge(Player* pPlayer, AreaTriggerEntry const* pAt)
 {
     // if player lost aura or not have at all, we should not try start event.
     if (!pPlayer->HasAura(SPELL_SUNFURY_DISGUISE, EFFECT_INDEX_0))
@@ -615,8 +614,6 @@ bool AreaTrigger_at_commander_dawnforge(Player* pPlayer, AreaTriggerEntry *at)
             pDawnforgeAI->CanStartEvent(pPlayer);
             return true;
         }
-
-
     }
     return false;
 }
@@ -640,7 +637,7 @@ bool GossipHello_npc_protectorate_nether_drake(Player* pPlayer, Creature* pCreat
     if (pPlayer->GetQuestStatus(QUEST_NETHER_WINGS) == QUEST_STATUS_INCOMPLETE && pPlayer->HasItemCount(ITEM_PH_DISRUPTOR, 1))
         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_FLY_ULTRIS, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
 
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
     return true;
 }
 
@@ -655,74 +652,313 @@ bool GossipSelect_npc_protectorate_nether_drake(Player* pPlayer, Creature* pCrea
 }
 
 /*######
-## npc_veronia
+## npc_bessy
 ######*/
 
 enum
 {
-    QUEST_BEHIND_ENEMY_LINES = 10652,
-    SPELL_STEALTH_FLIGHT     = 34905
+    QUEST_COWS_COME_HOME = 10337,
+
+    NPC_THADELL          = 20464,
+    NPC_TORMENTED_SOUL   = 20512,
+    NPC_SEVERED_SPIRIT   = 19881
 };
 
-#define GOSSIP_ITEM_FLY_CORUU  "Fly me to Manaforge Coruu please"
-
-bool GossipHello_npc_veronia(Player* pPlayer, Creature* pCreature)
+struct MANGOS_DLL_DECL npc_bessyAI : public npc_escortAI
 {
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetGUID());
+    npc_bessyAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
-    // Behind Enemy Lines
-    if (pPlayer->GetQuestStatus(QUEST_BEHIND_ENEMY_LINES) && !pPlayer->GetQuestRewardStatus(QUEST_BEHIND_ENEMY_LINES))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_FLY_CORUU, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
-
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
-
-    return true;
-}
-
-bool GossipSelect_npc_veronia(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_INFO_DEF)
+    void WaypointReached(uint32 uiPointId)
     {
-        pPlayer->CLOSE_GOSSIP_MENU();
-        pPlayer->CastSpell(pPlayer, SPELL_STEALTH_FLIGHT, true);//TaxiPath 606
+        switch(uiPointId)
+        {
+            case 3:
+                m_creature->SummonCreature(NPC_TORMENTED_SOUL, 2449.67f, 2183.11f, 96.85f, 6.20f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 25000);
+                m_creature->SummonCreature(NPC_TORMENTED_SOUL, 2449.53f, 2184.43f, 96.36f, 6.27f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 25000);
+                m_creature->SummonCreature(NPC_TORMENTED_SOUL, 2449.85f, 2186.34f, 97.57f, 6.08f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 25000);
+                break;
+            case 7:
+                m_creature->SummonCreature(NPC_SEVERED_SPIRIT, 2309.64f, 2186.24f, 92.25f, 6.06f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 25000);
+                m_creature->SummonCreature(NPC_SEVERED_SPIRIT, 2309.25f, 2183.46f, 91.75f, 6.22f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 25000);
+                break;
+            case 12:
+                if (Player* pPlayer = GetPlayerForEscort())
+                    pPlayer->GroupEventHappens(QUEST_COWS_COME_HOME, m_creature);
+                break;
+        }
+    }
+
+    void JustSummoned(Creature* pSummoned)
+    {
+        pSummoned->AI()->AttackStart(m_creature);
+    }
+
+    void Reset() {}
+};
+
+bool QuestAccept_npc_bessy(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+{
+    if (pQuest->GetQuestId() == QUEST_COWS_COME_HOME)
+    {
+        pCreature->setFaction(FACTION_ESCORT_N_NEUTRAL_PASSIVE);
+        pCreature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+
+        if (npc_bessyAI* pBessyAI = dynamic_cast<npc_bessyAI*>(pCreature->AI()))
+            pBessyAI->Start(true, pPlayer, pQuest);
     }
     return true;
 }
 
+CreatureAI* GetAI_npc_bessy(Creature* pCreature)
+{
+     return new npc_bessyAI(pCreature);
+}
+
+/*######
+## npc_maxx_a_million
+######*/
+
+enum
+{
+    QUEST_MARK_V_IS_ALIVE       = 10191,
+    NPC_BOT_SPECIALIST_ALLEY    = 19578,
+    GO_DRAENEI_MACHINE          = 183771,
+
+    SAY_START                   = -1000621,
+    SAY_ALLEY_FAREWELL          = -1000622,
+    SAY_CONTINUE                = -1000623,
+    SAY_ALLEY_FINISH            = -1000624
+};
+
+struct MANGOS_DLL_DECL npc_maxx_a_million_escortAI : public npc_escortAI
+{
+    npc_maxx_a_million_escortAI(Creature* pCreature) : npc_escortAI(pCreature) {Reset();}
+
+    uint8 m_uiSubEvent;
+    uint32 m_uiSubEventTimer;
+    ObjectGuid m_alleyGuid;
+    ObjectGuid m_lastDraeneiMachineGuid;
+
+    void Reset()
+    {
+        if (!HasEscortState(STATE_ESCORT_ESCORTING))
+        {
+            m_uiSubEvent = 0;
+            m_uiSubEventTimer = 0;
+            m_alleyGuid.Clear();
+            m_lastDraeneiMachineGuid.Clear();
+
+            // Reset fields, that were changed on escort-start
+            m_creature->HandleEmote(EMOTE_STATE_STUN);
+            // Faction is reset with npc_escortAI::JustRespawned();
+
+            // Unclear how these flags are set/removed in relation to the faction change at start of escort.
+            // Workaround here, so that the flags are removed during escort (and while not in evade mode)
+            m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE + UNIT_FLAG_PASSIVE);
+        }
+        else
+            m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE);
+    }
+
+    void WaypointReached(uint32 uiPoint)
+    {
+        switch (uiPoint)
+        {
+            case 1:
+                // turn 90 degrees , towards doorway.
+                m_creature->SetFacingTo(m_creature->GetOrientation() + (M_PI_F/2));
+                DoScriptText(SAY_START, m_creature);
+                m_uiSubEventTimer = 3000;
+                m_uiSubEvent = 1;
+                break;
+            case 7:
+            case 17:
+            case 29:
+                if (GameObject* pMachine = GetClosestGameObjectWithEntry(m_creature, GO_DRAENEI_MACHINE, INTERACTION_DISTANCE))
+                {
+                    m_creature->SetFacingToObject(pMachine);
+                    m_lastDraeneiMachineGuid = pMachine->GetObjectGuid();
+                    m_uiSubEvent = 2;
+                    m_uiSubEventTimer = 1000;
+                }
+                else
+                    m_lastDraeneiMachineGuid.Clear();
+
+                break;
+            case 36:
+                if (Player* pPlayer = GetPlayerForEscort())
+                    pPlayer->GroupEventHappens(QUEST_MARK_V_IS_ALIVE, m_creature);
+
+                if (Creature* pAlley = m_creature->GetMap()->GetCreature(m_alleyGuid))
+                    DoScriptText(SAY_ALLEY_FINISH, pAlley);
+
+                break;
+        }
+    }
+
+    void WaypointStart(uint32 uiPoint)
+    {
+        switch (uiPoint)
+        {
+            case 8:
+            case 18:
+            case 30:
+                DoScriptText(SAY_CONTINUE, m_creature);
+                break;
+        }
+    }
+
+    void UpdateEscortAI(const uint32 uiDiff)
+    {
+        if (!m_creature->SelectHostileTarget() ||  !m_creature->getVictim())
+        {
+            if (m_uiSubEventTimer)
+            {
+                if (m_uiSubEventTimer <= uiDiff)
+                {
+                    switch (m_uiSubEvent)
+                    {
+                        case 1:                             // Wait time before Say
+                            if (Creature* pAlley = GetClosestCreatureWithEntry(m_creature, NPC_BOT_SPECIALIST_ALLEY, INTERACTION_DISTANCE*2))
+                            {
+                                m_alleyGuid = pAlley->GetObjectGuid();
+                                DoScriptText(SAY_ALLEY_FAREWELL, pAlley);
+                            }
+                            m_uiSubEventTimer = 0;
+                            m_uiSubEvent = 0;
+                            break;
+                        case 2:                             // Short wait time after reached WP at machine
+                            m_creature->HandleEmote(EMOTE_ONESHOT_ATTACKUNARMED);
+                            m_uiSubEventTimer = 2000;
+                            m_uiSubEvent = 3;
+                            break;
+                        case 3:                             // Despawn machine after 2s
+                            if (GameObject* pMachine = m_creature->GetMap()->GetGameObject(m_lastDraeneiMachineGuid))
+                                pMachine->Use(m_creature);
+
+                            m_lastDraeneiMachineGuid.Clear();
+                            m_uiSubEventTimer = 0;
+                            m_uiSubEvent = 0;
+                            break;
+                        default:
+                            m_uiSubEventTimer = 0;
+                            break;
+                    }
+                }
+                else
+                    m_uiSubEventTimer -= uiDiff;
+            }
+        }
+        else
+            DoMeleeAttackIfReady();
+    }
+};
+
+CreatureAI* GetAI_npc_maxx_a_million(Creature* pCreature)
+{
+    return new npc_maxx_a_million_escortAI(pCreature);
+}
+
+bool QuestAccept_npc_maxx_a_million(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+{
+    if (pQuest->GetQuestId() == QUEST_MARK_V_IS_ALIVE)
+    {
+        if (npc_maxx_a_million_escortAI* pEscortAI = dynamic_cast<npc_maxx_a_million_escortAI*>(pCreature->AI()))
+        {
+            // Set Faction to Escort Faction
+            pCreature->setFaction(FACTION_ESCORT_N_NEUTRAL_PASSIVE);
+            // Set emote-state to 0 (is EMOTE_STATE_STUN by default)
+            pCreature->HandleEmote(EMOTE_ONESHOT_NONE);
+            // Remove unit_flags (see comment in JustReachedHome)
+            pCreature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE + UNIT_FLAG_PASSIVE);
+
+            pEscortAI->Start(false, pPlayer, pQuest, true);
+        }
+    }
+    return true;
+}
+
+/*######
+## npc_zeppit
+######*/
+
+enum
+{
+    EMOTE_GATHER_BLOOD          = -1000625,
+    NPC_WARP_CHASER             = 18884,
+    SPELL_GATHER_WARP_BLOOD     = 39244,                    // for quest 10924
+};
+
+struct MANGOS_DLL_DECL npc_zeppitAI : public ScriptedPetAI
+{
+    npc_zeppitAI(Creature* pCreature) : ScriptedPetAI(pCreature) { Reset(); }
+
+    void Reset() { }
+
+    void OwnerKilledUnit(Unit* pVictim)
+    {
+        if (pVictim->GetTypeId() == TYPEID_UNIT && pVictim->GetEntry() == NPC_WARP_CHASER)
+        {
+            // Distance not known, be assumed to be ~10 yards, possibly a bit less.
+            if (m_creature->IsWithinDistInMap(pVictim, 10.0f))
+            {
+                DoScriptText(EMOTE_GATHER_BLOOD, m_creature);
+                m_creature->CastSpell(m_creature, SPELL_GATHER_WARP_BLOOD, false);
+            }
+        }
+    }
+};
+
+CreatureAI* GetAI_npc_zeppit(Creature* pCreature)
+{
+    return new npc_zeppitAI(pCreature);
+}
+
 void AddSC_netherstorm()
 {
-    Script* NewScript;
+    Script* pNewScript;
 
-    NewScript = new Script;
-    NewScript->Name = "go_manaforge_control_console";
-    NewScript->pGOHello = &GOHello_go_manaforge_control_console;
-    NewScript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_manaforge_control_console";
+    pNewScript->pGOUse = &GOUse_go_manaforge_control_console;
+    pNewScript->RegisterSelf();
 
-    NewScript = new Script;
-    NewScript->Name = "npc_manaforge_control_console";
-    NewScript->GetAI = &GetAI_npc_manaforge_control_console;
-    NewScript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_manaforge_control_console";
+    pNewScript->GetAI = &GetAI_npc_manaforge_control_console;
+    pNewScript->RegisterSelf();
 
-    NewScript = new Script;
-    NewScript->Name = "npc_commander_dawnforge";
-    NewScript->GetAI = GetAI_npc_commander_dawnforge;
-    NewScript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_commander_dawnforge";
+    pNewScript->GetAI = GetAI_npc_commander_dawnforge;
+    pNewScript->RegisterSelf();
 
-    NewScript = new Script;
-    NewScript->Name = "at_commander_dawnforge";
-    NewScript->pAreaTrigger = &AreaTrigger_at_commander_dawnforge;
-    NewScript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "at_commander_dawnforge";
+    pNewScript->pAreaTrigger = &AreaTrigger_at_commander_dawnforge;
+    pNewScript->RegisterSelf();
 
-    NewScript = new Script;
-    NewScript->Name = "npc_protectorate_nether_drake";
-    NewScript->pGossipHello = &GossipHello_npc_protectorate_nether_drake;
-    NewScript->pGossipSelect = &GossipSelect_npc_protectorate_nether_drake;
-    NewScript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_protectorate_nether_drake";
+    pNewScript->pGossipHello = &GossipHello_npc_protectorate_nether_drake;
+    pNewScript->pGossipSelect = &GossipSelect_npc_protectorate_nether_drake;
+    pNewScript->RegisterSelf();
 
-    NewScript = new Script;
-    NewScript->Name = "npc_veronia";
-    NewScript->pGossipHello = &GossipHello_npc_veronia;
-    NewScript->pGossipSelect = &GossipSelect_npc_veronia;
-    NewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_bessy";
+    pNewScript->GetAI = &GetAI_npc_bessy;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_bessy;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_maxx_a_million";
+    pNewScript->GetAI = &GetAI_npc_maxx_a_million;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_maxx_a_million;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_zeppit";
+    pNewScript->GetAI = &GetAI_npc_zeppit;
+    pNewScript->RegisterSelf();
 }

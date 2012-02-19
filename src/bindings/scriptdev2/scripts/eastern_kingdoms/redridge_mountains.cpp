@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -71,8 +71,8 @@ struct MANGOS_DLL_DECL npc_corporal_keeshan_escortAI : public npc_escortAI
                 break;
         }
     }
-    
-	void WaypointReached(uint32 uiWP)
+
+    void WaypointReached(uint32 uiWP)
     {
         switch (uiWP)
         {
@@ -88,21 +88,15 @@ struct MANGOS_DLL_DECL npc_corporal_keeshan_escortAI : public npc_escortAI
         }
     }
 
-    void JustDied(Unit* pKiller)
-    {
-        if (Player* pPlayer = GetPlayerForEscort())
-            pPlayer->FailQuest(QUEST_MISSING_IN_ACTION);
-    }
-
     void UpdateEscortAI(const uint32 uiDiff)
     {
         //Combat check
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
-        
+
         if (m_uiMockingBlowTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(), SPELL_MOCKING_BLOW); 
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_MOCKING_BLOW);
             m_uiMockingBlowTimer = 5000;
         }
         else
@@ -132,20 +126,20 @@ bool QuestAccept_npc_corporal_keeshan(Player* pPlayer, Creature* pCreature, cons
         if (npc_corporal_keeshan_escortAI* pEscortAI = dynamic_cast<npc_corporal_keeshan_escortAI*>(pCreature->AI()))
         {
             DoScriptText(SAY_CORPORAL_KEESHAN_1, pCreature);
-            pEscortAI->Start(true, false, pPlayer->GetGUID(), pQuest);
+            pEscortAI->Start(false, pPlayer, pQuest);
         }
     }
-    return true;  
 
+    return true;
 }
 
 void AddSC_redridge_mountains()
 {
-    Script* NewScript;
+    Script* pNewScript;
 
-    NewScript = new Script;
-    NewScript->Name = "npc_corporal_keeshan";
-    NewScript->GetAI = &GetAI_npc_corporal_keeshan;
-    NewScript->pQuestAccept = &QuestAccept_npc_corporal_keeshan;
-    NewScript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_corporal_keeshan";
+    pNewScript->GetAI = &GetAI_npc_corporal_keeshan;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_corporal_keeshan;
+    pNewScript->RegisterSelf();
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -35,6 +35,10 @@ enum
     SAY_TAUNT3                  = -1533006,
     SAY_TAUNT4                  = -1533007,
     SAY_SLAY                    = -1533008,
+
+    EMOTE_CRYPT_GUARD           = -1533153,                 // NYI
+    EMOTE_INSECT_SWARM          = -1533154,                 // NYI
+    EMOTE_CORPSE_SCARABS        = -1533155,                 // NYI
 
     SPELL_IMPALE                = 28783,                    //May be wrong spell id. Causes more dmg than I expect
     SPELL_IMPALE_H              = 56090,
@@ -138,12 +142,12 @@ struct MANGOS_DLL_DECL boss_anubrekhanAI : public ScriptedAI
         // Impale
         if (m_uiImpaleTimer < uiDiff)
         {
-            //Cast Impale on a random target
-            //Do NOT cast it when we are afflicted by locust swarm
-            if (!m_creature->HasAura(SPELL_LOCUSTSWARM) || !m_creature->HasAura(SPELL_LOCUSTSWARM_H))
+            // Cast Impale on a random target
+            // Do NOT cast it when we are afflicted by locust swarm
+            if (!m_creature->HasAura(SPELL_LOCUSTSWARM) && !m_creature->HasAura(SPELL_LOCUSTSWARM_H))
             {
-                if (Unit* target = SelectUnit(SELECT_TARGET_RANDOM,0))
-                    DoCastSpellIfCan(target, m_bIsRegularMode ? SPELL_IMPALE : SPELL_IMPALE_H);
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                    DoCastSpellIfCan(pTarget, m_bIsRegularMode ? SPELL_IMPALE : SPELL_IMPALE_H);
             }
 
             m_uiImpaleTimer = 15000;
@@ -180,9 +184,10 @@ CreatureAI* GetAI_boss_anubrekhan(Creature* pCreature)
 
 void AddSC_boss_anubrekhan()
 {
-    Script* NewScript;
-    NewScript = new Script;
-    NewScript->Name = "boss_anubrekhan";
-    NewScript->GetAI = &GetAI_boss_anubrekhan;
-    NewScript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_anubrekhan";
+    pNewScript->GetAI = &GetAI_boss_anubrekhan;
+    pNewScript->RegisterSelf();
 }

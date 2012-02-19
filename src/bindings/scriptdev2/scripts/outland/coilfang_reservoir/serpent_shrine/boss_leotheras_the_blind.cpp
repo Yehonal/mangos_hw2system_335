@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -68,7 +68,6 @@ struct MANGOS_DLL_DECL boss_leotheras_the_blindAI : public ScriptedAI
     boss_leotheras_the_blindAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
         m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        m_uiShadowLeo = 0;
         Reset();
     }
 
@@ -83,14 +82,14 @@ struct MANGOS_DLL_DECL boss_leotheras_the_blindAI : public ScriptedAI
     bool m_bDemonForm;
     bool m_bIsFinalForm;
 
-    uint64 m_uiShadowLeo;
+    ObjectGuid m_shadowLeoGuid;
 
     void Reset()
     {
         m_uiWhirlwind_Timer  = 18500;
         m_uiInnerDemon_Timer = 15000;
         m_uiSwitch_Timer     = 45000;
-        m_uiEnrage_Timer     = MINUTE*10*IN_MILISECONDS;
+        m_uiEnrage_Timer     = MINUTE*10*IN_MILLISECONDS;
 
         m_bDemonForm   = false;
         m_bIsFinalForm = false;
@@ -127,7 +126,7 @@ struct MANGOS_DLL_DECL boss_leotheras_the_blindAI : public ScriptedAI
     {
         if (m_creature->getVictim() && pSummoned->GetEntry() == NPC_SHADOW_LEO)
         {
-            m_uiShadowLeo = pSummoned->GetGUID();
+            m_shadowLeoGuid = pSummoned->GetObjectGuid();
             pSummoned->AI()->AttackStart(m_creature->getVictim());
         }
     }
@@ -137,9 +136,9 @@ struct MANGOS_DLL_DECL boss_leotheras_the_blindAI : public ScriptedAI
         DoScriptText(SAY_DEATH, m_creature);
 
         //despawn copy
-        if (m_uiShadowLeo)
+        if (m_shadowLeoGuid)
         {
-            if (Creature* pShadowLeo = (Creature*)Unit::GetUnit((*m_creature), m_uiShadowLeo))
+            if (Creature* pShadowLeo = m_creature->GetMap()->GetCreature(m_shadowLeoGuid))
                 pShadowLeo->ForcedDespawn();
         }
 
@@ -266,7 +265,7 @@ struct MANGOS_DLL_DECL boss_leotheras_the_blindAI : public ScriptedAI
                 m_creature->InterruptNonMeleeSpells(false);
 
             DoCastSpellIfCan(m_creature, SPELL_ENRAGE);
-            m_uiEnrage_Timer = MINUTE*5*IN_MILISECONDS;
+            m_uiEnrage_Timer = MINUTE*5*IN_MILLISECONDS;
         }else m_uiEnrage_Timer -= uiDiff;
 
         if (!m_bDemonForm)
@@ -328,15 +327,15 @@ CreatureAI* GetAI_boss_leotheras_the_blind_demonform(Creature* pCreature)
 
 void AddSC_boss_leotheras_the_blind()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_leotheras_the_blind";
-    newscript->GetAI = &GetAI_boss_leotheras_the_blind;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_leotheras_the_blind";
+    pNewScript->GetAI = &GetAI_boss_leotheras_the_blind;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_leotheras_the_blind_demonform";
-    newscript->GetAI = &GetAI_boss_leotheras_the_blind_demonform;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_leotheras_the_blind_demonform";
+    pNewScript->GetAI = &GetAI_boss_leotheras_the_blind_demonform;
+    pNewScript->RegisterSelf();
 }

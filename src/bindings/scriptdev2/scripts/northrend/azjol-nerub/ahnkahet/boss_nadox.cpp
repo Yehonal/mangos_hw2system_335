@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: Boss_Nadox
 SD%Complete: 90%
-SDComment: TODO: some more research on guardian aura needed, BroodRage needs core and db support
+SDComment: Some adjustment may be required
 SDCategory: Ahn'kahet
 EndScriptData */
 
@@ -41,14 +41,11 @@ enum
     SPELL_BROOD_RAGE              = 59465,
 
     SPELL_GUARDIAN_AURA           = 56151,
-    SPELL_GUARDIAN_AURA_TRIGGERED = 56153,
 
     // JustSummoned is not called for spell summoned creatures
     SPELL_SUMMON_SWARM_GUARDIAN   = 56120,
     SPELL_SUMMON_SWARMERS         = 56119,
 
-    NPC_AHNKAHAR_GUARDIAN_EGG     = 30173,
-    NPC_AHNKAHAR_SWARM_EGG        = 30172,
     NPC_AHNKAHAR_GUARDIAN         = 30176,
     NPC_AHNKAHAR_SWARMER          = 30178
 };
@@ -73,16 +70,30 @@ struct MANGOS_DLL_DECL mob_ahnkahar_eggAI : public ScriptedAI
     void JustSummoned(Creature* pSummoned)
     {
         if (pSummoned->GetEntry() == NPC_AHNKAHAR_GUARDIAN)
+        {
+            pSummoned->CastSpell(pSummoned, SPELL_GUARDIAN_AURA, true);
             DoScriptText(EMOTE_HATCH, m_creature);
+        }
 
         if (m_pInstance)
         {
-            if (Creature*  pElderNadox = ((Creature*)Unit::GetUnit(*m_creature, m_pInstance->GetData64(NPC_ELDER_NADOX))))
+            if (Creature* pElderNadox = m_pInstance->GetSingleCreatureFromStorage(NPC_ELDER_NADOX))
             {
                 float fPosX, fPosY, fPosZ;
                 pElderNadox->GetPosition(fPosX, fPosY, fPosZ);
+                pSummoned->SetWalk(false);
                 pSummoned->GetMotionMaster()->MovePoint(0, fPosX, fPosY, fPosZ);
             }
+        }
+    }
+
+    void SummonedCreatureJustDied(Creature* pSummoned)
+    {
+        // If the Guardian is killed set the achiev criteria to false
+        if (pSummoned->GetEntry() == NPC_AHNKAHAR_GUARDIAN)
+        {
+            if (m_pInstance)
+                m_pInstance->SetData(TYPE_NADOX, SPECIAL);
         }
     }
 };
@@ -100,17 +111,16 @@ struct MANGOS_DLL_DECL boss_nadoxAI : public ScriptedAI
 {
     boss_nadoxAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (instance_ahnkahet*)pCreature->GetInstanceData();
         m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    instance_ahnkahet* m_pInstance;
     bool m_bIsRegularMode;
 
     bool   m_bBerserk;
     bool   m_bGuardianSummoned;
-    uint8  m_uiGuardianCount;
     uint32 m_uiBroodPlagueTimer;
     uint32 m_uiBroodRageTimer;
     uint32 m_uiSummonTimer;
@@ -119,29 +129,23 @@ struct MANGOS_DLL_DECL boss_nadoxAI : public ScriptedAI
     {
         m_bBerserk = false;
         m_bGuardianSummoned = false;
-        m_uiGuardianCount = 3;
         m_uiSummonTimer = 5000;
         m_uiBroodPlagueTimer = 15000;
         m_uiBroodRageTimer = 20000;
     }
 
-    Creature* SelectRandomCreatureOfEntryInRange(uint32 uiEntry, float fRange)
-    {
-        std::list<Creature* > lCreatureList;
-        GetCreatureListWithEntryInGrid(lCreatureList, m_creature, uiEntry, fRange);
-
-        if (lCreatureList.empty())
-            return NULL;
-
-        std::list<Creature* >::iterator iter = lCreatureList.begin();
-        advance(iter, urand(0, lCreatureList.size()-1));
-
-        return *iter;
-    }
-
     void Aggro(Unit* pWho)
     {
         DoScriptText(SAY_AGGRO, m_creature);
+
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_NADOX, IN_PROGRESS);
+    }
+
+    void JustReachedHome()
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_NADOX, FAIL);
     }
 
     void KilledUnit(Unit* pVictim)
@@ -157,6 +161,9 @@ struct MANGOS_DLL_DECL boss_nadoxAI : public ScriptedAI
     void JustDied(Unit* pKiller)
     {
         DoScriptText(SAY_DEATH, m_creature);
+
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_NADOX, DONE);
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -167,27 +174,38 @@ struct MANGOS_DLL_DECL boss_nadoxAI : public ScriptedAI
         if (!m_bGuardianSummoned && m_creature->GetHealthPercent() < 50.0f)
         {
             // guardian is summoned at 50% of boss HP
-            if (Creature* pGuardianEgg = SelectRandomCreatureOfEntryInRange(NPC_AHNKAHAR_GUARDIAN_EGG, 75.0f))
-                pGuardianEgg->CastSpell(pGuardianEgg, SPELL_SUMMON_SWARM_GUARDIAN, false);
+            if (m_pInstance)
+            {
+                if (Creature* pGuardianEgg = m_creature->GetMap()->GetCreature(m_pInstance->SelectRandomGuardianEggGuid()))
+                    pGuardianEgg->CastSpell(pGuardianEgg, SPELL_SUMMON_SWARM_GUARDIAN, false);
 
-            m_bGuardianSummoned = true;
+                m_bGuardianSummoned = true;
+            }
         }
 
         if (m_uiSummonTimer < uiDiff)
         {
-            DoScriptText(rand()%2?SAY_SUMMON_EGG_1:SAY_SUMMON_EGG_2, m_creature);
+            if (roll_chance_i(50))
+                DoScriptText(urand(0, 1) ? SAY_SUMMON_EGG_1 : SAY_SUMMON_EGG_2, m_creature);
 
-            if (Creature* pSwarmerEgg = SelectRandomCreatureOfEntryInRange(NPC_AHNKAHAR_SWARM_EGG, 75.0))
-                pSwarmerEgg->CastSpell(pSwarmerEgg, SPELL_SUMMON_SWARMERS, false);
+            if (m_pInstance)
+            {
+                // There are 2 Swarmers summoned at a timer
+                if (Creature* pSwarmerEgg = m_creature->GetMap()->GetCreature(m_pInstance->SelectRandomSwarmerEggGuid()))
+                {
+                    for (uint8 i = 0; i < 2; ++i)
+                        pSwarmerEgg->CastSpell(pSwarmerEgg, SPELL_SUMMON_SWARMERS, false);
+                }
+            }
 
-            m_uiSummonTimer = 10000;
+            m_uiSummonTimer = urand(5000, 10000);
         }
         else
             m_uiSummonTimer -= uiDiff;
 
         if (m_uiBroodPlagueTimer < uiDiff)
         {
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 DoCastSpellIfCan(pTarget, m_bIsRegularMode ? SPELL_BROOD_PLAGUE : SPELL_BROOD_PLAGUE_H);
 
             m_uiBroodPlagueTimer = 20000;
@@ -199,19 +217,17 @@ struct MANGOS_DLL_DECL boss_nadoxAI : public ScriptedAI
         {
             if (m_uiBroodRageTimer < uiDiff)
             {
-                if (Creature* pRageTarget = SelectRandomCreatureOfEntryInRange(NPC_AHNKAHAR_SWARMER, 50.0))
-                    DoCastSpellIfCan(pRageTarget, SPELL_BROOD_RAGE);
-
-                m_uiBroodRageTimer = 20000;
+                if (DoCastSpellIfCan(m_creature, SPELL_BROOD_RAGE) == CAST_OK)
+                    m_uiBroodRageTimer = 20000;
             }
             else
                 m_uiBroodRageTimer -= uiDiff;
         }
 
-        if (!m_bBerserk && (m_creature->GetPositionZ() < 24.0))
+        if (!m_bBerserk && m_creature->GetPositionZ() < 24.0)
         {
-            m_bBerserk = true;
-            DoCastSpellIfCan(m_creature, SPELL_BERSERK);
+            if (DoCastSpellIfCan(m_creature, SPELL_BERSERK) == CAST_OK)
+                m_bBerserk = true;
         }
 
         DoMeleeAttackIfReady();
@@ -225,15 +241,15 @@ CreatureAI* GetAI_boss_nadox(Creature* pCreature)
 
 void AddSC_boss_nadox()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_nadox";
-    newscript->GetAI = &GetAI_boss_nadox;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_nadox";
+    pNewScript->GetAI = &GetAI_boss_nadox;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_ahnkahar_egg";
-    newscript->GetAI = &GetAI_mob_ahnkahar_egg;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_ahnkahar_egg";
+    pNewScript->GetAI = &GetAI_mob_ahnkahar_egg;
+    pNewScript->RegisterSelf();
 }

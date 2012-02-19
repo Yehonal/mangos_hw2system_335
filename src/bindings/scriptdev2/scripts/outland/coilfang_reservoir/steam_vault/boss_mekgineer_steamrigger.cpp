@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -42,7 +42,7 @@ EndContentData */
 #define SPELL_SUPER_SHRINK_RAY      31485
 #define SPELL_SAW_BLADE             31486
 #define SPELL_ELECTRIFIED_NET       35107
-#define H_SPELL_ENRAGE              1                       //corrent enrage spell not known
+#define SPELL_ENRAGE_H              1                       //corrent enrage spell not known
 
 #define ENTRY_STREAMRIGGER_MECHANIC 17951
 
@@ -139,7 +139,7 @@ struct MANGOS_DLL_DECL boss_mekgineer_steamriggerAI : public ScriptedAI
 
         if (Saw_Blade_Timer < diff)
         {
-            if (Unit* target = SelectUnit(SELECT_TARGET_RANDOM,1))
+            if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,1))
                 DoCastSpellIfCan(target,SPELL_SAW_BLADE);
             else
                 DoCastSpellIfCan(m_creature->getVictim(),SPELL_SAW_BLADE);
@@ -192,7 +192,7 @@ CreatureAI* GetAI_boss_mekgineer_steamrigger(Creature* pCreature)
 
 #define SPELL_DISPEL_MAGIC          17201
 #define SPELL_REPAIR                31532
-#define H_SPELL_REPAIR              37936
+#define SPELL_REPAIR_H              37936
 
 #define MAX_REPAIR_RANGE            (13.0f)                 //we should be at least at this range for repair
 #define MIN_REPAIR_RANGE            (7.0f)                  //we can stop movement at this range to repair but not required
@@ -226,9 +226,9 @@ struct MANGOS_DLL_DECL mob_steamrigger_mechanicAI : public ScriptedAI
     {
         if (Repair_Timer < diff)
         {
-            if (m_pInstance && m_pInstance->GetData64(DATA_MEKGINEERSTEAMRIGGER) && m_pInstance->GetData(TYPE_MEKGINEER_STEAMRIGGER) == IN_PROGRESS)
+            if (m_pInstance && m_pInstance->GetData(TYPE_MEKGINEER_STEAMRIGGER) == IN_PROGRESS)
             {
-                if (Unit* pMekgineer = Unit::GetUnit((*m_creature), m_pInstance->GetData64(DATA_MEKGINEERSTEAMRIGGER)))
+                if (Creature* pMekgineer = m_pInstance->GetSingleCreatureFromStorage(NPC_STEAMRIGGER))
                 {
                     if (m_creature->IsWithinDistInMap(pMekgineer, MAX_REPAIR_RANGE))
                     {
@@ -238,7 +238,7 @@ struct MANGOS_DLL_DECL mob_steamrigger_mechanicAI : public ScriptedAI
                             //m_creature->GetMotionMaster()->MovementExpired();
                             //m_creature->GetMotionMaster()->MoveIdle();
 
-                            DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_REPAIR : H_SPELL_REPAIR, CAST_TRIGGERED);
+                            DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_REPAIR : SPELL_REPAIR_H, CAST_TRIGGERED);
                         }
                         Repair_Timer = 5000;
                     }
@@ -265,15 +265,15 @@ CreatureAI* GetAI_mob_steamrigger_mechanic(Creature* pCreature)
 
 void AddSC_boss_mekgineer_steamrigger()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_mekgineer_steamrigger";
-    newscript->GetAI = &GetAI_boss_mekgineer_steamrigger;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_mekgineer_steamrigger";
+    pNewScript->GetAI = &GetAI_boss_mekgineer_steamrigger;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_steamrigger_mechanic";
-    newscript->GetAI = &GetAI_mob_steamrigger_mechanic;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_steamrigger_mechanic";
+    pNewScript->GetAI = &GetAI_mob_steamrigger_mechanic;
+    pNewScript->RegisterSelf();
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -95,32 +95,31 @@ struct MANGOS_DLL_DECL boss_halazziAI : public ScriptedAI
         m_uiPhase = PHASE_SINGLE;                           // reset phase
         m_uiPhaseCounter = 3;
 
-        m_uiCheckTimer = IN_MILISECONDS;
-        m_uiFrenzyTimer = 16*IN_MILISECONDS;
-        m_uiSaberLashTimer = 20*IN_MILISECONDS;
-        m_uiShockTimer = 10*IN_MILISECONDS;
-        m_uiTotemTimer = 12*IN_MILISECONDS;
-        m_uiBerserkTimer = 10*MINUTE*IN_MILISECONDS;
+        m_uiCheckTimer = IN_MILLISECONDS;
+        m_uiFrenzyTimer = 16*IN_MILLISECONDS;
+        m_uiSaberLashTimer = 20*IN_MILLISECONDS;
+        m_uiShockTimer = 10*IN_MILLISECONDS;
+        m_uiTotemTimer = 12*IN_MILLISECONDS;
+        m_uiBerserkTimer = 10*MINUTE*IN_MILLISECONDS;
         m_bIsBerserk = false;
 
         m_creature->SetMaxHealth(m_creature->GetCreatureInfo()->maxhealth);
 
         if (m_pInstance)
         {
-            if (Creature* pSpiritLynx = m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_SPIRIT_LYNX)))
+            if (Creature* pSpiritLynx = m_pInstance->GetSingleCreatureFromStorage(NPC_SPIRIT_LYNX))
                 pSpiritLynx->ForcedDespawn();
         }
     }
 
     void JustReachedHome()
     {
-        m_pInstance->SetData(TYPE_HALAZZI, NOT_STARTED);
+        m_pInstance->SetData(TYPE_HALAZZI, FAIL);
     }
 
     void Aggro(Unit* pWho)
     {
         DoScriptText(SAY_AGGRO, m_creature);
-        m_creature->SetInCombatWithZone();
 
         if (m_pInstance)
             m_pInstance->SetData(TYPE_HALAZZI, IN_PROGRESS);
@@ -182,14 +181,14 @@ struct MANGOS_DLL_DECL boss_halazziAI : public ScriptedAI
                 {
                     // final phase
                     m_uiPhase = PHASE_FINAL;
-                    m_uiFrenzyTimer = 16*IN_MILISECONDS;
-                    m_uiSaberLashTimer = 20*IN_MILISECONDS;
+                    m_uiFrenzyTimer = 16*IN_MILLISECONDS;
+                    m_uiSaberLashTimer = 20*IN_MILLISECONDS;
                 }
                 else
                 {
                     m_uiPhase = PHASE_TOTEM;
-                    m_uiShockTimer = 10*IN_MILISECONDS;
-                    m_uiTotemTimer = 12*IN_MILISECONDS;
+                    m_uiShockTimer = 10*IN_MILLISECONDS;
+                    m_uiTotemTimer = 12*IN_MILLISECONDS;
 
                     DoScriptText(SAY_SPLIT, m_creature);
                     m_creature->CastSpell(m_creature, SPELL_TRANSFIGURE_TO_TROLL, false);
@@ -198,7 +197,7 @@ struct MANGOS_DLL_DECL boss_halazziAI : public ScriptedAI
         }
         else
         {
-            Creature* pSpiritLynx = m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_SPIRIT_LYNX));
+            Creature* pSpiritLynx = m_pInstance->GetSingleCreatureFromStorage(NPC_SPIRIT_LYNX);
 
             if (m_creature->GetHealthPercent() < 10.0f ||
                 (pSpiritLynx && pSpiritLynx->GetHealthPercent() < 10.0f))
@@ -207,7 +206,7 @@ struct MANGOS_DLL_DECL boss_halazziAI : public ScriptedAI
 
                 DoScriptText(SAY_MERGE, m_creature);
 
-                uint32 uiSpellId;
+                uint32 uiSpellId = 0;
 
                 switch(m_uiPhaseCounter)
                 {
@@ -221,8 +220,8 @@ struct MANGOS_DLL_DECL boss_halazziAI : public ScriptedAI
                 if (pSpiritLynx)
                     pSpiritLynx->ForcedDespawn();
 
-                m_uiFrenzyTimer = 16*IN_MILISECONDS;
-                m_uiSaberLashTimer = 20*IN_MILISECONDS;
+                m_uiFrenzyTimer = 16*IN_MILLISECONDS;
+                m_uiSaberLashTimer = 20*IN_MILLISECONDS;
             }
         }
     }
@@ -253,7 +252,7 @@ struct MANGOS_DLL_DECL boss_halazziAI : public ScriptedAI
                 else
                     m_uiPhase = PHASE_FINAL;
 
-                m_uiCheckTimer = IN_MILISECONDS;
+                m_uiCheckTimer = IN_MILLISECONDS;
             }
             else
                 m_uiCheckTimer -= uiDiff;
@@ -264,7 +263,7 @@ struct MANGOS_DLL_DECL boss_halazziAI : public ScriptedAI
             if (m_uiFrenzyTimer < uiDiff)
             {
                 DoCastSpellIfCan(m_creature, SPELL_FRENZY);
-                m_uiFrenzyTimer = 16*IN_MILISECONDS;
+                m_uiFrenzyTimer = 16*IN_MILLISECONDS;
             }
             else
                 m_uiFrenzyTimer -= uiDiff;
@@ -274,7 +273,7 @@ struct MANGOS_DLL_DECL boss_halazziAI : public ScriptedAI
                 DoScriptText(urand(0, 1) ? SAY_SABERLASH1 : SAY_SABERLASH2, m_creature);
 
                 DoCastSpellIfCan(m_creature->getVictim(), SPELL_SABER_LASH);
-                m_uiSaberLashTimer = 20*IN_MILISECONDS;
+                m_uiSaberLashTimer = 20*IN_MILLISECONDS;
             }
             else
                 m_uiSaberLashTimer -= uiDiff;
@@ -285,14 +284,14 @@ struct MANGOS_DLL_DECL boss_halazziAI : public ScriptedAI
             if (m_uiTotemTimer < uiDiff)
             {
                 DoCastSpellIfCan(m_creature, SPELL_SUMMON_TOTEM);
-                m_uiTotemTimer = 20*IN_MILISECONDS;
+                m_uiTotemTimer = 20*IN_MILLISECONDS;
             }
             else
                 m_uiTotemTimer -= uiDiff;
 
             if (m_uiShockTimer < uiDiff)
             {
-                if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM,0))
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
                 {
                     if (pTarget->IsNonMeleeSpellCasted(false))
                         DoCastSpellIfCan(pTarget, SPELL_EARTHSHOCK);
@@ -350,7 +349,7 @@ struct MANGOS_DLL_DECL boss_spirit_lynxAI : public ScriptedAI
         if (!m_pInstance)
             return;
 
-        if (Creature* pHalazzi = m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_HALAZZI)))
+        if (Creature* pHalazzi = m_pInstance->GetSingleCreatureFromStorage(NPC_HALAZZI))
             pHalazzi->AI()->KilledUnit(pVictim);
     }
 
@@ -386,15 +385,15 @@ CreatureAI* GetAI_boss_spirit_lynx(Creature* pCreature)
 
 void AddSC_boss_halazzi()
 {
-    Script* newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_halazzi";
-    newscript->GetAI = &GetAI_boss_halazzi;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_halazzi";
+    pNewScript->GetAI = &GetAI_boss_halazzi;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_spirit_lynx";
-    newscript->GetAI = &GetAI_boss_spirit_lynx;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_spirit_lynx";
+    pNewScript->GetAI = &GetAI_boss_spirit_lynx;
+    pNewScript->RegisterSelf();
 }

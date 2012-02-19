@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,15 +17,22 @@
 /* ScriptData
 SDName: Desolace
 SD%Complete: 100
-SDComment: Quest support: 5561
+SDComment: Quest support: 1440, 5561, 6132
 SDCategory: Desolace
 EndScriptData */
 
 /* ContentData
 npc_aged_dying_ancient_kodo
+npc_dalinda_malem
+npc_melizza_brimbuzzle
 EndContentData */
 
 #include "precompiled.h"
+#include "escort_ai.h"
+
+/*######
+## npc_aged_dying_ancient_kodo
+######*/
 
 enum
 {
@@ -98,7 +105,7 @@ struct MANGOS_DLL_DECL npc_aged_dying_ancient_kodoAI : public ScriptedAI
             if (!m_creature->getVictim() && m_creature->isAlive())
             {
                 Reset();
-                m_creature->setDeathState(JUST_DIED);
+                m_creature->SetDeathState(JUST_DIED);
                 m_creature->Respawn();
                 return;
             }
@@ -151,24 +158,264 @@ bool GossipHello_npc_aged_dying_ancient_kodo(Player* pPlayer, Creature* pCreatur
     if (pPlayer->HasAura(SPELL_KODO_KOMBO_PLAYER_BUFF) && pCreature->HasAura(SPELL_KODO_KOMBO_DESPAWN_BUFF))
     {
         //the expected quest objective
-        pPlayer->TalkedToCreature(pCreature->GetEntry(), pCreature->GetGUID());
+        pPlayer->TalkedToCreature(pCreature->GetEntry(), pCreature->GetObjectGuid());
 
         pPlayer->RemoveAurasDueToSpell(SPELL_KODO_KOMBO_PLAYER_BUFF);
         pCreature->GetMotionMaster()->MoveIdle();
     }
 
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
+    return true;
+}
+
+/*######
+## npc_dalinda_malem
+######*/
+
+enum
+{
+    QUEST_RETURN_TO_VAHLARRIEL  = 1440,
+};
+
+struct MANGOS_DLL_DECL npc_dalinda_malemAI : public npc_escortAI
+{
+    npc_dalinda_malemAI(Creature* m_creature) : npc_escortAI(m_creature) { Reset(); }
+
+    void Reset() {}
+
+    void JustStartedEscort()
+    {
+        m_creature->SetStandState(UNIT_STAND_STATE_STAND);
+    }
+
+    void WaypointReached(uint32 uiPointId)
+    {
+        if (uiPointId == 18)
+        {
+            if (Player* pPlayer = GetPlayerForEscort())
+                pPlayer->GroupEventHappens(QUEST_RETURN_TO_VAHLARRIEL, m_creature);
+        }
+    }
+};
+
+CreatureAI* GetAI_npc_dalinda_malem(Creature* pCreature)
+{
+    return new npc_dalinda_malemAI(pCreature);
+}
+
+bool QuestAccept_npc_dalinda_malem(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+{
+    if (pQuest->GetQuestId() == QUEST_RETURN_TO_VAHLARRIEL)
+    {
+        if (npc_dalinda_malemAI* pEscortAI = dynamic_cast<npc_dalinda_malemAI*>(pCreature->AI()))
+        {
+            // TODO This faction change needs confirmation, also possible that we need to drop her PASSIVE flag
+            pCreature->setFaction(FACTION_ESCORT_A_NEUTRAL_PASSIVE);
+            pEscortAI->Start(false, pPlayer, pQuest);
+        }
+    }
+    return true;
+}
+
+/*######
+## npc_melizza_brimbuzzle
+######*/
+
+enum
+{
+    QUEST_GET_ME_OUT_OF_HERE    = 6132,
+
+    GO_MELIZZAS_CAGE            = 177706,
+
+    SAY_MELIZZA_START           = -1000784,
+    SAY_MELIZZA_FINISH          = -1000785,
+    SAY_MELIZZA_1               = -1000786,
+    SAY_MELIZZA_2               = -1000787,
+    SAY_MELIZZA_3               = -1000788,
+
+    NPC_MARAUDINE_MARAUDER      = 4659,
+    NPC_MARAUDINE_BONEPAW       = 4660,
+    NPC_MARAUDINE_WRANGLER      = 4655,
+
+    NPC_MELIZZA                 = 12277,
+
+    POINT_ID_QUEST_COMPLETE     = 1,
+    POINT_ID_EVENT_COMPLETE     = 2,
+
+    MAX_MARAUDERS               = 2,
+    MAX_WRANGLERS               = 3,
+};
+
+static const DialogueEntry aIntroDialogue[] =
+{
+    {POINT_ID_QUEST_COMPLETE,   0,              1000},
+    {QUEST_GET_ME_OUT_OF_HERE,  NPC_MELIZZA,    0},
+    {POINT_ID_EVENT_COMPLETE,   0,              2000},
+    {SAY_MELIZZA_1,             NPC_MELIZZA,    4000},
+    {SAY_MELIZZA_2,             NPC_MELIZZA,    5000},
+    {SAY_MELIZZA_3,             NPC_MELIZZA,    4000},
+    {NPC_MELIZZA,               0,              0},
+    {0, 0, 0},
+};
+
+struct SummonLocation
+{
+    float m_fX, m_fY, m_fZ;
+};
+
+static const SummonLocation aMarauderSpawn[] =
+{
+    {-1291.492f, 2644.650f, 111.556f},
+    {-1306.730f, 2675.163f, 111.561f},
+};
+
+static const SummonLocation aWranglerSpawn[] = {-1393.194f, 2429.465f, 88.689f};
+
+struct MANGOS_DLL_DECL npc_melizza_brimbuzzleAI : public npc_escortAI, private DialogueHelper
+{
+    npc_melizza_brimbuzzleAI(Creature* m_creature) : npc_escortAI(m_creature),
+        DialogueHelper(aIntroDialogue)
+    {
+        m_uiNormalFaction = m_creature->getFaction();
+        Reset();
+    }
+
+    uint32 m_uiNormalFaction;
+
+    void Reset() {}
+
+    void JustStartedEscort()
+    {
+        if (GameObject* pCage = GetClosestGameObjectWithEntry(m_creature, GO_MELIZZAS_CAGE, INTERACTION_DISTANCE))
+            pCage->UseDoorOrButton();
+    }
+
+    Creature* GetSpeakerByEntry(uint32 uiEntry)
+    {
+        if (uiEntry == NPC_MELIZZA)
+            return m_creature;
+
+        return NULL;
+    }
+
+    void WaypointReached(uint32 uiPointId)
+    {
+        switch(uiPointId)
+        {
+            case 1:
+                if (Player* pPlayer = GetPlayerForEscort())
+                    DoScriptText(SAY_MELIZZA_START, m_creature, pPlayer);
+
+                m_creature->setFaction(FACTION_ESCORT_N_NEUTRAL_PASSIVE);
+                break;
+            case 4:
+                for (uint8 i = 0; i < MAX_MARAUDERS; ++i)
+                {
+                    for (uint8 j = 0; j < MAX_MARAUDERS; ++j)
+                    {
+                        // Summon 2 Marauders on each point
+                        float fX, fY, fZ;
+                        m_creature->GetRandomPoint(aMarauderSpawn[i].m_fX, aMarauderSpawn[i].m_fY, aMarauderSpawn[i].m_fZ, 7.0f, fX, fY, fZ);
+                        m_creature->SummonCreature(NPC_MARAUDINE_MARAUDER, fX, fY, fZ, 0.0f, TEMPSUMMON_DEAD_DESPAWN, 0);
+                    }
+                }
+                break;
+            case 9:
+                for (uint8 i = 0; i < MAX_WRANGLERS; ++i)
+                {
+                    float fX, fY, fZ;
+                    m_creature->GetRandomPoint(aWranglerSpawn[0].m_fX, aWranglerSpawn[0].m_fY, aWranglerSpawn[0].m_fZ, 10.0f, fX, fY, fZ);
+                    m_creature->SummonCreature(NPC_MARAUDINE_BONEPAW, fX, fY, fZ, 0.0f, TEMPSUMMON_DEAD_DESPAWN, 0);
+
+                    m_creature->GetRandomPoint(aWranglerSpawn[0].m_fX, aWranglerSpawn[0].m_fY, aWranglerSpawn[0].m_fZ, 10.0f, fX, fY, fZ);
+                    m_creature->SummonCreature(NPC_MARAUDINE_WRANGLER, fX, fY, fZ, 0.0f, TEMPSUMMON_DEAD_DESPAWN, 0);
+                }
+                break;
+            case 12:
+                StartNextDialogueText(POINT_ID_QUEST_COMPLETE);
+                break;
+            case 19:
+                StartNextDialogueText(POINT_ID_EVENT_COMPLETE);
+                break;
+        }
+
+    }
+
+    void JustDidDialogueStep(int32 iEntry)
+    {
+        switch (iEntry)
+        {
+            case POINT_ID_QUEST_COMPLETE:
+                SetEscortPaused(true);
+                break;
+            case QUEST_GET_ME_OUT_OF_HERE:
+                if (Player* pPlayer = GetPlayerForEscort())
+                {
+                    DoScriptText(SAY_MELIZZA_FINISH, m_creature, pPlayer);
+                    pPlayer->GroupEventHappens(QUEST_GET_ME_OUT_OF_HERE, m_creature);
+                }
+
+                m_creature->setFaction(m_uiNormalFaction);
+                SetRun(true);
+                SetEscortPaused(false);
+                break;
+            case POINT_ID_EVENT_COMPLETE:
+                SetEscortPaused(true);
+                m_creature->SetFacingTo(4.71f);
+                break;
+            case NPC_MELIZZA:
+                SetEscortPaused(false);
+                break;
+        }
+    }
+
+    void UpdateEscortAI(const uint32 uiDiff)
+    {
+        DialogueUpdate(uiDiff);
+
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        DoMeleeAttackIfReady();
+    }
+};
+
+CreatureAI* GetAI_npc_melizza_brimbuzzle(Creature* pCreature)
+{
+    return new npc_melizza_brimbuzzleAI(pCreature);
+}
+
+bool QuestAccept_npc_melizza_brimbuzzle(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+{
+    if (pQuest->GetQuestId() == QUEST_GET_ME_OUT_OF_HERE)
+    {
+        if (npc_melizza_brimbuzzleAI* pEscortAI = dynamic_cast<npc_melizza_brimbuzzleAI*>(pCreature->AI()))
+            pEscortAI->Start(false, pPlayer, pQuest);
+    }
+
     return true;
 }
 
 void AddSC_desolace()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_aged_dying_ancient_kodo";
-    newscript->GetAI = &GetAI_npc_aged_dying_ancient_kodo;
-    newscript->pEffectDummyCreature = &EffectDummyCreature_npc_aged_dying_ancient_kodo;
-    newscript->pGossipHello = &GossipHello_npc_aged_dying_ancient_kodo;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_aged_dying_ancient_kodo";
+    pNewScript->GetAI = &GetAI_npc_aged_dying_ancient_kodo;
+    pNewScript->pEffectDummyNPC = &EffectDummyCreature_npc_aged_dying_ancient_kodo;
+    pNewScript->pGossipHello = &GossipHello_npc_aged_dying_ancient_kodo;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_dalinda_malem";
+    pNewScript->GetAI = &GetAI_npc_dalinda_malem;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_dalinda_malem;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_melizza_brimbuzzle";
+    pNewScript->GetAI = &GetAI_npc_melizza_brimbuzzle;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_melizza_brimbuzzle;
+    pNewScript->RegisterSelf();
 }

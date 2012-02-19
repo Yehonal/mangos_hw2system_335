@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: Azuremyst_Isle
 SD%Complete: 75
-SDComment: Quest support: 9283, 9537, 9582, 9554(special flight path, proper model for mount missing). Injured Draenei cosmetic only
+SDComment: Quest support: 9283, 9528, 9537, 9554(special flight path, proper model for mount missing). Injured Draenei cosmetic only
 SDCategory: Azuremyst Isle
 EndScriptData */
 
@@ -56,7 +56,7 @@ struct MANGOS_DLL_DECL npc_draenei_survivorAI : public ScriptedAI
 {
     npc_draenei_survivorAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    uint64 m_uiCaster;
+    ObjectGuid m_casterGuid;
 
     uint32 m_uiSayThanksTimer;
     uint32 m_uiRunAwayTimer;
@@ -66,7 +66,7 @@ struct MANGOS_DLL_DECL npc_draenei_survivorAI : public ScriptedAI
 
     void Reset()
     {
-        m_uiCaster = 0;
+        m_casterGuid.Clear();
 
         m_uiSayThanksTimer = 0;
         m_uiRunAwayTimer = 0;
@@ -103,14 +103,14 @@ struct MANGOS_DLL_DECL npc_draenei_survivorAI : public ScriptedAI
 
     void SpellHit(Unit* pCaster, const SpellEntry* pSpell)
     {
-        if (pSpell->SpellFamilyFlags2 & 0x080000000)
+        if (pSpell->IsFitToFamilyMask(UI64LIT(0x0000000000000000), 0x080000000))
         {
             m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP_ATTACKABLE);
             m_creature->SetStandState(UNIT_STAND_STATE_STAND);
 
             m_creature->CastSpell(m_creature, SPELL_STUNNED, true);
 
-            m_uiCaster = pCaster->GetGUID();
+            m_casterGuid = pCaster->GetObjectGuid();
 
             m_uiSayThanksTimer = 5000;
         }
@@ -124,7 +124,7 @@ struct MANGOS_DLL_DECL npc_draenei_survivorAI : public ScriptedAI
             {
                 m_creature->RemoveAurasDueToSpell(SPELL_IRRIDATION);
 
-                if (Player* pPlayer = (Player*)Unit::GetUnit(*m_creature,m_uiCaster))
+                if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_casterGuid))
                 {
                     if (pPlayer->GetTypeId() != TYPEID_PLAYER)
                         return;
@@ -137,7 +137,7 @@ struct MANGOS_DLL_DECL npc_draenei_survivorAI : public ScriptedAI
                         case 3: DoScriptText(SAY_HEAL4, m_creature, pPlayer); break;
                     }
 
-                    pPlayer->TalkedToCreature(m_creature->GetEntry(),m_creature->GetGUID());
+                    pPlayer->TalkedToCreature(m_creature->GetEntry(), m_creature->GetObjectGuid());
                 }
 
                 m_creature->GetMotionMaster()->Clear();
@@ -270,7 +270,7 @@ bool GossipHello_npc_engineer_spark_overgrind(Player* pPlayer, Creature* pCreatu
     if (pPlayer->GetQuestStatus(QUEST_GNOMERCY) == QUEST_STATUS_INCOMPLETE)
         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_FIGHT, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
 
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
     return true;
 }
 
@@ -280,7 +280,7 @@ bool GossipSelect_npc_engineer_spark_overgrind(Player* pPlayer, Creature* pCreat
     {
         pPlayer->CLOSE_GOSSIP_MENU();
         pCreature->setFaction(FACTION_HOSTILE);
-        ((npc_engineer_spark_overgrindAI*)pCreature->AI())->AttackStart(pPlayer);
+        pCreature->AI()->AttackStart(pPlayer);
     }
     return true;
 }
@@ -378,7 +378,7 @@ bool QuestAccept_npc_magwin(Player* pPlayer, Creature* pCreature, const Quest* p
         pCreature->setFaction(10);
 
         if (npc_magwinAI* pEscortAI = dynamic_cast<npc_magwinAI*>(pCreature->AI()))
-            pEscortAI->Start(true, false, pPlayer->GetGUID(), pQuest);
+            pEscortAI->Start(false, pPlayer, pQuest);
     }
     return true;
 }
@@ -404,12 +404,12 @@ enum
 bool GossipHello_npc_susurrus(Player* pPlayer, Creature* pCreature)
 {
     if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetGUID());
+        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
 
     if (pPlayer->HasItemCount(ITEM_WHORL_OF_AIR,1,true))
         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_READY, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
 
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
 
     return true;
 }
@@ -431,34 +431,34 @@ bool GossipSelect_npc_susurrus(Player* pPlayer, Creature* pCreature, uint32 uiSe
 
 void AddSC_azuremyst_isle()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_draenei_survivor";
-    newscript->GetAI = &GetAI_npc_draenei_survivor;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_draenei_survivor";
+    pNewScript->GetAI = &GetAI_npc_draenei_survivor;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_engineer_spark_overgrind";
-    newscript->GetAI = &GetAI_npc_engineer_spark_overgrind;
-    newscript->pGossipHello =  &GossipHello_npc_engineer_spark_overgrind;
-    newscript->pGossipSelect = &GossipSelect_npc_engineer_spark_overgrind;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_engineer_spark_overgrind";
+    pNewScript->GetAI = &GetAI_npc_engineer_spark_overgrind;
+    pNewScript->pGossipHello =  &GossipHello_npc_engineer_spark_overgrind;
+    pNewScript->pGossipSelect = &GossipSelect_npc_engineer_spark_overgrind;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_injured_draenei";
-    newscript->GetAI = &GetAI_npc_injured_draenei;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_injured_draenei";
+    pNewScript->GetAI = &GetAI_npc_injured_draenei;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_magwin";
-    newscript->GetAI = &GetAI_npc_magwinAI;
-    newscript->pQuestAccept = &QuestAccept_npc_magwin;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_magwin";
+    pNewScript->GetAI = &GetAI_npc_magwinAI;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_magwin;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_susurrus";
-    newscript->pGossipHello =  &GossipHello_npc_susurrus;
-    newscript->pGossipSelect = &GossipSelect_npc_susurrus;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_susurrus";
+    pNewScript->pGossipHello =  &GossipHello_npc_susurrus;
+    pNewScript->pGossipSelect = &GossipSelect_npc_susurrus;
+    pNewScript->RegisterSelf();
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -23,49 +23,57 @@ EndScriptData */
 
 #include "precompiled.h"
 
-#define SPELL_SHOOT             16496
-#define SPELL_STUNBOMB          16497
-#define SPELL_HEALING_POTION    15504
-#define SPELL_HOOKEDNET         15609
+enum
+{
+    SPELL_SHOOT          = 16496,
+    SPELL_STUNBOMB       = 16497,
+    SPELL_HEALING_POTION = 15504,
+    SPELL_HOOKEDNET      = 15609
+};
 
 struct MANGOS_DLL_DECL boss_quatermasterzigrisAI : public ScriptedAI
 {
     boss_quatermasterzigrisAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    uint32 Shoot_Timer;
-    uint32 StunBomb_Timer;
+    uint32 m_uiShootTimer;
+    uint32 m_uiStunBombTimer;
     //uint32 HelingPotion_Timer;
 
     void Reset()
     {
-        Shoot_Timer = 1000;
-        StunBomb_Timer = 16000;
+        m_uiShootTimer    = 1000;
+        m_uiStunBombTimer = 16000;
         //HelingPotion_Timer = 25000;
     }
 
-    void UpdateAI(const uint32 diff)
+    void UpdateAI(const uint32 uiDiff)
     {
-        //Return since we have no target
+        // Return since we have no target
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //Shoot_Timer
-        if (Shoot_Timer < diff)
+        // Shoot
+        if (m_uiShootTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_SHOOT);
-            Shoot_Timer = 500;
-        }else Shoot_Timer -= diff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHOOT);
+            m_uiShootTimer = 500;
+        }
+        else
+            m_uiShootTimer -= uiDiff;
 
-        //StunBomb_Timer
-        if (StunBomb_Timer < diff)
+        // StunBomb
+        if (m_uiStunBombTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_STUNBOMB);
-            StunBomb_Timer = 14000;
-        }else StunBomb_Timer -= diff;
+            DoCastSpellIfCan(m_creature, SPELL_STUNBOMB);
+            m_uiStunBombTimer = 14000;
+        }
+        else
+            m_uiStunBombTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
 };
+
 CreatureAI* GetAI_boss_quatermasterzigris(Creature* pCreature)
 {
     return new boss_quatermasterzigrisAI(pCreature);
@@ -73,9 +81,10 @@ CreatureAI* GetAI_boss_quatermasterzigris(Creature* pCreature)
 
 void AddSC_boss_quatermasterzigris()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "quartermaster_zigris";
-    newscript->GetAI = &GetAI_boss_quatermasterzigris;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "quartermaster_zigris";
+    pNewScript->GetAI = &GetAI_boss_quatermasterzigris;
+    pNewScript->RegisterSelf();
 }

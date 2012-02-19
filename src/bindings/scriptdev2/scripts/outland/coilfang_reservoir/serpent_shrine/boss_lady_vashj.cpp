@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -23,7 +23,6 @@ EndScriptData */
 
 #include "precompiled.h"
 #include "serpent_shrine.h"
-#include "simple_ai.h"
 #include "Item.h"
 #include "Spell.h"
 
@@ -120,13 +119,12 @@ struct MANGOS_DLL_DECL boss_lady_vashjAI : public ScriptedAI
     boss_lady_vashjAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
         m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        memset(&m_auiShieldGeneratorChannel, 0, sizeof(m_auiShieldGeneratorChannel));
         Reset();
     }
 
     ScriptedInstance *m_pInstance;                          // the instance
 
-    uint64 m_auiShieldGeneratorChannel[MAX_SHIELD_GEN];
+    ObjectGuid m_auiShieldGeneratorChannel[MAX_SHIELD_GEN];
 
     // timers
     uint32 m_uiShockBlast_Timer;
@@ -177,12 +175,12 @@ struct MANGOS_DLL_DECL boss_lady_vashjAI : public ScriptedAI
     {
         for(uint8 i = 0; i < MAX_SHIELD_GEN; ++i)
         {
-            if (Unit* pTemp = Unit::GetUnit(*m_creature,m_auiShieldGeneratorChannel[i]))
+            if (Creature* pTemp = m_creature->GetMap()->GetCreature(m_auiShieldGeneratorChannel[i]))
             {
                 if (pTemp->isAlive())
-                    pTemp->setDeathState(JUST_DIED);
+                    pTemp->SetDeathState(JUST_DIED);
 
-                m_auiShieldGeneratorChannel[i] = 0;
+                m_auiShieldGeneratorChannel[i].Clear();
             }
         }
     }
@@ -213,7 +211,7 @@ struct MANGOS_DLL_DECL boss_lady_vashjAI : public ScriptedAI
             for(uint8 i = 0; i < MAX_SHIELD_GEN; ++i)
             {
                 if (Creature* pCreature = m_creature->SummonCreature(NPC_SHIELD_GENERATOR, afShieldGeneratorChannelPos[i][0],  afShieldGeneratorChannelPos[i][1],  afShieldGeneratorChannelPos[i][2],  afShieldGeneratorChannelPos[i][3], TEMPSUMMON_CORPSE_DESPAWN, 0))
-                    m_auiShieldGeneratorChannel[i] = pCreature->GetGUID();
+                    m_auiShieldGeneratorChannel[i] = pCreature->GetObjectGuid();
             }
         }
     }
@@ -224,7 +222,7 @@ struct MANGOS_DLL_DECL boss_lady_vashjAI : public ScriptedAI
 
         if (uiEntry == NPC_COILFANG_STRIDER || uiEntry == NPC_COILFANG_ELITE || uiEntry == NPC_TOXIC_SPOREBAT)
         {
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 pSummoned->AI()->AttackStart(pTarget);
         }
 
@@ -300,7 +298,7 @@ struct MANGOS_DLL_DECL boss_lady_vashjAI : public ScriptedAI
             if (m_uiStaticCharge_Timer < uiDiff)
             {
                 //Used on random people (only 1 person at any given time) in m_uiPhases 1 and 3, it's a debuff doing 2775 to 3225 Nature damage to the target and everybody in about 5 yards around it, every 1 seconds for 30 seconds. It can be removed by Cloak of Shadows, Iceblock, Divine Shield, etc, but not by Cleanse or Dispel Magic.
-                Unit *pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0);
+                Unit *pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
 
                 //cast Static Charge every 2 seconds for 20 seconds
                 if (pTarget && !pTarget->HasAura(SPELL_STATIC_CHARGE_TRIGGER))
@@ -372,22 +370,8 @@ struct MANGOS_DLL_DECL boss_lady_vashjAI : public ScriptedAI
             //m_uiCheck_Timer - used to check if somebody is in melee range
             if (m_uiCheck_Timer < uiDiff)
             {
-                bool bInMeleeRange = false;
-                ThreatList const& tList = m_creature->getThreatManager().getThreatList();
-                for (ThreatList::const_iterator itr = tList.begin();itr != tList.end(); ++itr)
-                {
-                    Unit* pTarget = Unit::GetUnit(*m_creature, (*itr)->getUnitGuid());
-
-                    //if in melee range
-                    if (pTarget && pTarget->IsWithinDistInMap(m_creature, ATTACK_DISTANCE))
-                    {
-                        bInMeleeRange = true;
-                        break;
-                    }
-                }
-
                 //if nobody is in melee range
-                if (!bInMeleeRange)
+                if (!m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 0, uint32(0), SELECT_FLAG_IN_MELEE_RANGE))
                     CastShootOrMultishot();
 
                 m_uiCheck_Timer = 1500;
@@ -400,7 +384,7 @@ struct MANGOS_DLL_DECL boss_lady_vashjAI : public ScriptedAI
             if (m_uiForkedLightning_Timer < uiDiff)
             {
                 //Used constantly in m_uiPhase 2, it shoots out completely randomly targeted bolts of lightning which hit everybody in a roughtly 60 degree cone in front of Vashj for 2313-2687 nature damage.
-                Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0);
+                Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
 
                 if (!pTarget)
                     pTarget = m_creature->getVictim();
@@ -508,15 +492,15 @@ struct MANGOS_DLL_DECL mob_enchanted_elementalAI : public ScriptedAI
     {
         if (m_pInstance)
         {
-            if (Unit* pVashj = Unit::GetUnit((*m_creature), m_pInstance->GetData64(DATA_LADYVASHJ)))
+            if (Creature* pVashj = m_pInstance->GetSingleCreatureFromStorage(NPC_LADYVASHJ))
             {
-                if (pVashj->IsWithinDistInMap(m_creature, ATTACK_DISTANCE))
+                if (pVashj->IsWithinDistInMap(m_creature, INTERACTION_DISTANCE))
                 {
                     //increase lady vashj damage
                     if (pVashj->isAlive() && pVashj->isInCombat())
-                        m_creature->CastSpell(pVashj, SPELL_SURGE, false, 0, 0, pVashj->GetGUID());
+                        m_creature->CastSpell(pVashj, SPELL_SURGE, false, NULL, NULL, pVashj->GetObjectGuid());
                     else
-                        m_creature->setDeathState(JUST_DIED);
+                        m_creature->SetDeathState(JUST_DIED);
                 }
             }
         }
@@ -554,7 +538,7 @@ struct MANGOS_DLL_DECL mob_tainted_elementalAI : public ScriptedAI
         //m_uiPoisonBolt_Timer
         if (m_uiPoisonBolt_Timer < uiDiff)
         {
-            Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0);
+            Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
 
             if (pTarget && pTarget->IsWithinDistInMap(m_creature, 30.0f))
                 DoCastSpellIfCan(pTarget, SPELL_POISON_BOLT);
@@ -596,7 +580,7 @@ struct MANGOS_DLL_DECL mob_toxic_sporebatAI : public ScriptedAI
         if (m_uiToxicSpore_Timer < uiDiff)
         {
             //The Spores will hit you anywhere in the instance: underwater, at the elevator, at the entrance, wherever.
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 DoCastSpellIfCan(pTarget, SPELL_TOXIC_SPORES);
 
             m_uiToxicSpore_Timer = urand(20000, 25000);
@@ -608,11 +592,11 @@ struct MANGOS_DLL_DECL mob_toxic_sporebatAI : public ScriptedAI
             if (m_pInstance)
             {
                 //check if vashj is death
-                Unit* pVashj = Unit::GetUnit((*m_creature), m_pInstance->GetData64(DATA_LADYVASHJ));
+                Creature* pVashj = m_pInstance->GetSingleCreatureFromStorage(NPC_LADYVASHJ);
                 if (!pVashj || !pVashj->isAlive())
                 {
                     //remove
-                    m_creature->setDeathState(DEAD);
+                    m_creature->SetDeathState(DEAD);
                     m_creature->RemoveCorpse();
                     m_creature->setFaction(35);
                 }
@@ -625,43 +609,11 @@ struct MANGOS_DLL_DECL mob_toxic_sporebatAI : public ScriptedAI
     }
 };
 
-//Coilfang Elite
-//It's an elite Naga mob with 170,000 HP. It does about 5000 damage on plate, and has a nasty cleave hitting for about 7500 damage
-CreatureAI* GetAI_mob_coilfang_elite(Creature* pCreature)
+enum
 {
-    SimpleAI* pAI = new SimpleAI (pCreature);
-
-    pAI->Spell[0].Enabled = true;
-    pAI->Spell[0].Spell_Id = 31345;                          //Cleave
-    pAI->Spell[0].Cooldown = 15000;
-    pAI->Spell[0].CooldownRandomAddition = 5000;
-    pAI->Spell[0].First_Cast = 5000;
-    pAI->Spell[0].Cast_Target_Type = CAST_HOSTILE_RANDOM;
-
-    pAI->EnterEvadeMode();
-
-    return pAI;
-}
-
-//Coilfang Strifer
-//It hits plate for about 8000 damage, has a Mind Blast spell doing about 3000 shadow damage, and a Psychic Scream Aura, which fears everybody in a 8 yard range of it every 2-3 seconds , for 5 seconds and increasing their movement speed by 150% during the fear.
-CreatureAI* GetAI_mob_coilfang_strider(Creature* pCreature)
-{
-    SimpleAI* pAI = new SimpleAI (pCreature);
-
-    pAI->Spell[0].Enabled = true;
-    pAI->Spell[0].Spell_Id = 41374;                          //Mind Blast
-    pAI->Spell[0].Cooldown = 30000;
-    pAI->Spell[0].CooldownRandomAddition = 10000;
-    pAI->Spell[0].First_Cast = 8000;
-    pAI->Spell[0].Cast_Target_Type = CAST_HOSTILE_TARGET;
-
-    //Scream aura not implemented
-
-    pAI->EnterEvadeMode();
-
-    return pAI;
-}
+    SPELL_CLEAVE        = 31345,
+    SPELL_MIND_BLAST    = 41374
+};
 
 //can probably be removed
 struct MANGOS_DLL_DECL mob_shield_generator_channelAI : public ScriptedAI
@@ -682,7 +634,7 @@ struct MANGOS_DLL_DECL mob_shield_generator_channelAI : public ScriptedAI
 //this is wrong, alternative script needed
 bool ItemUse_item_tainted_core(Player* pPlayer, Item* pItem, SpellCastTargets const& sctTargets)
 {
-    ScriptedInstance* pInstance = ((ScriptedInstance*)pPlayer->GetInstanceData());
+    ScriptedInstance* pInstance = (ScriptedInstance*)pPlayer->GetInstanceData();
 
     if (!pInstance)
     {
@@ -690,8 +642,14 @@ bool ItemUse_item_tainted_core(Player* pPlayer, Item* pItem, SpellCastTargets co
         return true;
     }
 
-    Creature* pVashj = (Creature*)(Unit::GetUnit((*pPlayer), pInstance->GetData64(DATA_LADYVASHJ)));
-    if (pVashj && ((boss_lady_vashjAI*)pVashj->AI())->m_uiPhase == 2)
+    Creature* pVashj = pInstance->GetSingleCreatureFromStorage(NPC_LADYVASHJ);
+
+    if (!pVashj)
+        return true;
+
+    boss_lady_vashjAI* pVashjAI = dynamic_cast<boss_lady_vashjAI*>(pVashj->AI());
+
+    if (pVashjAI && pVashjAI->m_uiPhase == 2)
     {
         if (sctTargets.getGOTarget() && sctTargets.getGOTarget()->GetTypeId()==TYPEID_GAMEOBJECT)
         {
@@ -724,8 +682,8 @@ bool ItemUse_item_tainted_core(Player* pPlayer, Item* pItem, SpellCastTargets co
                 return true;
 
             //get and remove channel
-            if (Unit* pChannel = Unit::GetUnit((*pVashj), ((boss_lady_vashjAI*)pVashj->AI())->m_auiShieldGeneratorChannel[uiChannelIdentifier]))
-                pChannel->setDeathState(JUST_DIED);         //calls Unsummon()
+            if (Creature* pChannel = pVashj->GetMap()->GetCreature(pVashjAI->m_auiShieldGeneratorChannel[uiChannelIdentifier]))
+                pChannel->SetDeathState(JUST_DIED);         //calls Unsummon()
 
             pInstance->SetData(uiIdentifier, DONE);
 
@@ -763,44 +721,35 @@ CreatureAI* GetAI_mob_shield_generator_channel(Creature* pCreature)
 
 void AddSC_boss_lady_vashj()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_lady_vashj";
-    newscript->GetAI = &GetAI_boss_lady_vashj;
-    newscript->RegisterSelf();
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "mob_enchanted_elemental";
-    newscript->GetAI = &GetAI_mob_enchanted_elemental;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_lady_vashj";
+    pNewScript->GetAI = &GetAI_boss_lady_vashj;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_tainted_elemental";
-    newscript->GetAI = &GetAI_mob_tainted_elemental;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_enchanted_elemental";
+    pNewScript->GetAI = &GetAI_mob_enchanted_elemental;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_toxic_sporebat";
-    newscript->GetAI = &GetAI_mob_toxic_sporebat;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_tainted_elemental";
+    pNewScript->GetAI = &GetAI_mob_tainted_elemental;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_coilfang_elite";
-    newscript->GetAI = &GetAI_mob_coilfang_elite;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_toxic_sporebat";
+    pNewScript->GetAI = &GetAI_mob_toxic_sporebat;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_coilfang_strider";
-    newscript->GetAI = &GetAI_mob_coilfang_strider;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_shield_generator_channel";
+    pNewScript->GetAI = &GetAI_mob_shield_generator_channel;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_shield_generator_channel";
-    newscript->GetAI = &GetAI_mob_shield_generator_channel;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "item_tainted_core";
-    newscript->pItemUse = &ItemUse_item_tainted_core;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "item_tainted_core";
+    pNewScript->pItemUse = &ItemUse_item_tainted_core;
+    pNewScript->RegisterSelf();
 }

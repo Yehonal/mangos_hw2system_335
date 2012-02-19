@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -34,7 +34,6 @@ struct MANGOS_DLL_DECL boss_hazzarahAI : public ScriptedAI
     uint32 ManaBurn_Timer;
     uint32 Sleep_Timer;
     uint32 Illusions_Timer;
-    Creature* Illusion;
 
     void Reset()
     {
@@ -67,12 +66,13 @@ struct MANGOS_DLL_DECL boss_hazzarahAI : public ScriptedAI
         {
             //We will summon 3 illusions that will spawn on a random gamer and attack this gamer
             //We will just use one model for the beginning
-            Unit* target = NULL;
             for(int i = 0; i < 3; ++i)
             {
-                target = SelectUnit(SELECT_TARGET_RANDOM,0);
-                Illusion = m_creature->SummonCreature(15163,target->GetPositionX(), target->GetPositionY(), target->GetPositionZ(),0,TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN,30000);
-                ((CreatureAI*)Illusion->AI())->AttackStart(target);
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
+                {
+                    if (Creature* pIllusion = m_creature->SummonCreature(15163, pTarget->GetPositionX(), pTarget->GetPositionY(), pTarget->GetPositionZ(), 0.0f, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 30000))
+                        pIllusion->AI()->AttackStart(pTarget);
+                }
             }
 
             Illusions_Timer = urand(15000, 25000);
@@ -88,9 +88,10 @@ CreatureAI* GetAI_boss_hazzarah(Creature* pCreature)
 
 void AddSC_boss_hazzarah()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_hazzarah";
-    newscript->GetAI = &GetAI_boss_hazzarah;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_hazzarah";
+    pNewScript->GetAI = &GetAI_boss_hazzarah;
+    pNewScript->RegisterSelf();
 }

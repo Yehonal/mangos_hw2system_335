@@ -22,7 +22,7 @@ EndScriptData */
 
 #include "precompiled.h"
 
-#define SPELL_FRENZY			43139	// x 6 sec aumenta attack speed del 100% (nel senso k si velocizza. può essere dispellato da lock e hunter.)
+#define SPELL_FRENZY			43139	// x 6 sec aumenta attack speed del 100% (nel senso k si velocizza. puï¿½ essere dispellato da lock e hunter.)
 #define SPELL_EVASION			15087	// +50% dodge x 15 sec
 #define SPELL_DISARM			30013	// disarma x 8 secondi
 #define SPELL_REND				36965	// 2250 dmg ogni 3 sec x 15 sec
@@ -32,7 +32,7 @@ EndScriptData */
 
 #define SPELL_LYNX_RUSH			43153	// 2,2k + 7,5k over 10 sec
 #define SPELL_SHRED_ARMOR		31042	// riduce armor di 5k x 8 sec
-#define SPELL_FERAL_SWIPE		43357	// 3,5k-4k di danno al target, e -35% velocità x 8 sec
+#define SPELL_FERAL_SWIPE		43357	// 3,5k-4k di danno al target, e -35% velocitï¿½ x 8 sec
 #define SPELL_RAVENOUS_CLAW		17470	// draina 1k di vita dal target. (5 yard)
 
 #define SAY_AGGRO	"Ingninokkiatevi a zanna e artigli!"
@@ -191,7 +191,7 @@ struct MANGOS_DLL_DECL boss_halazziAI : public ScriptedAI
 					break;
 				}
 
-				target = SelectUnit(SELECT_TARGET_RANDOM,1);
+				target = m_creature->SelectRandomUnfriendlyTarget();
 				if(target)
 				{
 					spawn1 = NULL;
@@ -205,7 +205,7 @@ struct MANGOS_DLL_DECL boss_halazziAI : public ScriptedAI
 
 				}
 
-				target = SelectUnit(SELECT_TARGET_RANDOM,1);
+				target = m_creature->SelectRandomUnfriendlyTarget();
 				if(target)
 				{
 					spawn2 = NULL;
@@ -241,7 +241,7 @@ struct MANGOS_DLL_DECL boss_halazziAI : public ScriptedAI
 
 			if (aggrowipe_timer < diff)
             { 
-				target = SelectUnit(SELECT_TARGET_RANDOM,1);
+				target = m_creature->SelectRandomUnfriendlyTarget();
                 DoResetThreat();
 				if(target)
 					m_creature->AddThreat(target, 90000.0f);

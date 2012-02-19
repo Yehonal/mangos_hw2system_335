@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,8 +16,8 @@
 
 /* ScriptData
 SDName: Boss_Mandokir
-SD%Complete: 99
-SDComment: test Threating Gaze
+SD%Complete: 80
+SDComment: test Threating Gaze. Script depends on ACID script for Vilebranch Speaker
 SDCategory: Zul'Gurub
 EndScriptData */
 
@@ -47,13 +47,13 @@ enum
     SPELL_SUMMON_PLAYER = 25104,
     SPELL_LEVEL_UP      = 24312,
 
-    SPELL_MOUNT         = 23243,                            //this spell may not be correct, it's the spell used by item
-
     //Ohgans Spells
     SPELL_SUNDERARMOR   = 24317,
 
     //Chained Spirit Spells
-    SPELL_REVIVE        = 24341
+    SPELL_REVIVE        = 24341,
+
+    POINT_DOWNSTAIRS    = 1
 };
 
 struct SpawnLocations
@@ -84,6 +84,7 @@ static SpawnLocations aSpirits[]=
     {-12266.1f, -1940.72f, 132.606f, 0.70910f}
 };
 
+static SpawnLocations aMandokirDownstairsPos = {-12196.30f, -1948.37f, 130.31f, 3.77f};
 
 struct MANGOS_DLL_DECL boss_mandokirAI : public ScriptedAI
 {
@@ -105,9 +106,11 @@ struct MANGOS_DLL_DECL boss_mandokirAI : public ScriptedAI
     uint8 m_uiKillCount;
 
     bool m_bRaptorDead;
+    bool m_bMandokirDownstairs;
 
     float m_fTargetThreat;
-    uint64 m_uiWatchTarget;
+    ObjectGuid m_watchTargetGuid;
+    ObjectGuid m_ohganGuid;
 
     void Reset()
     {
@@ -121,17 +124,20 @@ struct MANGOS_DLL_DECL boss_mandokirAI : public ScriptedAI
         m_uiKillCount = 0;
 
         m_bRaptorDead = false;
+        m_bMandokirDownstairs = false;
 
         m_fTargetThreat = 0.0f;
-        m_uiWatchTarget = 0;
+        m_watchTargetGuid.Clear();
 
-        DoCastSpellIfCan(m_creature, SPELL_MOUNT);
+        if (Creature* pOhgan = m_creature->GetMap()->GetCreature(m_ohganGuid))
+            pOhgan->ForcedDespawn();
     }
 
+    // should evade to bottom of the stairs when raid fail
     void JustReachedHome()
     {
         if (m_pInstance)
-            m_pInstance->SetData(TYPE_OHGAN, NOT_STARTED);
+            m_pInstance->SetData(TYPE_OHGAN, FAIL);
 
         std::list<Creature*> lSpirits;                      //despawn spirits
         GetCreatureListWithEntryInGrid(lSpirits, m_creature, NPC_CHAINED_SPIRIT, DEFAULT_VISIBILITY_INSTANCE);
@@ -144,6 +150,8 @@ struct MANGOS_DLL_DECL boss_mandokirAI : public ScriptedAI
                     (*iter)->ForcedDespawn();
             }
         }
+
+        m_bMandokirDownstairs = false;
     }
 
     void KilledUnit(Unit* pVictim)
@@ -157,9 +165,13 @@ struct MANGOS_DLL_DECL boss_mandokirAI : public ScriptedAI
                 DoScriptText(SAY_DING_KILL, m_creature);
 
                 if (m_pInstance)
-                    if (Unit* jTemp = Unit::GetUnit(*m_creature, m_pInstance->GetData64(DATA_JINDO)))
-                        if (jTemp->isAlive())
-                            DoScriptText(SAY_GRATS_JINDO, jTemp);
+                {
+                    if (Creature* pJindo = m_pInstance->GetSingleCreatureFromStorage(NPC_JINDO))
+                    {
+                        if (pJindo->isAlive())
+                            DoScriptText(SAY_GRATS_JINDO, pJindo);
+                    }
+                }
 
                 DoCastSpellIfCan(m_creature, SPELL_LEVEL_UP, CAST_TRIGGERED);
                 m_creature->SetLevel(m_creature->getLevel() + 1);
@@ -178,15 +190,13 @@ struct MANGOS_DLL_DECL boss_mandokirAI : public ScriptedAI
     {
         DoScriptText(SAY_AGGRO, m_creature);
 
-        m_creature->SetInCombatWithZone();
-
         uint32 uiCount = sizeof(aSpirits)/sizeof(SpawnLocations);
 
         for(uint8 i = 0; i < uiCount; ++i)
             m_creature->SummonCreature(NPC_CHAINED_SPIRIT, aSpirits[i].fX, aSpirits[i].fY, aSpirits[i].fZ, aSpirits[i].fAng, TEMPSUMMON_CORPSE_DESPAWN, 0);
 
-        //At combat start Mandokir is mounted so we must unmount it first, and set his flags for attackable
-        m_creature->RemoveAurasDueToSpell(SPELL_MOUNT);
+        //At combat start Mandokir is mounted so we must unmount it first
+        m_creature->Unmount();
 
         //And summon his raptor
         m_creature->SummonCreature(NPC_OHGAN, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 35000);
@@ -194,11 +204,19 @@ struct MANGOS_DLL_DECL boss_mandokirAI : public ScriptedAI
 
     void JustSummoned(Creature* pSummoned)
     {
-        if (!m_creature->getVictim())
-            return;
-
         if (pSummoned->GetEntry() == NPC_OHGAN)
-            pSummoned->AI()->AttackStart(m_creature->getVictim());
+        {
+            m_ohganGuid = pSummoned->GetObjectGuid();
+
+            if (m_creature->getVictim())
+                pSummoned->AI()->AttackStart(m_creature->getVictim());
+        }
+    }
+
+    void SummonedCreatureDespawn(Creature* pSummoned)
+    {
+        if (pSummoned->GetEntry() == NPC_OHGAN)
+            m_ohganGuid.Clear();
     }
 
     void SpellHitTarget(Unit* pTarget, const SpellEntry* pSpell)
@@ -208,7 +226,7 @@ struct MANGOS_DLL_DECL boss_mandokirAI : public ScriptedAI
             DoScriptText(SAY_WATCH, m_creature, pTarget);
             DoScriptText(SAY_WATCH_WHISPER, m_creature, pTarget);
 
-            m_uiWatchTarget = pTarget->GetGUID();
+            m_watchTargetGuid = pTarget->GetObjectGuid();
             m_fTargetThreat = m_creature->getThreatManager().getThreat(pTarget);
             m_uiWatch_Timer = 6000;
 
@@ -218,17 +236,39 @@ struct MANGOS_DLL_DECL boss_mandokirAI : public ScriptedAI
         }
     }
 
+    void MovementInform(uint32 uiMoveType, uint32 uiPointId)
+    {
+        if (uiMoveType != POINT_MOTION_TYPE || !m_pInstance)
+            return;
+
+        if (uiPointId == POINT_DOWNSTAIRS)
+        {
+            // evaded at least once, and then attackable
+            if (m_pInstance->GetData(TYPE_OHGAN) == FAIL)
+                m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE);
+            else
+                m_creature->SetInCombatWithZone();
+        }
+    }
+
     void UpdateAI(const uint32 uiDiff)
     {
+        if (!m_bMandokirDownstairs && m_pInstance && (m_pInstance->GetData(TYPE_OHGAN) == SPECIAL || m_pInstance->GetData(TYPE_OHGAN) == FAIL))
+        {
+            m_bMandokirDownstairs = true;
+            m_creature->SetWalk(false);
+            m_creature->GetMotionMaster()->MovePoint(POINT_DOWNSTAIRS, aMandokirDownstairsPos.fX, aMandokirDownstairsPos.fY, aMandokirDownstairsPos.fZ);
+        }
+
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
         if (m_uiWatch_Timer < uiDiff)
         {
             //If someone is watched
-            if (m_uiWatchTarget)
+            if (m_watchTargetGuid)
             {
-                Unit* pWatchTarget = Unit::GetUnit(*m_creature, m_uiWatchTarget);
+                Player* pWatchTarget = m_creature->GetMap()->GetPlayer(m_watchTargetGuid);
 
                  //If threat is higher that previously saved, mandokir will act
                 if (pWatchTarget && pWatchTarget->isAlive() && m_creature->getThreatManager().getThreat(pWatchTarget) > m_fTargetThreat)
@@ -239,11 +279,11 @@ struct MANGOS_DLL_DECL boss_mandokirAI : public ScriptedAI
                     DoCastSpellIfCan(pWatchTarget, SPELL_CHARGE);
                 }
 
-                m_uiWatchTarget = 0;
+                m_watchTargetGuid.Clear();
             }
             else
             {
-                if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 {
                     if (Player* pPlayer = pTarget->GetCharmerOrOwnerPlayerOrPlayerItself())
                         m_creature->CastSpell(pPlayer, SPELL_WATCH, false);
@@ -255,7 +295,7 @@ struct MANGOS_DLL_DECL boss_mandokirAI : public ScriptedAI
         else
             m_uiWatch_Timer -= uiDiff;
 
-        if (!m_uiWatchTarget)
+        if (!m_watchTargetGuid)
         {
             //Cleave
             if (m_uiCleave_Timer < uiDiff)
@@ -283,9 +323,9 @@ struct MANGOS_DLL_DECL boss_mandokirAI : public ScriptedAI
                 ThreatList const& tList = m_creature->getThreatManager().getThreatList();
                 for (ThreatList::const_iterator i = tList.begin();i != tList.end(); ++i)
                 {
-                    Unit* pTarget = Unit::GetUnit(*m_creature, (*i)->getUnitGuid());
+                    Unit* pTarget = m_creature->GetMap()->GetUnit((*i)->getUnitGuid());
 
-                    if (pTarget && pTarget->GetTypeId() == TYPEID_PLAYER && m_creature->IsWithinDistInMap(pTarget, ATTACK_DISTANCE))
+                    if (pTarget && pTarget->GetTypeId() == TYPEID_PLAYER && m_creature->CanReachWithMeleeAttack(pTarget))
                         ++uiTargetInRangeCount;
                 }
 
@@ -388,15 +428,15 @@ CreatureAI* GetAI_mob_ohgan(Creature* pCreature)
 
 void AddSC_boss_mandokir()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_mandokir";
-    newscript->GetAI = &GetAI_boss_mandokir;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_mandokir";
+    pNewScript->GetAI = &GetAI_boss_mandokir;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_ohgan";
-    newscript->GetAI = &GetAI_mob_ohgan;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_ohgan";
+    pNewScript->GetAI = &GetAI_mob_ohgan;
+    pNewScript->RegisterSelf();
 }

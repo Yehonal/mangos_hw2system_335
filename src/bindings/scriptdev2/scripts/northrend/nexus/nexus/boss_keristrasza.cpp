@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -32,7 +32,10 @@ enum
     SAY_KILL                    = -1576019,
     SAY_DEATH                   = -1576020,
 
+    MAX_INTENSE_COLD_STACK      = 2,            // the max allowed stacks for the achiev to pass
+
     SPELL_INTENSE_COLD          = 48094,
+    SPELL_INTENSE_COLD_AURA     = 48095,        // used for Intense cold achiev
 
     SPELL_CRYSTALFIRE_BREATH    = 48096,
     SPELL_CRYSTALFIRE_BREATH_H  = 57091,
@@ -66,6 +69,7 @@ struct MANGOS_DLL_DECL boss_keristraszaAI : public ScriptedAI
     uint32 uiTailSweepTimer;
     uint32 uiCrystalfireBreathTimer;
     uint32 uiCrystallizeTimer;
+    uint32 uiCheckIntenseColdTimer;
 
     bool m_bIsEnraged;
 
@@ -75,6 +79,7 @@ struct MANGOS_DLL_DECL boss_keristraszaAI : public ScriptedAI
         uiTailSweepTimer = urand(5000, 7500);
         uiCrystalfireBreathTimer = urand(10000, 20000);
         uiCrystallizeTimer = urand(20000, 30000);
+        uiCheckIntenseColdTimer = 2000;
 
         m_bIsEnraged = false;
 
@@ -82,9 +87,9 @@ struct MANGOS_DLL_DECL boss_keristraszaAI : public ScriptedAI
             return;
 
         if (m_creature->isAlive())
-        {   
+        {
             if (m_pInstance->GetData(TYPE_KERISTRASZA) != SPECIAL)
-                m_creature->CastSpell(m_creature, SPELL_FROZEN_PRISON, true);
+                DoCastSpellIfCan(m_creature, SPELL_FROZEN_PRISON, CAST_TRIGGERED);
         }
     }
 
@@ -93,6 +98,9 @@ struct MANGOS_DLL_DECL boss_keristraszaAI : public ScriptedAI
         DoScriptText(SAY_AGGRO, m_creature);
 
         m_creature->CastSpell(m_creature, SPELL_INTENSE_COLD, true);
+
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_KERISTRASZA, IN_PROGRESS);
     }
 
     void JustDied(Unit* pKiller)
@@ -114,6 +122,30 @@ struct MANGOS_DLL_DECL boss_keristraszaAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
+        if (uiCheckIntenseColdTimer < uiDiff)
+        {
+            ThreatList playerList = m_creature->getThreatManager().getThreatList();
+            for (ThreatList::const_iterator itr = playerList.begin(); itr != playerList.end(); ++itr)
+            {
+                if (Player* pTarget = m_creature->GetMap()->GetPlayer((*itr)->getUnitGuid()))
+                {
+                    Aura* pAuraIntenseCold = pTarget->GetAura(SPELL_INTENSE_COLD_AURA, EFFECT_INDEX_0);
+
+                    if (pAuraIntenseCold)
+                    {
+                        if (pAuraIntenseCold->GetStackAmount() > MAX_INTENSE_COLD_STACK)
+                        {
+                            if (m_pInstance)
+                                m_pInstance->SetData(TYPE_INTENSE_COLD_FAILED, pTarget->GetGUIDLow());
+                        }
+                    }
+                }
+            }
+            uiCheckIntenseColdTimer = 1000;
+        }
+        else
+            uiCheckIntenseColdTimer -= uiDiff;
+
         if (!m_bIsEnraged && m_creature->GetHealthPercent() < 25.0f)
         {
             if (!m_creature->IsNonMeleeSpellCasted(false))
@@ -130,7 +162,7 @@ struct MANGOS_DLL_DECL boss_keristraszaAI : public ScriptedAI
             {
                 if (m_bIsRegularMode)
                 {
-                    if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 1))
+                    if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
                     {
                         if (Player* pPlayer = pTarget->GetCharmerOrOwnerPlayerOrPlayerItself())
                             DoCastSpellIfCan(pPlayer, SPELL_CRYSTAL_CHAINS);
@@ -210,10 +242,10 @@ CreatureAI* GetAI_boss_keristrasza(Creature* pCreature)
 
 void AddSC_boss_keristrasza()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_keristrasza";
-    newscript->GetAI = &GetAI_boss_keristrasza;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_keristrasza";
+    pNewScript->GetAI = &GetAI_boss_keristrasza;
+    pNewScript->RegisterSelf();
 }

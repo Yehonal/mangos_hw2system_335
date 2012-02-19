@@ -21,7 +21,7 @@ SDComment: need test!
 EndScriptData */
 
 #include "precompiled.h"
-// #include "../../../../game/TargetedMovementGenerator.h"
+#include "../../../../game/ZZ_ScriptsPersonali.h"
 
 // spell x trasformarsi
 
@@ -59,8 +59,8 @@ EndScriptData */
 
 #define SPELL_FLAME_WHIRL       43213			// gira su se stesso veloce, sputa fuoco, mette 1 debuff +50% fire dmg ricevuto, e fa 1k fire dmg.
 #define SPELL_FLAME_BREATH		43215			// flame breath tipico. target.
-#define SPELL_FLAME_COLUMN		43218			// vengon giù fiamme dall'alto e fan dmg a qll vicini (self)
-#define SPELL_FIRE_SHIELD		38933			// 500 dmg ogni 3 sec x 10 min a quelli intorno a sè, self.
+#define SPELL_FLAME_COLUMN		43218			// vengon giï¿½ fiamme dall'alto e fan dmg a qll vicini (self)
+#define SPELL_FIRE_SHIELD		38933			// 500 dmg ogni 3 sec x 10 min a quelli intorno a sï¿½, self.
 #define SPELL_FIREBALL			41484			// 6,8k dmg circa, + 600 over 3 sec. 40 yard range, single target
 
 
@@ -104,7 +104,7 @@ struct MANGOS_DLL_DECL boss_zuljinAI : public ScriptedAI
 	uint32 changeaggro_Timer;
 
     uint32 flame_whirl_Timer;
-	uint32 flamewhirl_Timer;	// ne ho due ma è xk devo fargli castare ogni 30 secondi 9 volte la spell, ovviamente nn posso usare un ciclo for, uso 1 timer piccolo
+	uint32 flamewhirl_Timer;	// ne ho due ma ï¿½ xk devo fargli castare ogni 30 secondi 9 volte la spell, ovviamente nn posso usare un ciclo for, uso 1 timer piccolo
 	uint32 times_Timer;
     uint32 flamebreath_Timer;
 	uint32 flamecolumn_Timer;
@@ -115,7 +115,7 @@ struct MANGOS_DLL_DECL boss_zuljinAI : public ScriptedAI
 	Creature* Twist1;
 	Creature* Twist2;
 
-	uint32 Twist1Guid,Twist2Guid;
+	ObjectGuid Twist1Guid,Twist2Guid;
 
 	bool twist1summoned, twist2summoned, special, doflame;
 
@@ -130,13 +130,13 @@ struct MANGOS_DLL_DECL boss_zuljinAI : public ScriptedAI
     void Reset()
     {
         throw_Timer = 15000;
-        whirlwind_Timer = 10000;	// rimane 10 secondi. questa form non è particolarmente difficile, serve a rilassare il raid x pwnarlo in seguito.
+        whirlwind_Timer = 10000;	// rimane 10 secondi. questa form non ï¿½ particolarmente difficile, serve a rilassare il raid x pwnarlo in seguito.
 
         overpower_Timer = 6000;	// rimane 6
         charge_Timer = 40000;	// rimane 40 sec
 
         windshock_Timer = 8000;	// rimane 8
-        claw_Timer = 3000;	// rimane 3 sec. qst fase durerà di + proprio xk si cura
+        claw_Timer = 3000;	// rimane 3 sec. qst fase durerï¿½ di + proprio xk si cura
 
 		rush_Timer = 6500;
 		cleave_Timer = 5000;
@@ -174,7 +174,7 @@ struct MANGOS_DLL_DECL boss_zuljinAI : public ScriptedAI
 		if(twist1summoned)
 		{
 			Twist1 = NULL;
-			Twist1 = ((Creature*)Unit::GetUnit((*m_creature), Twist1Guid));
+			Twist1 = ((Creature*)ObjectAccessor::GetUnit((*m_creature), Twist1Guid));
 			if(Twist1 && Twist1->isAlive())
 			{
 				Twist1->SetVisibility(VISIBILITY_OFF);
@@ -186,7 +186,7 @@ struct MANGOS_DLL_DECL boss_zuljinAI : public ScriptedAI
 		if(twist2summoned)
 		{
 			Twist2 = NULL;
-			Twist2 = ((Creature*)Unit::GetUnit((*m_creature), Twist2Guid));
+			Twist2 = ((Creature*)ObjectAccessor::GetUnit((*m_creature), Twist2Guid));
 			if(Twist2 && Twist2->isAlive())
 			{
 				Twist2->SetVisibility(VISIBILITY_OFF);
@@ -207,7 +207,7 @@ struct MANGOS_DLL_DECL boss_zuljinAI : public ScriptedAI
                 break;
 
                 case 1:
-                m_creature->MonsterYell(SAY_SLAY2, LANG_UNIVERSAL, victim->GetGUID());
+                m_creature->MonsterYell(SAY_SLAY2, LANG_UNIVERSAL, victim);
 				DoPlaySoundToSet(m_creature, SOUND_SLAY2);
                 break;
             }
@@ -222,7 +222,7 @@ struct MANGOS_DLL_DECL boss_zuljinAI : public ScriptedAI
     void Aggro(Unit *who)
     {
 		maxlife = m_creature->GetMaxHealth();
-        m_creature->MonsterYell(SAY_AGGRO, LANG_UNIVERSAL, who->GetGUID());
+        m_creature->MonsterYell(SAY_AGGRO, LANG_UNIVERSAL, who);
 		DoPlaySoundToSet(m_creature, SOUND_AGGRO);
 		m_creature->SetInCombatWithZone();
     }
@@ -239,7 +239,7 @@ struct MANGOS_DLL_DECL boss_zuljinAI : public ScriptedAI
 		{
 			if(throw_Timer < diff)
 			{   
-				target = SelectUnit(SELECT_TARGET_RANDOM, 1);
+				target = m_creature->SelectRandomUnfriendlyTarget();
 				if(target)
 					DoCast(target,SPELL_THROW);
 				throw_Timer = 10000;
@@ -260,7 +260,7 @@ struct MANGOS_DLL_DECL boss_zuljinAI : public ScriptedAI
 					special = false;
 					m_creature->InterruptSpell(CURRENT_GENERIC_SPELL);
 					DoCast(m_creature->getVictim(),SPELL_KNOCKBACK);
-					target = SelectUnit(SELECT_TARGET_RANDOM, 1);
+					target = m_creature->SelectRandomUnfriendlyTarget();
 					DoResetThreat();
 					if(target)
 						m_creature->AddThreat(target, 90000.0f);
@@ -278,7 +278,7 @@ struct MANGOS_DLL_DECL boss_zuljinAI : public ScriptedAI
 
 				if(charge_Timer < diff)
 				{   
-					target = SelectUnit(SELECT_TARGET_RANDOM, 1);
+					target = m_creature->SelectRandomUnfriendlyTarget();
 					DoResetThreat();
 					if(target)
 						m_creature->AddThreat(target, 90000.0f);
@@ -291,7 +291,7 @@ struct MANGOS_DLL_DECL boss_zuljinAI : public ScriptedAI
 		{
 			if(windshock_Timer < diff)
 			{   
-				target = SelectUnit(SELECT_TARGET_RANDOM, 0);
+				target = m_creature->SelectRandomUnfriendlyTarget();
 				DoCast(target,SPELL_WIND_SHOCK);
 				windshock_Timer = 8000;
 			}else windshock_Timer -= diff;
@@ -306,7 +306,7 @@ struct MANGOS_DLL_DECL boss_zuljinAI : public ScriptedAI
 		{
 			if(rush_Timer < diff)
 			{   
-				target = SelectUnit(SELECT_TARGET_RANDOM, 0);
+				target = m_creature->SelectRandomUnfriendlyTarget();
 				DoCast(target,SPELL_LYNX_RUSH);
 				rush_Timer = 5500;
 			}else rush_Timer -= diff;
@@ -319,7 +319,7 @@ struct MANGOS_DLL_DECL boss_zuljinAI : public ScriptedAI
 
 			if(changeaggro_Timer < diff)
 			{  
-				target = SelectUnit(SELECT_TARGET_RANDOM, 1);
+				target = m_creature->SelectRandomUnfriendlyTarget();
 				DoResetThreat();
 				if(target)
 					m_creature->AddThreat(target, 90000.0f);
@@ -375,7 +375,7 @@ struct MANGOS_DLL_DECL boss_zuljinAI : public ScriptedAI
 
 				if(fireball_Timer < diff)
 				{   
-					target = SelectUnit(SELECT_TARGET_RANDOM, 0);
+					target = m_creature->SelectRandomUnfriendlyTarget();
 					DoCast(target,SPELL_FIREBALL);
 					fireball_Timer = 28000;
 				}else fireball_Timer -= diff;
@@ -403,7 +403,7 @@ struct MANGOS_DLL_DECL boss_zuljinAI : public ScriptedAI
 			m_creature->MonsterYell(SAY_EAGLE, LANG_UNIVERSAL, NULL);
 			DoPlaySoundToSet(m_creature, SOUND_EAGLE);
 			DoCast(m_creature,FORM_EAGLE);
-			target = SelectUnit(SELECT_TARGET_RANDOM, 1);
+			target = m_creature->SelectRandomUnfriendlyTarget();
 			if(target)
 			{
 				Twist1 = m_creature->SummonCreature(24136,target->GetPositionX(),target->GetPositionY(),target->GetPositionZ(),0,TEMPSUMMON_CORPSE_DESPAWN,0);
@@ -413,10 +413,10 @@ struct MANGOS_DLL_DECL boss_zuljinAI : public ScriptedAI
 					Twist1->AI()->AttackStart(target);
 					Twist1->setFaction(m_creature->getFaction());
 					twist1summoned = true;
-					Twist1Guid = Twist1->GetGUID();
+					Twist1Guid = Twist1->GetObjectGuid();
 				}
 			}
-			target = SelectUnit(SELECT_TARGET_RANDOM, 1);
+			target = m_creature->SelectRandomUnfriendlyTarget();
 			if(target)
 			{
 				Twist2 = m_creature->SummonCreature(24136,target->GetPositionX(),target->GetPositionY(),target->GetPositionZ(),0,TEMPSUMMON_CORPSE_DESPAWN,0);
@@ -426,7 +426,7 @@ struct MANGOS_DLL_DECL boss_zuljinAI : public ScriptedAI
 					Twist2->SetVisibility(VISIBILITY_ON);
 					Twist2->setFaction(m_creature->getFaction());
 					twist2summoned = true;
-					Twist2Guid = Twist2->GetGUID();
+					Twist2Guid = Twist2->GetObjectGuid();
 				}
 			}
         }
@@ -475,7 +475,7 @@ struct MANGOS_DLL_DECL boss_zuljinAI : public ScriptedAI
     }
 };
 
-// e ora i tornadi che spawna in eagle form e despawna fuori da questa forma. questi tornadi vanno a spasso (metto che cambia target ogni tot, così va dal nuovo target) e fanno le loro spell.
+// e ora i tornadi che spawna in eagle form e despawna fuori da questa forma. questi tornadi vanno a spasso (metto che cambia target ogni tot, cosï¿½ va dal nuovo target) e fanno le loro spell.
 struct MANGOS_DLL_DECL twistAI : public ScriptedAI
 {
     twistAI (Creature *c) : ScriptedAI(c) 
@@ -598,7 +598,7 @@ struct MANGOS_DLL_DECL twistAI : public ScriptedAI
 
 		if(move_Timer < diff)
 		{   			
-			target = SelectUnit(SELECT_TARGET_RANDOM, 1);
+			target = m_creature->SelectRandomUnfriendlyTarget();
 			DoResetThreat();
 			if(target)
 			{
@@ -617,7 +617,7 @@ CreatureAI* GetAI_boss_zuljin_azsc(Creature *_Creature)
     return new boss_zuljinAI (_Creature);
 }
 
-CreatureAI* GetAI_twist(Creature *_Creature)
+CreatureAI* GetAI_twist_azsc(Creature *_Creature)
 {
     return new twistAI (_Creature);
 }
@@ -633,6 +633,6 @@ void AddSC_boss_zuljin_azsc()
 
 	newscript = new Script;
     newscript->Name="twist_azsc";
-    newscript->GetAI = GetAI_twist;
+    newscript->GetAI = GetAI_twist_azsc;
     newscript->RegisterSelf();
 }

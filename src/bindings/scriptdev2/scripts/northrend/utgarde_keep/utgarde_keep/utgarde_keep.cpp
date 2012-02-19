@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -68,7 +68,7 @@ struct MANGOS_DLL_DECL mob_dragonflayer_forge_masterAI : public ScriptedAI
         uint32 uiGOBellow = 0;
         uint32 uiGOFire = 0;
 
-        for(uint8 i = 0; i < MAX_FORGE; ++i)
+        for (uint8 i = 0; i < MAX_FORGE; ++i)
         {
             switch(i)
             {
@@ -77,7 +77,7 @@ struct MANGOS_DLL_DECL mob_dragonflayer_forge_masterAI : public ScriptedAI
                 case 2: uiGOBellow = GO_BELLOW_3; break;
             }
 
-            if (GameObject* pGOTemp = m_pInstance->instance->GetGameObject(m_pInstance->GetData64(uiGOBellow)))
+            if (GameObject* pGOTemp = m_pInstance->GetSingleGameObjectFromStorage(uiGOBellow))
                 lGOList.push_back(pGOTemp);
         }
 
@@ -95,20 +95,18 @@ struct MANGOS_DLL_DECL mob_dragonflayer_forge_masterAI : public ScriptedAI
 
             switch(lGOList.front()->GetEntry())
             {
-                case GO_BELLOW_1: uiGOFire = GO_FORGEFIRE_1; break;
-                case GO_BELLOW_2: uiGOFire = GO_FORGEFIRE_2; break;
-                case GO_BELLOW_3: uiGOFire = GO_FORGEFIRE_3; break;
+                case GO_BELLOW_1: uiGOFire = GO_FORGEFIRE_1; m_uiForgeEncounterId = TYPE_BELLOW_1; break;
+                case GO_BELLOW_2: uiGOFire = GO_FORGEFIRE_2; m_uiForgeEncounterId = TYPE_BELLOW_2; break;
+                case GO_BELLOW_3: uiGOFire = GO_FORGEFIRE_3; m_uiForgeEncounterId = TYPE_BELLOW_3; break;
             }
 
-            if (GameObject* pGOTemp = m_pInstance->instance->GetGameObject(m_pInstance->GetData64(uiGOFire)))
+            if (GameObject* pGOTemp = m_pInstance->GetSingleGameObjectFromStorage(uiGOFire))
             {
                 if (pGOTemp->getLootState() == GO_READY)
                     pGOTemp->UseDoorOrButton(DAY);
                 else if (pGOTemp->getLootState() == GO_ACTIVATED)
                     pGOTemp->ResetDoorOrButton();
             }
-
-            m_uiForgeEncounterId = lGOList.front()->GetEntry();
         }
     }
 
@@ -151,10 +149,10 @@ CreatureAI* GetAI_mob_dragonflayer_forge_master(Creature* pCreature)
 
 void AddSC_utgarde_keep()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "mob_dragonflayer_forge_master";
-    newscript->GetAI = &GetAI_mob_dragonflayer_forge_master;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_dragonflayer_forge_master";
+    pNewScript->GetAI = &GetAI_mob_dragonflayer_forge_master;
+    pNewScript->RegisterSelf();
 }

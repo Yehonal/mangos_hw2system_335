@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -60,7 +60,7 @@ struct MANGOS_DLL_DECL npc_lady_sylvanas_windrunnerAI : public ScriptedAI
 
     uint32 LamentEvent_Timer;
     bool LamentEvent;
-    uint64 targetGUID;
+    ObjectGuid m_targetGuid;
 
     float myX;
     float myY;
@@ -74,20 +74,20 @@ struct MANGOS_DLL_DECL npc_lady_sylvanas_windrunnerAI : public ScriptedAI
 
         LamentEvent_Timer = 5000;
         LamentEvent = false;
-        targetGUID = 0;
+        m_targetGuid.Clear();
     }
 
     void JustSummoned(Creature *summoned)
     {
         if (summoned->GetEntry() == ENTRY_HIGHBORNE_BUNNY)
         {
-            if (Creature* pBunny = (Creature*)Unit::GetUnit(*summoned,targetGUID))
+            if (Creature* pBunny = m_creature->GetMap()->GetCreature(m_targetGuid))
             {
                 pBunny->NearTeleportTo(pBunny->GetPositionX(), pBunny->GetPositionY(), myZ+15.0f, 0.0f);
                 summoned->CastSpell(pBunny,SPELL_RIBBON_OF_SOULS,false);
             }
 
-            targetGUID = summoned->GetGUID();
+            m_targetGuid = summoned->GetObjectGuid();
         }
     }
 
@@ -125,12 +125,16 @@ CreatureAI* GetAI_npc_lady_sylvanas_windrunner(Creature* pCreature)
     return new npc_lady_sylvanas_windrunnerAI(pCreature);
 }
 
-bool ChooseReward_npc_lady_sylvanas_windrunner(Player* pPlayer, Creature* pCreature, const Quest* pQuest, uint32 slot)
+bool QuestRewarded_npc_lady_sylvanas_windrunner(Player* pPlayer, Creature* pCreature, Quest const* pQuest)
 {
     if (pQuest->GetQuestId() == 9180)
     {
-        ((npc_lady_sylvanas_windrunnerAI*)pCreature->AI())->LamentEvent = true;
-        ((npc_lady_sylvanas_windrunnerAI*)pCreature->AI())->DoPlaySoundToSet(pCreature,SOUND_CREDIT);
+        if (npc_lady_sylvanas_windrunnerAI* pSylvanAI = dynamic_cast<npc_lady_sylvanas_windrunnerAI*>(pCreature->AI()))
+        {
+            pSylvanAI->LamentEvent = true;
+            pSylvanAI->DoPlaySoundToSet(pCreature, SOUND_CREDIT);
+        }
+
         pCreature->CastSpell(pCreature,SPELL_SYLVANAS_CAST,false);
 
         for(uint8 i = 0; i < 4; ++i)
@@ -167,9 +171,8 @@ struct MANGOS_DLL_DECL npc_highborne_lamenterAI : public ScriptedAI
         {
             if (EventMove_Timer < diff)
             {
-                m_creature->AddSplineFlag(SPLINEFLAG_NO_SPLINE);
-                m_creature->SendMonsterMoveWithSpeed(m_creature->GetPositionX(),m_creature->GetPositionY(),HIGHBORNE_LOC_Y_NEW,5000);
-                m_creature->GetMap()->CreatureRelocation(m_creature,m_creature->GetPositionX(),m_creature->GetPositionY(),HIGHBORNE_LOC_Y_NEW,m_creature->GetOrientation());
+                m_creature->SetLevitate(true);
+                m_creature->MonsterMoveWithSpeed(m_creature->GetPositionX(),m_creature->GetPositionY(),HIGHBORNE_LOC_Y_NEW,3.f);
                 EventMove = false;
             }else EventMove_Timer -= diff;
         }
@@ -197,17 +200,17 @@ CreatureAI* GetAI_npc_highborne_lamenter(Creature* pCreature)
 bool GossipHello_npc_parqual_fintallas(Player* pPlayer, Creature* pCreature)
 {
     if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetGUID());
+        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
 
     if (pPlayer->GetQuestStatus(6628) == QUEST_STATUS_INCOMPLETE && !pPlayer->HasAura(SPELL_MARK_OF_SHAME, EFFECT_INDEX_0))
     {
         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Gul'dan", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Kel'Thuzad", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Ner'zhul", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
-        pPlayer->SEND_GOSSIP_MENU(5822, pCreature->GetGUID());
+        pPlayer->SEND_GOSSIP_MENU(5822, pCreature->GetObjectGuid());
     }
     else
-        pPlayer->SEND_GOSSIP_MENU(5821, pCreature->GetGUID());
+        pPlayer->SEND_GOSSIP_MENU(5821, pCreature->GetObjectGuid());
 
     return true;
 }
@@ -233,22 +236,22 @@ bool GossipSelect_npc_parqual_fintallas(Player* pPlayer, Creature* pCreature, ui
 
 void AddSC_undercity()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_lady_sylvanas_windrunner";
-    newscript->GetAI = &GetAI_npc_lady_sylvanas_windrunner;
-    newscript->pChooseReward = &ChooseReward_npc_lady_sylvanas_windrunner;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_lady_sylvanas_windrunner";
+    pNewScript->GetAI = &GetAI_npc_lady_sylvanas_windrunner;
+    pNewScript->pQuestRewardedNPC = &QuestRewarded_npc_lady_sylvanas_windrunner;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_highborne_lamenter";
-    newscript->GetAI = &GetAI_npc_highborne_lamenter;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_highborne_lamenter";
+    pNewScript->GetAI = &GetAI_npc_highborne_lamenter;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_parqual_fintallas";
-    newscript->pGossipHello = &GossipHello_npc_parqual_fintallas;
-    newscript->pGossipSelect = &GossipSelect_npc_parqual_fintallas;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_parqual_fintallas";
+    pNewScript->pGossipHello = &GossipHello_npc_parqual_fintallas;
+    pNewScript->pGossipSelect = &GossipSelect_npc_parqual_fintallas;
+    pNewScript->RegisterSelf();
 }

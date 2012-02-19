@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -87,7 +87,6 @@ struct MANGOS_DLL_DECL boss_void_reaverAI : public ScriptedAI
     void Aggro(Unit* pWho)
     {
         DoScriptText(SAY_AGGRO, m_creature);
-        m_creature->SetInCombatWithZone();
 
         if (m_pInstance)
             m_pInstance->SetData(TYPE_VOIDREAVER, IN_PROGRESS);
@@ -116,7 +115,7 @@ struct MANGOS_DLL_DECL boss_void_reaverAI : public ScriptedAI
             ThreatList const& tList = m_creature->getThreatManager().getThreatList();
             for (ThreatList::const_iterator itr = tList.begin();itr != tList.end(); ++itr)
             {
-                target = Unit::GetUnit(*m_creature, (*itr)->getUnitGuid());
+                target = m_creature->GetMap()->GetUnit((*itr)->getUnitGuid());
 
                 // exclude pets & totems
                 if (!target || target->GetTypeId() != TYPEID_PLAYER)
@@ -145,10 +144,6 @@ struct MANGOS_DLL_DECL boss_void_reaverAI : public ScriptedAI
         {
             DoCastSpellIfCan(m_creature->getVictim(),SPELL_KNOCK_AWAY);
 
-            //Drop 25% aggro
-            if (m_creature->getThreatManager().getThreat(m_creature->getVictim()))
-                m_creature->getThreatManager().modifyThreatPercent(m_creature->getVictim(),-25);
-
             KnockAway_Timer = 30000;
         }else KnockAway_Timer -= diff;
 
@@ -175,9 +170,10 @@ CreatureAI* GetAI_boss_void_reaver(Creature* pCreature)
 
 void AddSC_boss_void_reaver()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_void_reaver";
-    newscript->GetAI = &GetAI_boss_void_reaver;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_void_reaver";
+    pNewScript->GetAI = &GetAI_boss_void_reaver;
+    pNewScript->RegisterSelf();
 }

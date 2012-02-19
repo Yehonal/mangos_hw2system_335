@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,27 +17,26 @@
 /* ScriptData
 SDName: GO_Scripts
 SD%Complete: 100
-SDComment: Quest support: 4285,4287,4288(crystal pylons), 4296, 5088, 6481, 10990, 10991, 10992. Field_Repair_Bot->Teaches spell 22704. Barov_journal->Teaches spell 26089
+SDComment: Quest support: 5088, 5097, 5098, 5381, 6481, 10990, 10991, 10992, 12557, 14092/14076. Barov_journal->Teaches spell 26089
 SDCategory: Game Objects
 EndScriptData */
 
 /* ContentData
 go_cat_figurine (the "trap" version of GO, two different exist)
-go_northern_crystal_pylon
-go_eastern_crystal_pylon
-go_western_crystal_pylon
 go_barov_journal
 go_ethereum_prison
 go_ethereum_stasis
-go_field_repair_bot_74A
-go_orb_of_command
+go_mysterious_snow_mound
 go_resonite_cask
 go_sacred_fire_of_life
 go_shrine_of_the_birds
 go_tablet_of_madness
-go_tablet_of_the_seven
 go_tele_to_dalaran_crystal
 go_tele_to_violet_stand
+go_andorhal_tower
+go_scourge_enclosure
+go_lab_work_reagents
+go_hand_of_iruxos_crystal
 EndContentData */
 
 #include "precompiled.h"
@@ -51,67 +50,27 @@ enum
     SPELL_SUMMON_GHOST_SABER    = 5968,
 };
 
-bool GOHello_go_cat_figurine(Player* pPlayer, GameObject* pGo)
+bool GOUse_go_cat_figurine(Player* pPlayer, GameObject* pGo)
 {
-    pPlayer->CastSpell(pPlayer,SPELL_SUMMON_GHOST_SABER,true);
+    pPlayer->CastSpell(pPlayer, SPELL_SUMMON_GHOST_SABER, true);
     return false;
-}
-
-/*######
-## go_crystal_pylons (3x)
-######*/
-
-bool GOHello_go_northern_crystal_pylon(Player* pPlayer, GameObject* pGo)
-{
-    if (pGo->GetGoType() == GAMEOBJECT_TYPE_QUESTGIVER)
-    {
-        pPlayer->PrepareQuestMenu(pGo->GetGUID());
-        pPlayer->SendPreparedQuest(pGo->GetGUID());
-    }
-
-    if (pPlayer->GetQuestStatus(4285) == QUEST_STATUS_INCOMPLETE)
-        pPlayer->AreaExploredOrEventHappens(4285);
-
-    return true;
-}
-
-bool GOHello_go_eastern_crystal_pylon(Player* pPlayer, GameObject* pGo)
-{
-    if (pGo->GetGoType() == GAMEOBJECT_TYPE_QUESTGIVER)
-    {
-        pPlayer->PrepareQuestMenu(pGo->GetGUID());
-        pPlayer->SendPreparedQuest(pGo->GetGUID());
-    }
-
-    if (pPlayer->GetQuestStatus(4287) == QUEST_STATUS_INCOMPLETE)
-        pPlayer->AreaExploredOrEventHappens(4287);
-
-    return true;
-}
-
-bool GOHello_go_western_crystal_pylon(Player* pPlayer, GameObject* pGo)
-{
-    if (pGo->GetGoType() == GAMEOBJECT_TYPE_QUESTGIVER)
-    {
-        pPlayer->PrepareQuestMenu(pGo->GetGUID());
-        pPlayer->SendPreparedQuest(pGo->GetGUID());
-    }
-
-    if (pPlayer->GetQuestStatus(4288) == QUEST_STATUS_INCOMPLETE)
-        pPlayer->AreaExploredOrEventHappens(4288);
-
-    return true;
 }
 
 /*######
 ## go_barov_journal
 ######*/
 
-bool GOHello_go_barov_journal(Player* pPlayer, GameObject* pGo)
+enum
 {
-    if (pPlayer->HasSkill(SKILL_TAILORING) && pPlayer->GetBaseSkillValue(SKILL_TAILORING) >= 280 && !pPlayer->HasSpell(26086))
+    SPELL_TAILOR_FELCLOTH_BAG = 26086,
+    SPELL_LEARN_FELCLOTH_BAG  = 26095
+};
+
+bool GOUse_go_barov_journal(Player* pPlayer, GameObject* pGo)
+{
+    if (pPlayer->HasSkill(SKILL_TAILORING) && pPlayer->GetBaseSkillValue(SKILL_TAILORING) >= 280 && !pPlayer->HasSpell(SPELL_TAILOR_FELCLOTH_BAG))
     {
-        pPlayer->CastSpell(pPlayer,26095,false);
+        pPlayer->CastSpell(pPlayer, SPELL_LEARN_FELCLOTH_BAG, false);
     }
     return true;
 }
@@ -122,12 +81,19 @@ bool GOHello_go_barov_journal(Player* pPlayer, GameObject* pGo)
 
 enum
 {
-    SPELL_REP_LC        = 39456,
-    SPELL_REP_SHAT      = 39457,
-    SPELL_REP_CE        = 39460,
-    SPELL_REP_CON       = 39474,
-    SPELL_REP_KT        = 39475,
-    SPELL_REP_SPOR      = 39476
+    FACTION_LC     = 1011,
+    FACTION_SHAT   = 935,
+    FACTION_CE     = 942,
+    FACTION_CON    = 933,
+    FACTION_KT     = 989,
+    FACTION_SPOR   = 970,
+
+    SPELL_REP_LC   = 39456,
+    SPELL_REP_SHAT = 39457,
+    SPELL_REP_CE   = 39460,
+    SPELL_REP_CON  = 39474,
+    SPELL_REP_KT   = 39475,
+    SPELL_REP_SPOR = 39476
 };
 
 const uint32 uiNpcPrisonEntry[] =
@@ -136,11 +102,11 @@ const uint32 uiNpcPrisonEntry[] =
     20783, 20784, 20785, 20786, 20788, 20789, 20790         //bad guys
 };
 
-bool GOHello_go_ethereum_prison(Player* pPlayer, GameObject* pGo)
+bool GOUse_go_ethereum_prison(Player* pPlayer, GameObject* pGo)
 {
-    int iRandom = rand() % (sizeof(uiNpcPrisonEntry) / sizeof(uint32));
+    uint8 uiRandom = urand(0, (sizeof(uiNpcPrisonEntry) / sizeof(uint32)) -1);
 
-    if (Creature* pCreature = pPlayer->SummonCreature(uiNpcPrisonEntry[iRandom],
+    if (Creature* pCreature = pPlayer->SummonCreature(uiNpcPrisonEntry[uiRandom],
         pGo->GetPositionX(), pGo->GetPositionY(), pGo->GetPositionZ(), pGo->GetAngle(pPlayer),
         TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30000))
     {
@@ -152,12 +118,12 @@ bool GOHello_go_ethereum_prison(Player* pPlayer, GameObject* pGo)
             {
                 switch(pFaction->faction)
                 {
-                    case 1011: uiSpell = SPELL_REP_LC; break;
-                    case 935: uiSpell = SPELL_REP_SHAT; break;
-                    case 942: uiSpell = SPELL_REP_CE; break;
-                    case 933: uiSpell = SPELL_REP_CON; break;
-                    case 989: uiSpell = SPELL_REP_KT; break;
-                    case 970: uiSpell = SPELL_REP_SPOR; break;
+                    case FACTION_LC:   uiSpell = SPELL_REP_LC;   break;
+                    case FACTION_SHAT: uiSpell = SPELL_REP_SHAT; break;
+                    case FACTION_CE:   uiSpell = SPELL_REP_CE;   break;
+                    case FACTION_CON:  uiSpell = SPELL_REP_CON;  break;
+                    case FACTION_KT:   uiSpell = SPELL_REP_KT;   break;
+                    case FACTION_SPOR: uiSpell = SPELL_REP_SPOR; break;
                 }
 
                 if (uiSpell)
@@ -180,28 +146,15 @@ const uint32 uiNpcStasisEntry[] =
     22825, 20888, 22827, 22826, 22828
 };
 
-bool GOHello_go_ethereum_stasis(Player* pPlayer, GameObject* pGo)
+bool GOUse_go_ethereum_stasis(Player* pPlayer, GameObject* pGo)
 {
-    int iRandom = rand() % (sizeof(uiNpcStasisEntry) / sizeof(uint32));
+    uint8 uiRandom = urand(0, (sizeof(uiNpcStasisEntry) / sizeof(uint32)) -1);
 
-    pPlayer->SummonCreature(uiNpcStasisEntry[iRandom],
+    pPlayer->SummonCreature(uiNpcStasisEntry[uiRandom],
         pGo->GetPositionX(), pGo->GetPositionY(), pGo->GetPositionZ(), pGo->GetAngle(pPlayer),
         TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30000);
 
     return false;
-}
-
-/*######
-## go_field_repair_bot_74A
-######*/
-
-bool GOHello_go_field_repair_bot_74A(Player* pPlayer, GameObject* pGo)
-{
-    if (pPlayer->HasSkill(SKILL_ENGINERING) && pPlayer->GetBaseSkillValue(SKILL_ENGINERING) >= 300 && !pPlayer->HasSpell(22704))
-    {
-        pPlayer->CastSpell(pPlayer,22864,false);
-    }
-    return true;
 }
 
 /*######
@@ -210,10 +163,10 @@ bool GOHello_go_field_repair_bot_74A(Player* pPlayer, GameObject* pGo)
 
 enum
 {
-    NPC_STILLBLADE  = 17716,
+    NPC_STILLBLADE = 17716,
 };
 
-bool GOHello_go_gilded_brazier(Player* pPlayer, GameObject* pGO)
+bool GOUse_go_gilded_brazier(Player* pPlayer, GameObject* pGO)
 {
     if (pGO->GetGoType() == GAMEOBJECT_TYPE_GOOBER)
     {
@@ -230,11 +183,11 @@ bool GOHello_go_gilded_brazier(Player* pPlayer, GameObject* pGO)
 
 enum
 {
-    SPELL_JUMP_A_TRON   = 33382,
-    NPC_JUMP_A_TRON     = 19041
+    SPELL_JUMP_A_TRON = 33382,
+    NPC_JUMP_A_TRON   = 19041
 };
 
-bool GOHello_go_jump_a_tron(Player* pPlayer, GameObject* pGo)
+bool GOUse_go_jump_a_tron(Player* pPlayer, GameObject* pGo)
 {
     if (Creature* pCreature = GetClosestCreatureWithEntry(pGo, NPC_JUMP_A_TRON, INTERACTION_DISTANCE))
         pCreature->CastSpell(pPlayer, SPELL_JUMP_A_TRON, false);
@@ -243,14 +196,32 @@ bool GOHello_go_jump_a_tron(Player* pPlayer, GameObject* pGo)
 }
 
 /*######
-## go_orb_of_command
+## go_mysterious_snow_mound
 ######*/
 
-bool GOHello_go_orb_of_command(Player* pPlayer, GameObject* pGo)
+enum
 {
-    if (pPlayer->GetQuestRewardStatus(7761))
-        pPlayer->CastSpell(pPlayer,23460,true);
+    SPELL_SUMMON_DEEP_JORMUNGAR     = 66510,
+    SPELL_SUMMON_MOLE_MACHINE       = 66492,
+    SPELL_SUMMON_MARAUDER           = 66491,
+};
 
+bool GOUse_go_mysterious_snow_mound(Player* pPlayer, GameObject* pGo)
+{
+    if (urand(0,1))
+    {
+        pPlayer->CastSpell(pPlayer, SPELL_SUMMON_DEEP_JORMUNGAR, true);
+    }
+    else
+    {
+        // This is basically wrong, but added for support.
+        // Mole machine would summon, along with unkonwn GO (a GO trap?) and then
+        // the npc would summon with base of that location.
+        pPlayer->CastSpell(pPlayer, SPELL_SUMMON_MOLE_MACHINE, true);
+        pPlayer->CastSpell(pPlayer, SPELL_SUMMON_MARAUDER, true);
+    }
+
+    pGo->SetLootState(GO_JUST_DEACTIVATED);
     return true;
 }
 
@@ -260,10 +231,10 @@ bool GOHello_go_orb_of_command(Player* pPlayer, GameObject* pGo)
 
 enum
 {
-    NPC_GOGGEROC    = 11920
+    NPC_GOGGEROC = 11920
 };
 
-bool GOHello_go_resonite_cask(Player* pPlayer, GameObject* pGO)
+bool GOUse_go_resonite_cask(Player* pPlayer, GameObject* pGO)
 {
     if (pGO->GetGoType() == GAMEOBJECT_TYPE_GOOBER)
         pGO->SummonCreature(NPC_GOGGEROC, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 300000);
@@ -277,45 +248,13 @@ bool GOHello_go_resonite_cask(Player* pPlayer, GameObject* pGO)
 
 enum
 {
-    NPC_ARIKARA     = 10882,
+    NPC_ARIKARA = 10882,
 };
 
-bool GOHello_go_sacred_fire_of_life(Player* pPlayer, GameObject* pGO)
+bool GOUse_go_sacred_fire_of_life(Player* pPlayer, GameObject* pGO)
 {
     if (pGO->GetGoType() == GAMEOBJECT_TYPE_GOOBER)
         pPlayer->SummonCreature(NPC_ARIKARA, -5008.338f, -2118.894f, 83.657f, 0.874f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30000);
-
-    return true;
-}
-
-/*######
-## go_school_of_red_snapper
-######*/
-
-enum
-{
-    ITEM_RED_SNAPPER        = 23614,
-    NPC_ANGRY_MURLOC        = 17102,
-    SPELL_SUMMON_TEST       = 49214                         // ! Just wrong spell name? It summon correct creature (17102)
-};
-
-bool GOHello_go_school_of_red_snapper(Player* pPlayer, GameObject* pGo)
-{
-    if (!urand(0, 2))
-    {
-        // pPlayer->CastSpell(pPlayer, SPELL_SUMMON_TEST, true);
-
-        if (Creature *Murloc = pPlayer->SummonCreature(NPC_ANGRY_MURLOC, pPlayer->GetPositionX(), pPlayer->GetPositionY()+20.0f, pPlayer->GetPositionZ(), 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 10000))
-            Murloc->AI()->AttackStart(pPlayer);
-    }
-    else
-    {
-        if (Item* pItem = pPlayer->StoreNewItemInInventorySlot(ITEM_RED_SNAPPER, 1))
-            pPlayer->SendNewItem(pItem, 1, true, false);
-    }
-
-    // not nice, need more research on how this kind of GO behave and how it must be handled in Mangos in such cases.
-    pGo->Delete();
 
     return true;
 }
@@ -326,20 +265,20 @@ bool GOHello_go_school_of_red_snapper(Player* pPlayer, GameObject* pGo)
 
 enum
 {
-    NPC_HAWK_GUARD      = 22992,
-    NPC_EAGLE_GUARD     = 22993,
-    NPC_FALCON_GUARD    = 22994,
-    GO_SHRINE_HAWK      = 185551,
-    GO_SHRINE_EAGLE     = 185547,
-    GO_SHRINE_FALCON    = 185553
+    NPC_HAWK_GUARD   = 22992,
+    NPC_EAGLE_GUARD  = 22993,
+    NPC_FALCON_GUARD = 22994,
+    GO_SHRINE_HAWK   = 185551,
+    GO_SHRINE_EAGLE  = 185547,
+    GO_SHRINE_FALCON = 185553
 };
 
-bool GOHello_go_shrine_of_the_birds(Player* pPlayer, GameObject* pGo)
+bool GOUse_go_shrine_of_the_birds(Player* pPlayer, GameObject* pGo)
 {
     uint32 uiBirdEntry = 0;
 
     float fX,fY,fZ;
-    pGo->GetClosePoint(fX,fY,fZ,pGo->GetObjectSize(),INTERACTION_DISTANCE);
+    pGo->GetClosePoint(fX, fY, fZ, pGo->GetObjectBoundingRadius(), INTERACTION_DISTANCE);
 
     switch(pGo->GetEntry())
     {
@@ -364,27 +303,16 @@ bool GOHello_go_shrine_of_the_birds(Player* pPlayer, GameObject* pGo)
 ## go_tablet_of_madness
 ######*/
 
-bool GOHello_go_tablet_of_madness(Player* pPlayer, GameObject* pGo)
+enum
 {
-    if (pPlayer->HasSkill(SKILL_ALCHEMY) && pPlayer->GetSkillValue(SKILL_ALCHEMY) >= 300 && !pPlayer->HasSpell(24266))
-    {
-        pPlayer->CastSpell(pPlayer,24267,false);
-    }
-    return true;
-}
+    SPELL_ALCHEMY_GURUBASHI_MOJO_MADNESS = 24266,
+    SPELL_LEARN_GURUBASHI_MOJO_MADNESS   = 24267
+};
 
-/*######
-## go_tablet_of_the_seven
-######*/
-
-//TODO: use gossip option ("Transcript the Tablet") instead, if Mangos adds support.
-bool GOHello_go_tablet_of_the_seven(Player* pPlayer, GameObject* pGo)
+bool GOUse_go_tablet_of_madness(Player* pPlayer, GameObject* pGo)
 {
-    if (pGo->GetGoType() != GAMEOBJECT_TYPE_QUESTGIVER)
-        return true;
-
-    if (pPlayer->GetQuestStatus(4296) == QUEST_STATUS_INCOMPLETE)
-        pPlayer->CastSpell(pPlayer,15065,false);
+    if (pPlayer->HasSkill(SKILL_ALCHEMY) && pPlayer->GetSkillValue(SKILL_ALCHEMY) >= 300 && !pPlayer->HasSpell(SPELL_ALCHEMY_GURUBASHI_MOJO_MADNESS))
+        pPlayer->CastSpell(pPlayer, SPELL_LEARN_GURUBASHI_MOJO_MADNESS, false);
 
     return true;
 }
@@ -395,11 +323,11 @@ bool GOHello_go_tablet_of_the_seven(Player* pPlayer, GameObject* pGo)
 
 enum
 {
-    QUEST_LEARN_LEAVE_RETURN    = 12790,
-    QUEST_TELE_CRYSTAL_FLAG     = 12845
+    QUEST_LEARN_LEAVE_RETURN = 12790,
+    QUEST_TELE_CRYSTAL_FLAG  = 12845
 };
 
-bool GOHello_go_tele_to_dalaran_crystal(Player* pPlayer, GameObject* pGo)
+bool GOUse_go_tele_to_dalaran_crystal(Player* pPlayer, GameObject* pGo)
 {
     if (pPlayer->GetQuestRewardStatus(QUEST_TELE_CRYSTAL_FLAG))
         return false;
@@ -412,7 +340,7 @@ bool GOHello_go_tele_to_dalaran_crystal(Player* pPlayer, GameObject* pGo)
 ## go_tele_to_violet_stand
 ######*/
 
-bool GOHello_go_tele_to_violet_stand(Player* pPlayer, GameObject* pGo)
+bool GOUse_go_tele_to_violet_stand(Player* pPlayer, GameObject* pGo)
 {
     if (pPlayer->GetQuestRewardStatus(QUEST_LEARN_LEAVE_RETURN) || pPlayer->GetQuestStatus(QUEST_LEARN_LEAVE_RETURN) == QUEST_STATUS_INCOMPLETE)
         return false;
@@ -420,102 +348,240 @@ bool GOHello_go_tele_to_violet_stand(Player* pPlayer, GameObject* pGo)
     return true;
 }
 
+enum
+{
+    NPC_ZELEMAR_THE_WRATHFULL = 17830,
+    SAY_AGGRO                 = -1000579
+};
+
+float Position[4] = {-327.99f, 221.74f, -20.31f, 3.87f};
+
+bool GOUse_go_blood_filled_orb(Player* pPlayer, GameObject* pGo)
+{
+    if (Creature* pZelemar = pGo->SummonCreature(NPC_ZELEMAR_THE_WRATHFULL, Position[0], Position[1], Position[2], Position[3], TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30000))
+    {
+        DoScriptText(SAY_AGGRO, pZelemar);
+        pZelemar->AI()->AttackStart(pPlayer);
+    }
+    return false;
+}
+
+/*######
+## go_andorhal_tower
+######*/
+
+enum
+{
+    QUEST_ALL_ALONG_THE_WATCHTOWERS_ALLIANCE = 5097,
+    QUEST_ALL_ALONG_THE_WATCHTOWERS_HORDE    = 5098,
+    NPC_ANDORHAL_TOWER_1                     = 10902,
+    NPC_ANDORHAL_TOWER_2                     = 10903,
+    NPC_ANDORHAL_TOWER_3                     = 10904,
+    NPC_ANDORHAL_TOWER_4                     = 10905,
+    GO_ANDORHAL_TOWER_1                      = 176094,
+    GO_ANDORHAL_TOWER_2                      = 176095,
+    GO_ANDORHAL_TOWER_3                      = 176096,
+    GO_ANDORHAL_TOWER_4                      = 176097
+};
+
+bool GOUse_go_andorhal_tower(Player* pPlayer, GameObject* pGo)
+{
+    if (pPlayer->GetQuestStatus(QUEST_ALL_ALONG_THE_WATCHTOWERS_ALLIANCE) == QUEST_STATUS_INCOMPLETE || pPlayer->GetQuestStatus(QUEST_ALL_ALONG_THE_WATCHTOWERS_HORDE) == QUEST_STATUS_INCOMPLETE)
+    {
+        uint32 uiKillCredit = 0;
+        switch(pGo->GetEntry())
+        {
+            case GO_ANDORHAL_TOWER_1:   uiKillCredit = NPC_ANDORHAL_TOWER_1;   break;
+            case GO_ANDORHAL_TOWER_2:   uiKillCredit = NPC_ANDORHAL_TOWER_2;   break;
+            case GO_ANDORHAL_TOWER_3:   uiKillCredit = NPC_ANDORHAL_TOWER_3;   break;
+            case GO_ANDORHAL_TOWER_4:   uiKillCredit = NPC_ANDORHAL_TOWER_4;   break;
+        }
+        if (uiKillCredit)
+            pPlayer->KilledMonsterCredit(uiKillCredit);
+    }
+    return true;
+}
+
+/*######
+## go_scourge_enclosure
+######*/
+
+enum
+{
+    SPELL_GYMER_LOCK_EXPLOSION      = 55529,
+    NPC_GYMER_LOCK_DUMMY            = 29928
+
+};
+
+bool GOUse_go_scourge_enclosure(Player* pPlayer, GameObject* pGo)
+{
+    std::list<Creature*> m_lResearchersList;
+    GetCreatureListWithEntryInGrid(m_lResearchersList, pGo, NPC_GYMER_LOCK_DUMMY, 15.0f);
+    if (!m_lResearchersList.empty())
+    {
+        for(std::list<Creature*>::iterator itr = m_lResearchersList.begin(); itr != m_lResearchersList.end(); ++itr)
+        {
+            (*itr)->CastSpell((*itr),SPELL_GYMER_LOCK_EXPLOSION,true);
+        }
+    }
+    pPlayer->KilledMonsterCredit(NPC_GYMER_LOCK_DUMMY);
+    return true;
+}
+
+/*######
+## go_lab_work_reagents
+######*/
+
+enum
+{
+    QUEST_LAB_WORK                          = 12557,
+
+    SPELL_WIRHERED_BATWING_KILL_CREDIT      = 51226,
+    SPELL_MUDDY_MIRE_MAGGOT_KILL_CREDIT     = 51227,
+    SPELL_AMBERSEED_KILL_CREDIT             = 51228,
+    SPELL_CHILLED_SERPENT_MUCUS_KILL_CREDIT = 51229,
+
+    GO_AMBERSEED                            = 190459,
+    GO_CHILLED_SERPENT_MUCUS                = 190462,
+    GO_WITHERED_BATWING                     = 190473,
+    GO_MUDDY_MIRE_MAGGOTS                   = 190478,
+};
+
+bool GOUse_go_lab_work_reagents(Player* pPlayer, GameObject* pGo)
+{
+    if (pPlayer->GetQuestStatus(QUEST_LAB_WORK) == QUEST_STATUS_INCOMPLETE)
+    {
+        uint32 uiCreditSpellId = 0;
+        switch (pGo->GetEntry())
+        {
+            case GO_AMBERSEED:              uiCreditSpellId = SPELL_AMBERSEED_KILL_CREDIT; break;
+            case GO_CHILLED_SERPENT_MUCUS:  uiCreditSpellId = SPELL_CHILLED_SERPENT_MUCUS_KILL_CREDIT; break;
+            case GO_WITHERED_BATWING:       uiCreditSpellId = SPELL_WIRHERED_BATWING_KILL_CREDIT; break;
+            case GO_MUDDY_MIRE_MAGGOTS:     uiCreditSpellId = SPELL_MUDDY_MIRE_MAGGOT_KILL_CREDIT; break;
+        }
+
+        if (uiCreditSpellId)
+            pPlayer->CastSpell(pPlayer, uiCreditSpellId, true);
+    }
+
+    return false;
+}
+
+/*######
+## go_hand_of_iruxos_crystal
+######*/
+
+/* TODO
+ * Actually this script is extremely vague, but as long as there is no valid information
+ * hidden in some dark places, this will be the best we can do here :(
+ * Do not consider this a well proven script.
+ */
+
+enum
+{
+    // QUEST_HAND_OF_IRUXOS     = 5381,
+    NPC_IRUXOS                  = 11876,
+};
+
+bool GOUse_go_hand_of_iruxos_crystal(Player* pPlayer, GameObject* pGo)
+{
+    if (Creature* pIruxos = pGo->SummonCreature(NPC_IRUXOS, 0.0f, 0.0f, 0.0f, pPlayer->GetOrientation() + M_PI_F, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 20000))
+        pIruxos->AI()->AttackStart(pPlayer);
+
+    return false;
+}
+
 void AddSC_go_scripts()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "go_cat_figurine";
-    newscript->pGOHello =           &GOHello_go_cat_figurine;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_cat_figurine";
+    pNewScript->pGOUse =          &GOUse_go_cat_figurine;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_northern_crystal_pylon";
-    newscript->pGOHello =           &GOHello_go_northern_crystal_pylon;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_barov_journal";
+    pNewScript->pGOUse =          &GOUse_go_barov_journal;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_eastern_crystal_pylon";
-    newscript->pGOHello =           &GOHello_go_eastern_crystal_pylon;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_ethereum_prison";
+    pNewScript->pGOUse =          &GOUse_go_ethereum_prison;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_western_crystal_pylon";
-    newscript->pGOHello =           &GOHello_go_western_crystal_pylon;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_ethereum_stasis";
+    pNewScript->pGOUse =          &GOUse_go_ethereum_stasis;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_barov_journal";
-    newscript->pGOHello =           &GOHello_go_barov_journal;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_gilded_brazier";
+    pNewScript->pGOUse =          &GOUse_go_gilded_brazier;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_ethereum_prison";
-    newscript->pGOHello =           &GOHello_go_ethereum_prison;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_jump_a_tron";
+    pNewScript->pGOUse =          &GOUse_go_jump_a_tron;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_ethereum_stasis";
-    newscript->pGOHello =           &GOHello_go_ethereum_stasis;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_mysterious_snow_mound";
+    pNewScript->pGOUse =          &GOUse_go_mysterious_snow_mound;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_field_repair_bot_74A";
-    newscript->pGOHello =           &GOHello_go_field_repair_bot_74A;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_resonite_cask";
+    pNewScript->pGOUse =          &GOUse_go_resonite_cask;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_gilded_brazier";
-    newscript->pGOHello =           &GOHello_go_gilded_brazier;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_sacred_fire_of_life";
+    pNewScript->pGOUse =          &GOUse_go_sacred_fire_of_life;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_jump_a_tron";
-    newscript->pGOHello =           &GOHello_go_jump_a_tron;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_shrine_of_the_birds";
+    pNewScript->pGOUse =          &GOUse_go_shrine_of_the_birds;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_orb_of_command";
-    newscript->pGOHello =           &GOHello_go_orb_of_command;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_tablet_of_madness";
+    pNewScript->pGOUse =          &GOUse_go_tablet_of_madness;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_resonite_cask";
-    newscript->pGOHello =           &GOHello_go_resonite_cask;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_tele_to_dalaran_crystal";
+    pNewScript->pGOUse =          &GOUse_go_tele_to_dalaran_crystal;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_sacred_fire_of_life";
-    newscript->pGOHello =           &GOHello_go_sacred_fire_of_life;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_tele_to_violet_stand";
+    pNewScript->pGOUse =          &GOUse_go_tele_to_violet_stand;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_school_of_red_snapper";
-    newscript->pGOHello =           &GOHello_go_school_of_red_snapper;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_blood_filled_orb";
+    pNewScript->pGOUse =          &GOUse_go_blood_filled_orb;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_shrine_of_the_birds";
-    newscript->pGOHello =           &GOHello_go_shrine_of_the_birds;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_andorhal_tower";
+    pNewScript->pGOUse =          &GOUse_go_andorhal_tower;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_tablet_of_madness";
-    newscript->pGOHello =           &GOHello_go_tablet_of_madness;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_scourge_enclosure";
+    pNewScript->pGOUse =          &GOUse_go_scourge_enclosure;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_tablet_of_the_seven";
-    newscript->pGOHello =           &GOHello_go_tablet_of_the_seven;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_lab_work_reagents";
+    pNewScript->pGOUse =          &GOUse_go_lab_work_reagents;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_tele_to_dalaran_crystal";
-    newscript->pGOHello =           &GOHello_go_tele_to_dalaran_crystal;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "go_tele_to_violet_stand";
-    newscript->pGOHello =           &GOHello_go_tele_to_violet_stand;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_hand_of_iruxos_crystal";
+    pNewScript->pGOUse =          &GOUse_go_hand_of_iruxos_crystal;
+    pNewScript->RegisterSelf();
 }

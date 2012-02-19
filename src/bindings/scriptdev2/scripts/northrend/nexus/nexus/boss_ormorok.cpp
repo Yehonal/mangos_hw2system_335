@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -102,7 +102,7 @@ struct MANGOS_DLL_DECL boss_ormorokAI : public ScriptedAI
 
     void JustSummoned(Creature* pSummoned)
     {
-        if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 1))
+        if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
             pSummoned->AI()->AttackStart(pTarget);
     }
 
@@ -168,10 +168,10 @@ CreatureAI* GetAI_boss_ormorok(Creature* pCreature)
 
 void AddSC_boss_ormorok()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_ormorok";
-    newscript->GetAI = &GetAI_boss_ormorok;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_ormorok";
+    pNewScript->GetAI = &GetAI_boss_ormorok;
+    pNewScript->RegisterSelf();
 }

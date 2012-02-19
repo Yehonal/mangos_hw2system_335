@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -80,20 +80,19 @@ struct MANGOS_DLL_DECL boss_s_and_d_dummyAI : public ScriptedAI
     {
         m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
         m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
-        m_uiGhostGUID = 0;
         Reset();
     }
 
     ScriptedInstance* m_pInstance;
     bool m_bIsRegularMode;
-    uint64 m_uiGhostGUID;
+    ObjectGuid m_ghostGuid;
 
     Creature* GetBuddy()
     {
         if (!m_pInstance)
             return NULL;
 
-        return m_pInstance->instance->GetCreature(m_pInstance->GetData64(m_creature->GetEntry() == NPC_DALRONN ? NPC_SKARVALD : NPC_DALRONN));
+        return m_pInstance->GetSingleCreatureFromStorage(m_creature->GetEntry() == NPC_DALRONN ? NPC_SKARVALD : NPC_DALRONN);
     }
 
     void Reset() { }
@@ -106,7 +105,7 @@ struct MANGOS_DLL_DECL boss_s_and_d_dummyAI : public ScriptedAI
                 pBuddy->Respawn();
         }
 
-        if (Creature* pGhost = (Creature*)Unit::GetUnit(*m_creature, m_uiGhostGUID))
+        if (Creature* pGhost = m_creature->GetMap()->GetCreature(m_ghostGuid))
         {
             if (pGhost->isAlive())
                 pGhost->ForcedDespawn();
@@ -131,9 +130,9 @@ struct MANGOS_DLL_DECL boss_s_and_d_dummyAI : public ScriptedAI
     {
         // EventAI can probably handle ghosts
         if (pSummoned->GetEntry() == NPC_DAL_GHOST || pSummoned->GetEntry() == NPC_SKA_GHOST)
-            m_uiGhostGUID = pSummoned->GetGUID();
+            m_ghostGuid = pSummoned->GetObjectGuid();
 
-        Unit* pTarget = SelectUnit(SELECT_TARGET_TOPAGGRO,1);
+        Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO,1);
 
         if (m_creature->getVictim())
             pSummoned->AI()->AttackStart(pTarget ? pTarget : m_creature->getVictim());
@@ -154,7 +153,7 @@ struct MANGOS_DLL_DECL boss_s_and_d_dummyAI : public ScriptedAI
             }
             else
             {
-                if (Creature* pGhost = (Creature*)Unit::GetUnit(*m_creature,m_uiGhostGUID))
+                if (Creature* pGhost = m_creature->GetMap()->GetCreature(m_ghostGuid))
                     pGhost->ForcedDespawn();
 
                 pBuddy->SetFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
@@ -215,7 +214,7 @@ struct MANGOS_DLL_DECL boss_skarvaldAI : public boss_s_and_d_dummyAI
 
         if (m_uiChargeTimer < uiDiff)
         {
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 1))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
                 DoCastSpellIfCan(pTarget, SPELL_CHARGE);
 
             m_uiChargeTimer = urand(8000, 16000);
@@ -279,7 +278,7 @@ struct MANGOS_DLL_DECL boss_dalronnAI : public boss_s_and_d_dummyAI
 
         if (m_uiDebilitateTimer < uiDiff)
         {
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 DoCastSpellIfCan(pTarget, m_bIsRegularMode ? SPELL_DEBILITATE : SPELL_DEBILITATE_H);
 
             m_uiDebilitateTimer = urand(12000, 20000);
@@ -289,7 +288,7 @@ struct MANGOS_DLL_DECL boss_dalronnAI : public boss_s_and_d_dummyAI
 
         if (m_uiShadowBoltTimer < uiDiff)
         {
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 DoCastSpellIfCan(pTarget, m_bIsRegularMode ? SPELL_SHADOW_BOLT : SPELL_SHADOW_BOLT_H);
 
             m_uiShadowBoltTimer = urand(3000, 6000);
@@ -321,15 +320,15 @@ CreatureAI* GetAI_boss_dalronn(Creature* pCreature)
 
 void AddSC_boss_skarvald_and_dalronn()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_skarvald";
-    newscript->GetAI = &GetAI_boss_skarvald;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_skarvald";
+    pNewScript->GetAI = &GetAI_boss_skarvald;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_dalronn";
-    newscript->GetAI = &GetAI_boss_dalronn;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_dalronn";
+    pNewScript->GetAI = &GetAI_boss_dalronn;
+    pNewScript->RegisterSelf();
 }

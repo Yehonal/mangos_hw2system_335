@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -23,6 +23,18 @@ EndScriptData */
 
 #include "precompiled.h"
 #include "trial_of_the_crusader.h"
+
+enum
+{
+    SAY_AGGRO                           = -1649056,
+    SAY_BERSERK                         = -1649057,
+    SAY_COLORSWITCH                     = -1649058,
+    SAY_DEATH                           = -1649059,
+    SAY_SLAY_1                          = -1649060,
+    SAY_SLAY_2                          = -1649061,
+    SAY_TO_BLACK                        = -1649062,
+    SAY_TO_WHITE                        = -1649063,
+};
 
 /*######
 ## boss_fjola
@@ -86,15 +98,15 @@ CreatureAI* GetAI_boss_eydis(Creature* pCreature)
 
 void AddSC_twin_valkyr()
 {
-    Script* newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_fjola";
-    newscript->GetAI = &GetAI_boss_fjola;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_fjola";
+    pNewScript->GetAI = &GetAI_boss_fjola;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_eydis";
-    newscript->GetAI = &GetAI_boss_fjola;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_eydis";
+    pNewScript->GetAI = &GetAI_boss_fjola;
+    pNewScript->RegisterSelf();
 }

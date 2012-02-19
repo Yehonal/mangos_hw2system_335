@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -23,3 +23,20 @@ EndScriptData */
 
 #include "precompiled.h"
 #include "trial_of_the_crusader.h"
+
+enum
+{
+    SAY_GARROSH_PVP_A_SLAY_1            = -1649048,
+    SAY_GARROSH_PVP_A_SLAY_2            = -1649049,
+    SAY_GARROSH_PVP_A_SLAY_3            = -1649050,
+    SAY_GARROSH_PVP_A_SLAY_4            = -1649051,
+
+    SAY_VARIAN_PVP_H_SLAY_1             = -1649052,
+    SAY_VARIAN_PVP_H_SLAY_2             = -1649053,
+    SAY_VARIAN_PVP_H_SLAY_3             = -1649054,
+    SAY_VARIAN_PVP_H_SLAY_4             = -1649055,
+};
+
+void AddSC_boss_faction_champions()
+{
+}

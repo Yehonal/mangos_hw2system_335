@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -24,7 +24,7 @@ EndScriptData */
 #include "precompiled.h"
 #include "zulgurub.h"
 
-bool GOHello_go_gong_of_bethekk(Player* pPlayer, GameObject* pGo)
+bool GOUse_go_gong_of_bethekk(Player* pPlayer, GameObject* pGo)
 {
     if (ScriptedInstance* pInstance = (ScriptedInstance*)pGo->GetInstanceData())
     {
@@ -76,7 +76,7 @@ struct MANGOS_DLL_DECL boss_arlokkAI : public ScriptedAI
     uint32 m_uiSummon_Timer;
     uint32 m_uiSummonCount;
 
-    uint64 m_uiMarkedGUID;
+    ObjectGuid m_markedGuid;
 
     bool m_bIsPhaseTwo;
     bool m_bIsVanished;
@@ -96,7 +96,7 @@ struct MANGOS_DLL_DECL boss_arlokkAI : public ScriptedAI
         m_bIsPhaseTwo = false;
         m_bIsVanished = false;
 
-        m_uiMarkedGUID = 0;
+        m_markedGuid.Clear();
 
         m_creature->SetDisplayId(MODEL_ID_NORMAL);
         m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
@@ -129,9 +129,11 @@ struct MANGOS_DLL_DECL boss_arlokkAI : public ScriptedAI
 
     void DoSummonPhanters()
     {
-        if (Unit* pUnit = Unit::GetUnit(*m_creature, m_uiMarkedGUID))
-            if (pUnit->isAlive())
-                DoScriptText(SAY_FEAST_PANTHER, m_creature, pUnit);
+        if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_markedGuid))
+        {
+            if (pPlayer->isAlive())
+                DoScriptText(SAY_FEAST_PANTHER, m_creature, pPlayer);
+        }
 
         m_creature->SummonCreature(NPC_ZULIAN_PROWLER, -11532.7998f, -1649.6734f, 41.4800f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 15000);
         m_creature->SummonCreature(NPC_ZULIAN_PROWLER, -11532.9970f, -1606.4840f, 41.2979f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 15000);
@@ -139,9 +141,11 @@ struct MANGOS_DLL_DECL boss_arlokkAI : public ScriptedAI
 
     void JustSummoned(Creature* pSummoned)
     {
-        if (Unit* pUnit = Unit::GetUnit(*m_creature, m_uiMarkedGUID))
-            if (pUnit->isAlive())
-                pSummoned->AI()->AttackStart(pUnit);
+        if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_markedGuid))
+        {
+            if (pPlayer->isAlive())
+                pSummoned->AI()->AttackStart(pPlayer);
+        }
 
         ++m_uiSummonCount;
     }
@@ -163,18 +167,16 @@ struct MANGOS_DLL_DECL boss_arlokkAI : public ScriptedAI
 
             if (m_uiMark_Timer < uiDiff)
             {
-                if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 {
                     if (Player* pMark = pTarget->GetCharmerOrOwnerPlayerOrPlayerItself())
                     {
                         DoCastSpellIfCan(pMark, SPELL_MARK);
-                        m_uiMarkedGUID = pMark->GetGUID();
+                        m_markedGuid = pMark->GetObjectGuid();
                     }
                     else
                     {
-                        if (m_uiMarkedGUID)
-                            m_uiMarkedGUID = 0;
-
+                        m_markedGuid.Clear();
                         error_log("SD2: boss_arlokk could not accuire a new target to mark.");
                     }
                 }
@@ -250,7 +252,7 @@ struct MANGOS_DLL_DECL boss_arlokkAI : public ScriptedAI
                 m_creature->SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, (cinfo->maxdmg +((cinfo->maxdmg/100) * 35)));
                 m_creature->UpdateDamagePhysical(BASE_ATTACK);
 
-                if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM,0))
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
                     AttackStart(pTarget);
 
                 m_bIsPhaseTwo = true;
@@ -271,15 +273,15 @@ CreatureAI* GetAI_boss_arlokk(Creature* pCreature)
 
 void AddSC_boss_arlokk()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "go_gong_of_bethekk";
-    newscript->pGOHello = &GOHello_go_gong_of_bethekk;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_gong_of_bethekk";
+    pNewScript->pGOUse = &GOUse_go_gong_of_bethekk;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_arlokk";
-    newscript->GetAI = &GetAI_boss_arlokk;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_arlokk";
+    pNewScript->GetAI = &GetAI_boss_arlokk;
+    pNewScript->RegisterSelf();
 }

@@ -49,7 +49,7 @@ EndScriptData */
 #define SPELL_DRUID1                20701       // rejuvenation, 2k ogni 3 sec x 12 sec (cura)
 #define SPELL_DRUID2                43420       // thorns, x 40 secondi ogni attacco k riceve fa 200 di danno all'attacker
 #define SPELL_PALADIN1              38385       // consecration, 750 dmg ogni sec x 20 sec ad area itnrono a se. self cast.
-#define SPELL_PALADIN2              41367       // x 15 sec immune a tutto, diminuisce l'attack speed del 25% (nel senso k è + lento ad attaccare)
+#define SPELL_PALADIN2              41367       // x 15 sec immune a tutto, diminuisce l'attack speed del 25% (nel senso k ï¿½ + lento ad attaccare)
 #define SPELL_WARLOCK1              43440       // rain of fire, 2,8k ogni 2 sec x 10 sec, single target ma ad area.
 #define SPELL_WARLOCK2              25195       // curse of tongues: diminuisce (rallenta) casting speed del 75% x 15 sec
 #define SPELL_HUNTER1               35945       // 1k dmg + 240 ogni 3 sec x 12 sec (hunter sfigati, nn ci sn tante spell...)
@@ -105,12 +105,12 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
     {
         demonspell_timer = 7000;       // unico timer x mind blast & shadowbolt, switch(rand) x scegliere quale
         swpain_timer = 20000;
-        silence_timer = 35000;			// silence x 10 sec, è abb pesante, soprattutto sul healer. nn esageriamo ora!
+        silence_timer = 35000;			// silence x 10 sec, ï¿½ abb pesante, soprattutto sul healer. nn esageriamo ora!
 		doom_timer = 17000;
 
-        spell2_timer = 500000;			// qst è x evitare crash. fidati.
+        spell2_timer = 500000;			// qst ï¿½ x evitare crash. fidati.
 
-        drain_timer = 9000;			// se nn è in fase di copia spell(copiando), castiamo questa spell ogni 10 sec.
+        drain_timer = 9000;			// se nn ï¿½ in fase di copia spell(copiando), castiamo questa spell ogni 10 sec.
 
         copia_timer = 30000;			// ogni 30 secondi scegliamo 1 classe a caso(diversa dalla precedente) e castiamo 2 spell di quella classe
 
@@ -144,7 +144,7 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
 
     void KilledUnit(Unit* Victim)
     {
-        m_creature->MonsterYell(SAY_SLAY,LANG_UNIVERSAL,Victim->GetGUID());
+        m_creature->MonsterYell(SAY_SLAY,LANG_UNIVERSAL,Victim);
     }
 
     void JustDied(Unit* Killer)
@@ -178,7 +178,8 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
 		{
 			if (demonspell_timer < diff)
 			{
-				target = SelectUnit(SELECT_TARGET_RANDOM, 0);
+				target = m_creature->SelectRandomUnfriendlyTarget();
+
 				//Cast
 				switch (rand()%2)
                 {
@@ -197,21 +198,21 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
 
 			if (swpain_timer < diff)
 			{
-				target = SelectUnit(SELECT_TARGET_RANDOM, 0);
+				target = m_creature->SelectRandomUnfriendlyTarget();
 				DoCast(target,SPELL_SW_PAIN);
 				swpain_timer = 15000;
 			}else swpain_timer -= diff;
 
 			if (silence_timer < diff)
 			{
-				target = SelectUnit(SELECT_TARGET_RANDOM, 0);
+				target = m_creature->SelectRandomUnfriendlyTarget();
 				DoCast(target,SPELL_SILENCE);
 				silence_timer = 30000;
 			}else silence_timer -= diff;
 
 			if (doom_timer < diff)
 			{
-				target = SelectUnit(SELECT_TARGET_RANDOM, 0);
+				target = m_creature->SelectRandomUnfriendlyTarget();
 				DoCast(target,SPELL_CURSE_DOOM);
 				doom_timer = 17000;
 			}else doom_timer -= diff;
@@ -220,12 +221,12 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
 		{
 			if(copia_timer < diff)
 			{
-				for(int i = 0; i <= 20; i++)	// non è detto che in un gruppo ci siano tutte le classi. io ho 1 variabile x ogni classe usata (nn copio mai una colasse 2 volte. se dopo 20 tentativi non sono riuscito a trovare una classe diversa da quelle finora usate, 99% le abbiamo copiate tutte, 1% abbiam avuto sfiga. in questo caso ci trasformiamo in demone.
+				for(int i = 0; i <= 20; i++)	// non ï¿½ detto che in un gruppo ci siano tutte le classi. io ho 1 variabile x ogni classe usata (nn copio mai una colasse 2 volte. se dopo 20 tentativi non sono riuscito a trovare una classe diversa da quelle finora usate, 99% le abbiamo copiate tutte, 1% abbiam avuto sfiga. in questo caso ci trasformiamo in demone.
 				{
 					if(cast)	// cast = true vuol dire k abbiamo impostato la condizione x castare un'altra spell della classe copiata tra 4 secondi, quindi nn dobbiamo + andare avanti con qst ciclo
 						break;
 
-					classe = SelectUnit(SELECT_TARGET_RANDOM, 0);
+					classe = m_creature->SelectRandomUnfriendlyTarget();
 					if(classe && classe->GetTypeId() == TYPEID_PLAYER)
 					{
 					switch(classe->getClass())
@@ -234,7 +235,7 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
 						if(!warrior)
 						{
 							warrior = true;
-							m_creature->MonsterYell(SAY_WARRIOR,LANG_UNIVERSAL,classe->GetGUID());
+							m_creature->MonsterYell(SAY_WARRIOR,LANG_UNIVERSAL,classe);
 							m_creature->InterruptNonMeleeSpells(false);
 							m_creature->InterruptSpell(CURRENT_GENERIC_SPELL);
 							DoCast(m_creature,SPELL_WARRIOR1);
@@ -242,12 +243,12 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
 							Cast = 1;	// serve x sapere quale spell (tra le 9 restanti delle classi) dobbiamo castare tra 4,5 sec
 							spell2_timer = 4500;							
 						}
-						break;	// se warrior era true qualche linea fa (nell'if), cast non sarà true, di conseguenza alla ripetizione del ciclo si cambierà classe(hopefully... senò se vien fuori di nuovo warrior, si ripete di nuovo.)
+						break;	// se warrior era true qualche linea fa (nell'if), cast non sarï¿½ true, di conseguenza alla ripetizione del ciclo si cambierï¿½ classe(hopefully... senï¿½ se vien fuori di nuovo warrior, si ripete di nuovo.)
 					case 2:
 						if(!paladin)
 						{
 							paladin = true;
-							m_creature->MonsterYell(SAY_PALADIN,LANG_UNIVERSAL,classe->GetGUID());
+							m_creature->MonsterYell(SAY_PALADIN,LANG_UNIVERSAL,classe);
 							m_creature->InterruptNonMeleeSpells(false);
 							m_creature->InterruptSpell(CURRENT_GENERIC_SPELL);
 							DoCast(m_creature,SPELL_PALADIN2);
@@ -260,7 +261,7 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
 						if(!hunter)
 						{
 							hunter = true;
-							m_creature->MonsterYell(SAY_HUNTER,LANG_UNIVERSAL,classe->GetGUID());
+							m_creature->MonsterYell(SAY_HUNTER,LANG_UNIVERSAL,classe);
 							m_creature->InterruptNonMeleeSpells(false);
 							m_creature->InterruptSpell(CURRENT_GENERIC_SPELL);
 							DoCast(classe,SPELL_HUNTER1);
@@ -273,7 +274,7 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
 						if(!rogue)
 						{
 							rogue = true;
-							m_creature->MonsterYell(SAY_ROGUE,LANG_UNIVERSAL,classe->GetGUID());
+							m_creature->MonsterYell(SAY_ROGUE,LANG_UNIVERSAL,classe);
 							m_creature->InterruptNonMeleeSpells(false);
 							m_creature->InterruptSpell(CURRENT_GENERIC_SPELL);
 							DoCast(classe,SPELL_ROGUE2);
@@ -286,7 +287,7 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
 						if(!priest)
 						{
 							priest = true;
-							m_creature->MonsterYell(SAY_PRIEST,LANG_UNIVERSAL,classe->GetGUID());
+							m_creature->MonsterYell(SAY_PRIEST,LANG_UNIVERSAL,classe);
 							m_creature->InterruptNonMeleeSpells(false);
 							m_creature->InterruptSpell(CURRENT_GENERIC_SPELL);
 							DoCast(classe,SPELL_PRIEST2);
@@ -299,7 +300,7 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
 						if(!shaman)
 						{
 							shaman = true;
-							m_creature->MonsterYell(SAY_SHAMAN,LANG_UNIVERSAL,classe->GetGUID());
+							m_creature->MonsterYell(SAY_SHAMAN,LANG_UNIVERSAL,classe);
 							m_creature->InterruptNonMeleeSpells(false);
 							m_creature->InterruptSpell(CURRENT_GENERIC_SPELL);
 							DoCast(classe,SPELL_SHAMAN1);
@@ -312,7 +313,7 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
 						if(!mage)
 						{
 							mage = true;
-							m_creature->MonsterYell(SAY_MAGE,LANG_UNIVERSAL,classe->GetGUID());
+							m_creature->MonsterYell(SAY_MAGE,LANG_UNIVERSAL,classe);
 							m_creature->InterruptNonMeleeSpells(false);
 							m_creature->InterruptSpell(CURRENT_GENERIC_SPELL);
 							DoCast(m_creature,SPELL_MAGE1);
@@ -325,7 +326,7 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
 						if(!warlock)
 						{
 							warlock = true;
-							m_creature->MonsterYell(SAY_WARLOCK,LANG_UNIVERSAL,classe->GetGUID());
+							m_creature->MonsterYell(SAY_WARLOCK,LANG_UNIVERSAL,classe);
 							m_creature->InterruptNonMeleeSpells(false);
 							m_creature->InterruptSpell(CURRENT_GENERIC_SPELL);
 							DoCast(classe,SPELL_WARLOCK1);
@@ -338,7 +339,7 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
 						if(!druid)
 						{
 							druid = true;
-							m_creature->MonsterYell(SAY_DRUID,LANG_UNIVERSAL,classe->GetGUID());
+							m_creature->MonsterYell(SAY_DRUID,LANG_UNIVERSAL,classe);
 							m_creature->InterruptNonMeleeSpells(false);
 							m_creature->InterruptSpell(CURRENT_GENERIC_SPELL);
 							DoCast(m_creature,SPELL_DRUID1);
@@ -356,7 +357,7 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
 
 				copia_timer = 40000;
 
-				if(!cast)	// 20 cicli for x niente! i player van puniti xk è colpa loro XD
+				if(!cast)	// 20 cicli for x niente! i player van puniti xk ï¿½ colpa loro XD
 				{
 					// trasformiamoci in demone:
 					m_creature->MonsterYell(SAY_TRANSFORM,LANG_UNIVERSAL,NULL);
@@ -397,12 +398,12 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
 					cast = false;
 					break;
 				case 8:
-					target = SelectUnit(SELECT_TARGET_RANDOM, 0);
+					target = m_creature->SelectRandomUnfriendlyTarget();
 					DoCast(target,SPELL_MAGE2);
 					cast = false;
 					break;
 				case 9:
-					target = SelectUnit(SELECT_TARGET_RANDOM, 0);
+					target = m_creature->SelectRandomUnfriendlyTarget();
 					DoCast(target,SPELL_WARLOCK2);
 					cast = false;
 					break;
@@ -442,7 +443,7 @@ struct MANGOS_DLL_DECL boss_malacrassAI : public ScriptedAI
 			{
 				if(drain_timer < diff)
 				{
-					target = SelectUnit(SELECT_TARGET_RANDOM, 0);
+					target = m_creature->SelectRandomUnfriendlyTarget();
 					DoCast(target,SPELL_DRAIN_LIFE);
 					drain_timer = 10000;
 				}else drain_timer -= diff;

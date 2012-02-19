@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -149,7 +149,7 @@ CreatureAI* GetAI_boss_nethermancer_sepethrea(Creature* pCreature)
 }
 
 #define SPELL_INFERNO                   35268
-#define H_SPELL_INFERNO                 39346
+#define SPELL_INFERNO_H                 39346
 #define SPELL_FIRE_TAIL                 35278
 
 struct MANGOS_DLL_DECL mob_ragin_flamesAI : public ScriptedAI
@@ -187,14 +187,14 @@ struct MANGOS_DLL_DECL mob_ragin_flamesAI : public ScriptedAI
 
         if (!onlyonce)
         {
-            if (Unit* target = SelectUnit(SELECT_TARGET_RANDOM,0))
+            if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
                 m_creature->GetMotionMaster()->MoveChase(target);
             onlyonce = true;
         }
 
         if (inferno_Timer < diff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(), m_bIsRegularMode ? SPELL_INFERNO : H_SPELL_INFERNO);
+            DoCastSpellIfCan(m_creature->getVictim(), m_bIsRegularMode ? SPELL_INFERNO : SPELL_INFERNO_H);
 
             m_creature->TauntApply(m_creature->getVictim());
 
@@ -215,7 +215,7 @@ struct MANGOS_DLL_DECL mob_ragin_flamesAI : public ScriptedAI
                 if (m_pInstance->GetData(TYPE_SEPETHREA) == DONE)
                 {
                     //remove
-                    m_creature->setDeathState(JUST_DIED);
+                    m_creature->SetDeathState(JUST_DIED);
                     m_creature->RemoveCorpse();
                     return;
                 }
@@ -234,14 +234,15 @@ CreatureAI* GetAI_mob_ragin_flames(Creature* pCreature)
 }
 void AddSC_boss_nethermancer_sepethrea()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_nethermancer_sepethrea";
-    newscript->GetAI = &GetAI_boss_nethermancer_sepethrea;
-    newscript->RegisterSelf();
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "mob_ragin_flames";
-    newscript->GetAI = &GetAI_mob_ragin_flames;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_nethermancer_sepethrea";
+    pNewScript->GetAI = &GetAI_boss_nethermancer_sepethrea;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "mob_ragin_flames";
+    pNewScript->GetAI = &GetAI_mob_ragin_flames;
+    pNewScript->RegisterSelf();
 }

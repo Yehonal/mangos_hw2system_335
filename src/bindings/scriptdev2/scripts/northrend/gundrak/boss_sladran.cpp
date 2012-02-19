@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -63,11 +63,11 @@ struct MANGOS_DLL_DECL mob_sladran_summon_targetAI : public ScriptedAI
 {
     mob_sladran_summon_targetAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (instance_gundrak*)pCreature->GetInstanceData();
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    instance_gundrak* m_pInstance;
 
     void Reset() {}
     void MoveInLineOfSight(Unit* pWho) {}
@@ -78,7 +78,7 @@ struct MANGOS_DLL_DECL mob_sladran_summon_targetAI : public ScriptedAI
         if (!m_pInstance)
             return;
 
-        if (Creature* pSladran = ((Creature*)Unit::GetUnit(*m_creature, m_pInstance->GetData64(NPC_SLADRAN))))
+        if (Creature* pSladran = m_pInstance->GetSingleCreatureFromStorage(NPC_SLADRAN))
         {
             float fPosX, fPosY, fPosZ;
             pSladran->GetPosition(fPosX, fPosY, fPosZ);
@@ -213,7 +213,7 @@ struct MANGOS_DLL_DECL boss_sladranAI : public ScriptedAI
 
         if (m_uiVenomBoltTimer < uiDiff)
         {
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 DoCastSpellIfCan(pTarget, m_bIsRegularMode ? SPELL_VENOM_BOLT : SPELL_VENOM_BOLT_H);
 
             m_uiVenomBoltTimer = 15000;
@@ -232,15 +232,15 @@ CreatureAI* GetAI_boss_sladran(Creature* pCreature)
 
 void AddSC_boss_sladran()
 {
-    Script* newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_sladran";
-    newscript->GetAI = &GetAI_boss_sladran;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_sladran";
+    pNewScript->GetAI = &GetAI_boss_sladran;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_sladran_summon_target";
-    newscript->GetAI = &GetAI_mob_sladran_summon_target;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_sladran_summon_target";
+    pNewScript->GetAI = &GetAI_mob_sladran_summon_target;
+    pNewScript->RegisterSelf();
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -24,81 +24,64 @@ EndScriptData */
 #include "precompiled.h"
 #include "scarlet_monastery.h"
 
-struct MANGOS_DLL_DECL instance_scarlet_monastery : public ScriptedInstance
+instance_scarlet_monastery::instance_scarlet_monastery(Map* pMap) : ScriptedInstance(pMap)
 {
-    instance_scarlet_monastery(Map* pMap) : ScriptedInstance(pMap) {Initialize();};
+    Initialize();
+}
 
-    uint32 m_auiEncounter[MAX_ENCOUNTER];
+void instance_scarlet_monastery::Initialize()
+{
+    memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
+}
 
-    uint64 m_uiMograineGUID;
-    uint64 m_uiWhitemaneGUID;
-    uint64 m_uiVorrelGUID;
-    uint64 m_uiDoorHighInquisitorGUID;
-
-    void Initialize()
+void instance_scarlet_monastery::OnCreatureCreate(Creature* pCreature)
+{
+    switch(pCreature->GetEntry())
     {
-        memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
-
-        m_uiMograineGUID = 0;
-        m_uiWhitemaneGUID = 0;
-        m_uiVorrelGUID = 0;
-        m_uiDoorHighInquisitorGUID = 0;
+        case NPC_MOGRAINE:
+        case NPC_WHITEMANE:
+        case NPC_VORREL:
+            m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+            break;
     }
+}
 
-    void OnCreatureCreate(Creature* pCreature)
+void instance_scarlet_monastery::OnCreatureDeath(Creature* pCreature)
+{
+    if (pCreature->GetEntry() == NPC_INTERROGATOR_VISHAS)
     {
-        switch(pCreature->GetEntry())
-        {
-            case 3976: m_uiMograineGUID = pCreature->GetGUID(); break;
-            case 3977: m_uiWhitemaneGUID = pCreature->GetGUID(); break;
-            case 3981: m_uiVorrelGUID = pCreature->GetGUID(); break;
-        }
+        // Any other actions to do with Vorrel? setStandState?
+        if (Creature* pVorrel = GetSingleCreatureFromStorage(NPC_VORREL))
+            DoScriptText(SAY_TRIGGER_VORREL, pVorrel);
     }
+}
 
-    void OnObjectCreate(GameObject* pGo)
+void instance_scarlet_monastery::OnObjectCreate(GameObject* pGo)
+{
+    if (pGo->GetEntry() == GO_WHITEMANE_DOOR)
+        m_mGoEntryGuidStore[GO_WHITEMANE_DOOR] = pGo->GetObjectGuid();
+}
+
+void instance_scarlet_monastery::SetData(uint32 uiType, uint32 uiData)
+{
+    if (uiType == TYPE_MOGRAINE_AND_WHITE_EVENT)
     {
-        if (pGo->GetEntry() == 104600)
-            m_uiDoorHighInquisitorGUID = pGo->GetGUID();
+        if (uiData == IN_PROGRESS)
+            DoUseDoorOrButton(GO_WHITEMANE_DOOR);
+        if (uiData == FAIL)
+            DoUseDoorOrButton(GO_WHITEMANE_DOOR);
+
+        m_auiEncounter[0] = uiData;
     }
+}
 
-    uint64 GetData64(uint32 data)
-    {
-        switch(data)
-        {
-            case DATA_MOGRAINE:
-                return m_uiMograineGUID;
-            case DATA_WHITEMANE:
-                return m_uiWhitemaneGUID;
-            case DATA_VORREL:
-                return m_uiVorrelGUID;
-            case DATA_DOOR_WHITEMANE:
-                return m_uiDoorHighInquisitorGUID;
-        }
+uint32 instance_scarlet_monastery::GetData(uint32 uiData)
+{
+    if (uiData == TYPE_MOGRAINE_AND_WHITE_EVENT)
+        return m_auiEncounter[0];
 
-        return 0;
-    }
-
-    void SetData(uint32 uiType, uint32 uiData)
-    {
-        if (uiType == TYPE_MOGRAINE_AND_WHITE_EVENT)
-        {
-            if (uiData == IN_PROGRESS)
-                DoUseDoorOrButton(m_uiDoorHighInquisitorGUID);
-            if (uiData == FAIL)
-                DoUseDoorOrButton(m_uiDoorHighInquisitorGUID);
-
-            m_auiEncounter[0] = uiData;
-        }
-    }
-
-    uint32 GetData(uint32 uiData)
-    {
-        if (uiData == TYPE_MOGRAINE_AND_WHITE_EVENT)
-            return m_auiEncounter[0];
-
-        return 0;
-    }
-};
+    return 0;
+}
 
 InstanceData* GetInstanceData_instance_scarlet_monastery(Map* pMap)
 {
@@ -107,9 +90,10 @@ InstanceData* GetInstanceData_instance_scarlet_monastery(Map* pMap)
 
 void AddSC_instance_scarlet_monastery()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "instance_scarlet_monastery";
-    newscript->GetInstanceData = &GetInstanceData_instance_scarlet_monastery;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "instance_scarlet_monastery";
+    pNewScript->GetInstanceData = &GetInstanceData_instance_scarlet_monastery;
+    pNewScript->RegisterSelf();
 }

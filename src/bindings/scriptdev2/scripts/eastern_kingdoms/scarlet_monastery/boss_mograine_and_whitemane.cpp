@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -85,7 +85,7 @@ struct MANGOS_DLL_DECL boss_scarlet_commander_mograineAI : public ScriptedAI
         if (!m_pInstance)
             return;
 
-        if (Creature* pWhitemane = m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_WHITEMANE)))
+        if (Creature* pWhitemane = m_pInstance->GetSingleCreatureFromStorage(NPC_WHITEMANE))
         {
             if (m_creature->isAlive() && !pWhitemane->isAlive())
                 pWhitemane->Respawn();
@@ -114,7 +114,7 @@ struct MANGOS_DLL_DECL boss_scarlet_commander_mograineAI : public ScriptedAI
             return;
 
         //On first death, fake death and open door, as well as initiate whitemane if exist
-        if (Creature* pWhitemane = m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_WHITEMANE)))
+        if (Creature* pWhitemane = m_pInstance->GetSingleCreatureFromStorage(NPC_WHITEMANE))
         {
             m_pInstance->SetData(TYPE_MOGRAINE_AND_WHITE_EVENT, IN_PROGRESS);
 
@@ -163,7 +163,7 @@ struct MANGOS_DLL_DECL boss_scarlet_commander_mograineAI : public ScriptedAI
         if (m_bHasDied && !m_bHeal && m_pInstance && m_pInstance->GetData(TYPE_MOGRAINE_AND_WHITE_EVENT) == SPECIAL)
         {
             //On ressurection, stop fake death and heal whitemane and resume fight
-            if (Creature* pWhitemane = m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_WHITEMANE)))
+            if (Creature* pWhitemane = m_pInstance->GetSingleCreatureFromStorage(NPC_WHITEMANE))
             {
                 m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
                 m_creature->SetStandState(UNIT_STAND_STATE_STAND);
@@ -236,13 +236,12 @@ struct MANGOS_DLL_DECL boss_high_inquisitor_whitemaneAI : public ScriptedAI
         if (!m_pInstance)
             return;
 
-        if (Creature* pMograine = m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_MOGRAINE)))
+        if (Creature* pMograine = m_pInstance->GetSingleCreatureFromStorage(NPC_MOGRAINE))
         {
             if (m_creature->isAlive() && !pMograine->isAlive())
                 pMograine->Respawn();
         }
     }
-
 
     void JustReachedHome()
     {
@@ -253,7 +252,7 @@ struct MANGOS_DLL_DECL boss_high_inquisitor_whitemaneAI : public ScriptedAI
         }
     }
 
-    void MoveInLineOfSight()
+    void MoveInLineOfSight(Unit* pWho)
     {
         //This needs to be empty because Whitemane should NOT aggro while fighting Mograine. Mograine will give us a target.
     }
@@ -298,7 +297,7 @@ struct MANGOS_DLL_DECL boss_high_inquisitor_whitemaneAI : public ScriptedAI
             //When casting resuruction make sure to delay so on rez when reinstate battle deepsleep runs out
             if (m_pInstance && m_uiWait_Timer < uiDiff)
             {
-                if (Creature* pMograine = m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_MOGRAINE)))
+                if (Creature* pMograine = m_pInstance->GetSingleCreatureFromStorage(NPC_MOGRAINE))
                 {
                     DoCastSpellIfCan(pMograine, SPELL_SCARLETRESURRECTION);
                     DoScriptText(SAY_WH_RESSURECT, m_creature);
@@ -335,7 +334,7 @@ struct MANGOS_DLL_DECL boss_high_inquisitor_whitemaneAI : public ScriptedAI
 
             if (m_pInstance)
             {
-                if (Creature* pMograine = m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_MOGRAINE)))
+                if (Creature* pMograine = m_pInstance->GetSingleCreatureFromStorage(NPC_MOGRAINE))
                 {
                     if (pMograine->isAlive() && pMograine->GetHealthPercent() <= 75.0f)
                         pTarget = pMograine;
@@ -384,15 +383,15 @@ CreatureAI* GetAI_boss_high_inquisitor_whitemane(Creature* pCreature)
 
 void AddSC_boss_mograine_and_whitemane()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_scarlet_commander_mograine";
-    newscript->GetAI = &GetAI_boss_scarlet_commander_mograine;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_scarlet_commander_mograine";
+    pNewScript->GetAI = &GetAI_boss_scarlet_commander_mograine;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_high_inquisitor_whitemane";
-    newscript->GetAI = &GetAI_boss_high_inquisitor_whitemane;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_high_inquisitor_whitemane";
+    pNewScript->GetAI = &GetAI_boss_high_inquisitor_whitemane;
+    pNewScript->RegisterSelf();
 }

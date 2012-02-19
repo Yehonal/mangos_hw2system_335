@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,12 +17,11 @@
 /* ScriptData
 SDName: Boss_Shade_of_Aran
 SD%Complete: 95
-SDComment: Flame wreath missing cast animation, mods won't triggere.
+SDComment: Flame wreath missing cast animation, mods won't trigger.
 SDCategory: Karazhan
 EndScriptData */
 
 #include "precompiled.h"
-#include "simple_ai.h"
 #include "karazhan.h"
 #include "GameObject.h"
 
@@ -105,7 +104,7 @@ struct MANGOS_DLL_DECL boss_aranAI : public ScriptedAI
 
     uint32 m_uiFlameWreath_Timer;
     uint32 m_uiFlameWreathCheck_Timer;
-    uint64 m_uiFlameWreathTarget[3];
+    ObjectGuid m_aFlameWreathTargetGuid[3];
     float m_fFWTargPosX[3];
     float m_fFWTargPosY[3];
 
@@ -185,7 +184,8 @@ struct MANGOS_DLL_DECL boss_aranAI : public ScriptedAI
         //store the threat list in a different container
         for (ThreatList::const_iterator itr = tList.begin();itr != tList.end(); ++itr)
         {
-            Unit* pTarget = Unit::GetUnit(*m_creature, (*itr)->getUnitGuid());
+            Unit* pTarget = m_creature->GetMap()->GetUnit((*itr)->getUnitGuid());
+
             //only on alive players
             if (pTarget && pTarget->isAlive() && pTarget->GetTypeId() == TYPEID_PLAYER)
                 targets.push_back(pTarget);
@@ -200,7 +200,7 @@ struct MANGOS_DLL_DECL boss_aranAI : public ScriptedAI
         {
             if (*itr)
             {
-                m_uiFlameWreathTarget[i] = (*itr)->GetGUID();
+                m_aFlameWreathTargetGuid[i] = (*itr)->GetObjectGuid();
                 m_fFWTargPosX[i] = (*itr)->GetPositionX();
                 m_fFWTargPosY[i] = (*itr)->GetPositionY();
                 m_creature->CastSpell((*itr), SPELL_FLAME_WREATH, true);
@@ -220,7 +220,7 @@ struct MANGOS_DLL_DECL boss_aranAI : public ScriptedAI
             {
                 if (m_pInstance)
                 {
-                    if (GameObject* pDoor = m_pInstance->instance->GetGameObject(m_pInstance->GetData64(DATA_GO_LIBRARY_DOOR)))
+                    if (GameObject* pDoor = m_pInstance->GetSingleGameObjectFromStorage(GO_PRIVATE_LIBRARY_DOOR))
                         pDoor->SetGoState(GO_STATE_READY);
 
                     m_uiCloseDoor_Timer = 0;
@@ -306,7 +306,7 @@ struct MANGOS_DLL_DECL boss_aranAI : public ScriptedAI
         {
             if (!m_creature->IsNonMeleeSpellCasted(false))
             {
-                Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0);
+                Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
                 if (!pTarget)
                     return;
 
@@ -341,7 +341,7 @@ struct MANGOS_DLL_DECL boss_aranAI : public ScriptedAI
                     DoCastSpellIfCan(m_creature, SPELL_AOE_CS);
                     break;
                 case 1:
-                    if (Unit* pUnit = SelectUnit(SELECT_TARGET_RANDOM, 0))
+                    if (Unit* pUnit = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                         DoCastSpellIfCan(pUnit, SPELL_CHAINSOFICE);
                     break;
             }
@@ -389,7 +389,8 @@ struct MANGOS_DLL_DECL boss_aranAI : public ScriptedAI
                     m_uiFlameWreath_Timer = 20000;
                     m_uiFlameWreathCheck_Timer = 500;
 
-                    memset(&m_uiFlameWreathTarget, 0, sizeof(m_uiFlameWreathTarget));
+                    for (uint8 i = 0; i < 3; ++i)
+                        m_aFlameWreathTargetGuid[i].Clear();
 
                     FlameWreathEffect();
                     break;
@@ -416,10 +417,10 @@ struct MANGOS_DLL_DECL boss_aranAI : public ScriptedAI
 
             for (uint32 i = 0; i < 4; ++i)
             {
-                if (Creature* pUnit = m_creature->SummonCreature(NPC_WATER_ELEMENTAL, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN, 90000))
+                if (Creature* pElemental = m_creature->SummonCreature(NPC_WATER_ELEMENTAL, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN, 90000))
                 {
-                    pUnit->Attack(m_creature->getVictim(), true);
-                    pUnit->setFaction(m_creature->getFaction());
+                    pElemental->Attack(m_creature->getVictim(), true);
+                    pElemental->setFaction(m_creature->getFaction());
                 }
             }
 
@@ -430,10 +431,10 @@ struct MANGOS_DLL_DECL boss_aranAI : public ScriptedAI
         {
             for (uint32 i = 0; i < 5; ++i)
             {
-                if (Creature* pUnit = m_creature->SummonCreature(NPC_SHADOW_OF_ARAN, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000))
+                if (Creature* pShadow = m_creature->SummonCreature(NPC_SHADOW_OF_ARAN, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000))
                 {
-                    pUnit->Attack(m_creature->getVictim(), true);
-                    pUnit->setFaction(m_creature->getFaction());
+                    pShadow->Attack(m_creature->getVictim(), true);
+                    pShadow->setFaction(m_creature->getFaction());
                 }
             }
 
@@ -456,15 +457,16 @@ struct MANGOS_DLL_DECL boss_aranAI : public ScriptedAI
             {
                 for (uint32 i = 0; i < 3; ++i)
                 {
-                    if (!m_uiFlameWreathTarget[i])
+                    if (!m_aFlameWreathTargetGuid[i])
                         continue;
 
-                    Unit* pUnit = Unit::GetUnit(*m_creature, m_uiFlameWreathTarget[i]);
-                    if (pUnit && !pUnit->IsWithinDist2d(m_fFWTargPosX[i], m_fFWTargPosY[i], 3.0f))
+                    Player* pPlayer = m_creature->GetMap()->GetPlayer(m_aFlameWreathTargetGuid[i]);
+
+                    if (pPlayer && !pPlayer->IsWithinDist2d(m_fFWTargPosX[i], m_fFWTargPosY[i], 3.0f))
                     {
-                        pUnit->CastSpell(pUnit, SPELL_EXPLOSION, true, 0, 0, m_creature->GetGUID());
-                        pUnit->CastSpell(pUnit, SPELL_KNOCKBACK_500, true);
-                        m_uiFlameWreathTarget[i] = 0;
+                        pPlayer->CastSpell(pPlayer, SPELL_EXPLOSION, true, 0, 0, m_creature->GetObjectGuid());
+                        pPlayer->CastSpell(pPlayer, SPELL_KNOCKBACK_500, true);
+                        m_aFlameWreathTargetGuid[i].Clear();
                     }
                 }
                 m_uiFlameWreathCheck_Timer = 500;
@@ -542,39 +544,17 @@ CreatureAI* GetAI_water_elemental(Creature* pCreature)
     return new water_elementalAI(pCreature);
 }
 
-// CONVERT TO ACID
-CreatureAI* GetAI_shadow_of_aran(Creature* pCreature)
-{
-    outstring_log("SD2: Convert simpleAI script for Creature Entry %u to ACID", pCreature->GetEntry());
-    SimpleAI* pAI = new SimpleAI(pCreature);
-
-    pAI->Spell[0].Enabled = true;
-    pAI->Spell[0].Spell_Id = SPELL_SHADOW_PYRO;
-    pAI->Spell[0].Cooldown = 5000;
-    pAI->Spell[0].First_Cast = 1000;
-    pAI->Spell[0].Cast_Target_Type = CAST_HOSTILE_TARGET;
-
-    pAI->EnterEvadeMode();
-
-    return pAI;
-}
-
 void AddSC_boss_shade_of_aran()
 {
-    Script* newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_shade_of_aran";
-    newscript->GetAI = &GetAI_boss_aran;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_shade_of_aran";
+    pNewScript->GetAI = &GetAI_boss_aran;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_shadow_of_aran";
-    newscript->GetAI = &GetAI_shadow_of_aran;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "mob_aran_elemental";
-    newscript->GetAI = &GetAI_water_elemental;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_aran_elemental";
+    pNewScript->GetAI = &GetAI_water_elemental;
+    pNewScript->RegisterSelf();
 }

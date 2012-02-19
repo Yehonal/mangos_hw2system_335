@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -165,7 +165,7 @@ struct MANGOS_DLL_DECL boss_vemAI : public ScriptedAI
         //Charge_Timer
         if (Charge_Timer < diff)
         {
-            if (Unit* target = SelectUnit(SELECT_TARGET_RANDOM,0))
+            if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
                 DoCastSpellIfCan(target, SPELL_CHARGE);
 
             Charge_Timer = urand(8000, 16000);
@@ -228,10 +228,10 @@ struct MANGOS_DLL_DECL boss_yaujAI : public ScriptedAI
 
         for(int i = 0; i < 10; ++i)
         {
-            Unit* target = SelectUnit(SELECT_TARGET_RANDOM,0);
+            Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0);
             Creature* Summoned = m_creature->SummonCreature(15621,m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(),0,TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN,90000);
             if (Summoned && target)
-                ((CreatureAI*)Summoned->AI())->AttackStart(target);
+                Summoned->AI()->AttackStart(target);
         }
     }
 
@@ -254,8 +254,8 @@ struct MANGOS_DLL_DECL boss_yaujAI : public ScriptedAI
         {
             if (m_pInstance)
             {
-                Unit *pKri = Unit::GetUnit((*m_creature), m_pInstance->GetData64(DATA_KRI));
-                Unit *pVem = Unit::GetUnit((*m_creature), m_pInstance->GetData64(DATA_VEM));
+                Creature* pKri = m_pInstance->GetSingleCreatureFromStorage(NPC_KRI);
+                Creature* pVem = m_pInstance->GetSingleCreatureFromStorage(NPC_VEM);
 
                 switch(urand(0, 2))
                 {
@@ -314,19 +314,20 @@ CreatureAI* GetAI_boss_kri(Creature* pCreature)
 
 void AddSC_bug_trio()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_kri";
-    newscript->GetAI = &GetAI_boss_kri;
-    newscript->RegisterSelf();
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_vem";
-    newscript->GetAI = &GetAI_boss_vem;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_kri";
+    pNewScript->GetAI = &GetAI_boss_kri;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_yauj";
-    newscript->GetAI = &GetAI_boss_yauj;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_vem";
+    pNewScript->GetAI = &GetAI_boss_vem;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_yauj";
+    pNewScript->GetAI = &GetAI_boss_yauj;
+    pNewScript->RegisterSelf();
 }

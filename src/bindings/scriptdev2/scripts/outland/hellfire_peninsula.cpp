@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,21 +17,15 @@
 /* ScriptData
 SDName: Hellfire_Peninsula
 SD%Complete: 100
-SDComment: Quest support: 9375, 9410, 9418, 10129, 10146, 10162, 10163, 10340, 10346, 10347, 10382 (Special flight paths), 10838
+SDComment: Quest support: 9375, 9410, 9418, 10838
 SDCategory: Hellfire Peninsula
 EndScriptData */
 
 /* ContentData
 npc_aeranas
-go_haaleshi_altar
 npc_ancestral_wolf
 npc_demoniac_scryer
-npc_gryphoneer_windbellow
-npc_naladu
 npc_tracy_proudwell
-npc_trollbane
-npc_wing_commander_dabiree
-npc_wing_commander_brack
 npc_wounded_blood_elf
 EndContentData */
 
@@ -50,8 +44,6 @@ EndContentData */
 
 #define SPELL_ENVELOPING_WINDS          15535
 #define SPELL_SHOCK                     12553
-
-#define C_AERANAS                       17085
 
 struct MANGOS_DLL_DECL npc_aeranasAI : public ScriptedAI
 {
@@ -120,16 +112,6 @@ CreatureAI* GetAI_npc_aeranas(Creature* pCreature)
 }
 
 /*######
-## go_haaleshi_altar
-######*/
-
-bool GOHello_go_haaleshi_altar(Player* pPlayer, GameObject* pGo)
-{
-    pGo->SummonCreature(C_AERANAS, -1321.79f, 4043.80f, 116.24f, 1.25f, TEMPSUMMON_TIMED_DESPAWN, 180000);
-    return false;
-}
-
-/*######
 ## npc_ancestral_wolf
 ######*/
 
@@ -149,27 +131,16 @@ struct MANGOS_DLL_DECL npc_ancestral_wolfAI : public npc_escortAI
     npc_ancestral_wolfAI(Creature* pCreature) : npc_escortAI(pCreature)
     {
         if (pCreature->GetOwner() && pCreature->GetOwner()->GetTypeId() == TYPEID_PLAYER)
-            Start(false, false, pCreature->GetOwner()->GetGUID());
+            Start(false, (Player*)pCreature->GetOwner());
         else
             error_log("SD2: npc_ancestral_wolf can not obtain owner or owner is not a player.");
 
         Reset();
     }
 
-    Unit* pRyga;
-
     void Reset()
     {
-        pRyga = NULL;
         m_creature->CastSpell(m_creature, SPELL_ANCESTRAL_WOLF_BUFF, true);
-    }
-
-    void MoveInLineOfSight(Unit* pWho)
-    {
-        if (!pRyga && pWho->GetTypeId() == TYPEID_UNIT && pWho->GetEntry() == NPC_RYGA && m_creature->IsWithinDistInMap(pWho, 15.0f))
-            pRyga = pWho;
-
-        npc_escortAI::MoveInLineOfSight(pWho);
     }
 
     void WaypointReached(uint32 uiPointId)
@@ -183,6 +154,7 @@ struct MANGOS_DLL_DECL npc_ancestral_wolfAI : public npc_escortAI
                 DoScriptText(EMOTE_WOLF_HOWL, m_creature);
                 break;
             case 50:
+                Creature* pRyga = GetClosestCreatureWithEntry(m_creature, NPC_RYGA, 30.0f);
                 if (pRyga && pRyga->isAlive() && !pRyga->isInCombat())
                     DoScriptText(SAY_WOLF_WELCOME, pRyga);
                 break;
@@ -212,7 +184,7 @@ enum
     NPC_SPAWNER                     = 22260,                //just a dummy, not used
 
     MAX_BUTTRESS                    = 4,
-    TIME_TOTAL                      = MINUTE*10*IN_MILISECONDS,
+    TIME_TOTAL                      = MINUTE*10*IN_MILLISECONDS,
 
     SPELL_SUMMONED_DEMON            = 7741,                 //visual spawn-in for demon
     SPELL_DEMONIAC_VISITATION       = 38708,                //create item
@@ -250,7 +222,7 @@ struct MANGOS_DLL_DECL npc_demoniac_scryerAI : public ScriptedAI
     {
         ++m_uiButtressCount;
 
-        float fAngle;
+        float fAngle = 0.0f;
 
         switch(m_uiButtressCount)
         {
@@ -260,13 +232,11 @@ struct MANGOS_DLL_DECL npc_demoniac_scryerAI : public ScriptedAI
             case 4: fAngle = M_PI_F; break;
         }
 
-        float fX, fY;
-        m_creature->GetNearPoint2D(fX, fY, 5.0f, fAngle);
-
-        float fZ_Ground = m_creature->GetMap()->GetHeight(fX, fY, MAX_HEIGHT);
+        float fX, fY, fZ;
+        m_creature->GetNearPoint(m_creature, fX, fY, fZ, 0.0f, 5.0f, fAngle);
 
         uint32 uiTime = TIME_TOTAL - (m_uiSpawnButtressTimer * m_uiButtressCount);
-        m_creature->SummonCreature(NPC_BUTTRESS, fX, fY, fZ_Ground, m_creature->GetAngle(fX, fY), TEMPSUMMON_TIMED_DESPAWN, uiTime);
+        m_creature->SummonCreature(NPC_BUTTRESS, fX, fY, fZ, m_creature->GetAngle(fX, fY), TEMPSUMMON_TIMED_DESPAWN, uiTime);
     }
 
     void DoSpawnDemon()
@@ -351,12 +321,12 @@ bool GossipHello_npc_demoniac_scryer(Player* pPlayer, Creature* pCreature)
             if (pPlayer->GetQuestStatus(QUEST_DEMONIAC) == QUEST_STATUS_INCOMPLETE)
                 pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_ATTUNE, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
 
-            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_ATTUNED, pCreature->GetGUID());
+            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_ATTUNED, pCreature->GetObjectGuid());
             return true;
         }
     }
 
-    pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_PROTECT, pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_PROTECT, pCreature->GetObjectGuid());
     return true;
 }
 
@@ -367,87 +337,6 @@ bool GossipSelect_npc_demoniac_scryer(Player* pPlayer, Creature* pCreature, uint
         pPlayer->CLOSE_GOSSIP_MENU();
         pCreature->CastSpell(pPlayer, SPELL_DEMONIAC_VISITATION, false);
     }
-
-    return true;
-}
-
-/*######
-## npc_gryphoneer_windbellow
-######*/
-
-enum
-{
-    QUEST_ABYSSAL_A             = 10163,
-    QUEST_RETURN_ABYSSAL_A      = 10346,
-    QUEST_TO_THE_FRONT          = 10382,
-    SPELL_TAXI_AERIAL_ASSULT    = 33899,
-    SPELL_TAXI_TO_BEACH_HEAD    = 35065
-};
-
-#define GOSSIP_ITEM1_WIN        "Fly me to The Abyssal Shelf"
-#define GOSSIP_ITEM2_WIN        "Fly me to Honor Point"
-
-bool GossipHello_npc_gryphoneer_windbellow(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetGUID());
-
-    //Mission: The Abyssal Shelf || Return to the Abyssal Shelf
-    if (pPlayer->GetQuestStatus(QUEST_ABYSSAL_A) == QUEST_STATUS_INCOMPLETE ||
-        pPlayer->GetQuestStatus(QUEST_RETURN_ABYSSAL_A) == QUEST_STATUS_INCOMPLETE)
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM1_WIN, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-
-    //Go to the Front
-    if (pPlayer->GetQuestStatus(QUEST_TO_THE_FRONT) == QUEST_STATUS_COMPLETE ||
-        pPlayer->GetQuestRewardStatus(QUEST_TO_THE_FRONT))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM2_WIN, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
-
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
-    return true;
-}
-
-bool GossipSelect_npc_gryphoneer_windbellow(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+1)
-    {
-        pPlayer->CLOSE_GOSSIP_MENU();
-        //TaxiPath 589
-        pPlayer->CastSpell(pPlayer,SPELL_TAXI_AERIAL_ASSULT,true);
-    }
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+2)
-    {
-        pPlayer->CLOSE_GOSSIP_MENU();
-        //TaxiPath 607
-        pPlayer->CastSpell(pPlayer,SPELL_TAXI_TO_BEACH_HEAD,true);
-    }
-    return true;
-}
-
-/*######
-## npc_naladu
-######*/
-
-#define GOSSIP_NALADU_ITEM1 "Why don't you escape?"
-
-enum
-{
-    GOSSIP_TEXTID_NALADU1   = 9788
-};
-
-bool GossipHello_npc_naladu(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetGUID());
-
-    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_NALADU_ITEM1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
-    return true;
-}
-
-bool GossipSelect_npc_naladu(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+1)
-        pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_NALADU1, pCreature->GetGUID());
 
     return true;
 }
@@ -469,7 +358,7 @@ enum
 bool GossipHello_npc_tracy_proudwell(Player* pPlayer, Creature* pCreature)
 {
     if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetGUID());
+        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
 
     if (pCreature->isVendor())
         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_VENDOR, GOSSIP_TEXT_REDEEM_MARKS, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
@@ -477,7 +366,7 @@ bool GossipHello_npc_tracy_proudwell(Player* pPlayer, Creature* pCreature)
     if (pPlayer->GetQuestStatus(QUEST_DIGGING_FOR_PRAYER_BEADS) == QUEST_STATUS_INCOMPLETE)
         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_TRACY_PROUDWELL_ITEM1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
 
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
     return true;
 }
 
@@ -487,176 +376,16 @@ bool GossipSelect_npc_tracy_proudwell(Player* pPlayer, Creature* pCreature, uint
     {
         case GOSSIP_ACTION_INFO_DEF+1:
             pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_TRACY_PROUDWELL_ITEM2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
-            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_TRACY_PROUDWELL1, pCreature->GetGUID());
+            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_TRACY_PROUDWELL1, pCreature->GetObjectGuid());
             break;
         case GOSSIP_ACTION_INFO_DEF+2:
-            pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
+            pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
             break;
         case GOSSIP_ACTION_TRADE:
-            pPlayer->SEND_VENDORLIST(pCreature->GetGUID());
+            pPlayer->SEND_VENDORLIST(pCreature->GetObjectGuid());
             break;
     }
 
-    return true;
-}
-
-/*######
-## npc_trollbane
-######*/
-
-#define GOSSIP_TROLLBANE_ITEM1      "Tell me of the Sons of Lothar."
-#define GOSSIP_TROLLBANE_ITEM2      "<more>"
-#define GOSSIP_TROLLBANE_ITEM3      "Tell me of your homeland."
-
-enum
-{
-    GOSSIP_TEXTID_TROLLBANE1        = 9932,
-    GOSSIP_TEXTID_TROLLBANE2        = 9933,
-    GOSSIP_TEXTID_TROLLBANE3        = 8772
-};
-
-bool GossipHello_npc_trollbane(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetGUID());
-
-    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_TROLLBANE_ITEM1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_TROLLBANE_ITEM3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
-    return true;
-}
-
-bool GossipSelect_npc_trollbane(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    switch(uiAction)
-    {
-        case GOSSIP_ACTION_INFO_DEF+1:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_TROLLBANE_ITEM2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
-            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_TROLLBANE1, pCreature->GetGUID());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+2:
-            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_TROLLBANE2, pCreature->GetGUID());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+3:
-            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_TROLLBANE3, pCreature->GetGUID());
-            break;
-    }
-
-    return true;
-}
-
-/*######
-## npc_wing_commander_dabiree
-######*/
-
-enum
-{
-    SPELL_TAXI_TO_GATEWAYS      = 33768,
-    SPELL_TAXI_TO_SHATTER       = 35069,
-    QUEST_MISSION_GATEWAYS_A    = 10146,
-    QUEST_SHATTER_POINT         = 10340
-};
-
-#define GOSSIP_ITEM1_DAB        "Fly me to Murketh and Shaadraz Gateways"
-#define GOSSIP_ITEM2_DAB        "Fly me to Shatter Point"
-
-bool GossipHello_npc_wing_commander_dabiree(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetGUID());
-
-    //Mission: The Murketh and Shaadraz Gateways
-    if (pPlayer->GetQuestStatus(QUEST_MISSION_GATEWAYS_A) == QUEST_STATUS_INCOMPLETE)
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM1_DAB, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-
-    //Shatter Point
-    if (pPlayer->GetQuestStatus(QUEST_SHATTER_POINT) == QUEST_STATUS_COMPLETE ||
-        pPlayer->GetQuestRewardStatus(QUEST_SHATTER_POINT))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM2_DAB, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
-
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
-    return true;
-}
-
-bool GossipSelect_npc_wing_commander_dabiree(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+1)
-    {
-        pPlayer->CLOSE_GOSSIP_MENU();
-        //TaxiPath 585
-        pPlayer->CastSpell(pPlayer,SPELL_TAXI_TO_GATEWAYS,true);
-    }
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+2)
-    {
-        pPlayer->CLOSE_GOSSIP_MENU();
-        //TaxiPath 612
-        pPlayer->CastSpell(pPlayer,SPELL_TAXI_TO_SHATTER,true);
-    }
-    return true;
-}
-
-/*######
-## npc_wing_commander_brack
-######*/
-
-enum
-{
-    QUEST_MISSION_GATEWAYS_H    = 10129,
-    QUEST_ABYSSAL_H             = 10162,
-    QUEST_RETURN_ABYSSAL_H      = 10347,
-    QUEST_SPINEBREAKER          = 10242,
-    SPELL_TAXI_GATEWAYS_H       = 33659,
-    SPELL_TAXI_ASSULT_H         = 33825,
-    SPELL_TAXI_SPINEBREAKER     = 34578
-};
-
-#define GOSSIP_ITEM1_BRA        "I'm on a bombing mission for Forward Commander To'arch. I need a wyvern destroyer!"
-#define GOSSIP_ITEM2_BRA        "Fly me to The Abyssal Shelf"
-#define GOSSIP_ITEM3_BRA        "Lend me a Wind Rider, I'm going to Spinebreaker Post."
-
-bool GossipHello_npc_wing_commander_brack(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetGUID());
-
-    //Mission: The Murketh and Shaadraz Gateways
-    if (pPlayer->GetQuestStatus(QUEST_MISSION_GATEWAYS_H) == QUEST_STATUS_INCOMPLETE)
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM1_BRA, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-
-    //Mission: The Abyssal Shelf || Return to the Abyssal Shelf
-    if (pPlayer->GetQuestStatus(QUEST_ABYSSAL_H) == QUEST_STATUS_INCOMPLETE ||
-        pPlayer->GetQuestStatus(QUEST_RETURN_ABYSSAL_H) == QUEST_STATUS_INCOMPLETE)
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM2_BRA, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
-
-    //Spinebreaker Post
-    if (pPlayer->GetQuestStatus(QUEST_SPINEBREAKER) == QUEST_STATUS_COMPLETE ||
-        pPlayer->GetQuestRewardStatus(QUEST_SPINEBREAKER))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM3_BRA, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+3);
-
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
-    return true;
-}
-
-bool GossipSelect_npc_wing_commander_brack(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    switch(uiAction)
-    {
-        case GOSSIP_ACTION_INFO_DEF+1:
-            pPlayer->CLOSE_GOSSIP_MENU();
-            //TaxiPath 584
-            pPlayer->CastSpell(pPlayer,SPELL_TAXI_GATEWAYS_H,true);
-            break;
-        case GOSSIP_ACTION_INFO_DEF+2:
-            pPlayer->CLOSE_GOSSIP_MENU();
-            //TaxiPath 587
-            pPlayer->CastSpell(pPlayer,SPELL_TAXI_ASSULT_H,true);
-            break;
-        case GOSSIP_ACTION_INFO_DEF+3:
-            pPlayer->CLOSE_GOSSIP_MENU();
-            //TaxiPath 604
-            pPlayer->CastSpell(pPlayer,SPELL_TAXI_SPINEBREAKER,true);
-            break;
-    }
     return true;
 }
 
@@ -739,7 +468,7 @@ bool QuestAccept_npc_wounded_blood_elf(Player* pPlayer, Creature* pCreature, con
         pCreature->setFaction(FACTION_ESCORT_H_PASSIVE);
 
         if (npc_wounded_blood_elfAI* pEscortAI = dynamic_cast<npc_wounded_blood_elfAI*>(pCreature->AI()))
-            pEscortAI->Start(true, false, pPlayer->GetGUID(), pQuest);
+            pEscortAI->Start(false, pPlayer, pQuest);
     }
 
     return true;
@@ -747,69 +476,34 @@ bool QuestAccept_npc_wounded_blood_elf(Player* pPlayer, Creature* pCreature, con
 
 void AddSC_hellfire_peninsula()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_aeranas";
-    newscript->GetAI = &GetAI_npc_aeranas;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_aeranas";
+    pNewScript->GetAI = &GetAI_npc_aeranas;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_haaleshi_altar";
-    newscript->pGOHello = &GOHello_go_haaleshi_altar;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_ancestral_wolf";
+    pNewScript->GetAI = &GetAI_npc_ancestral_wolf;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_ancestral_wolf";
-    newscript->GetAI = &GetAI_npc_ancestral_wolf;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_demoniac_scryer";
+    pNewScript->GetAI = &GetAI_npc_demoniac_scryer;
+    pNewScript->pGossipHello = &GossipHello_npc_demoniac_scryer;
+    pNewScript->pGossipSelect = &GossipSelect_npc_demoniac_scryer;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_demoniac_scryer";
-    newscript->GetAI = &GetAI_npc_demoniac_scryer;
-    newscript->pGossipHello = &GossipHello_npc_demoniac_scryer;
-    newscript->pGossipSelect = &GossipSelect_npc_demoniac_scryer;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_tracy_proudwell";
+    pNewScript->pGossipHello = &GossipHello_npc_tracy_proudwell;
+    pNewScript->pGossipSelect = &GossipSelect_npc_tracy_proudwell;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_gryphoneer_windbellow";
-    newscript->pGossipHello = &GossipHello_npc_gryphoneer_windbellow;
-    newscript->pGossipSelect = &GossipSelect_npc_gryphoneer_windbellow;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_naladu";
-    newscript->pGossipHello = &GossipHello_npc_naladu;
-    newscript->pGossipSelect = &GossipSelect_npc_naladu;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_tracy_proudwell";
-    newscript->pGossipHello = &GossipHello_npc_tracy_proudwell;
-    newscript->pGossipSelect = &GossipSelect_npc_tracy_proudwell;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_trollbane";
-    newscript->pGossipHello = &GossipHello_npc_trollbane;
-    newscript->pGossipSelect = &GossipSelect_npc_trollbane;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_wing_commander_dabiree";
-    newscript->pGossipHello = &GossipHello_npc_wing_commander_dabiree;
-    newscript->pGossipSelect = &GossipSelect_npc_wing_commander_dabiree;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_wing_commander_brack";
-    newscript->pGossipHello = &GossipHello_npc_wing_commander_brack;
-    newscript->pGossipSelect = &GossipSelect_npc_wing_commander_brack;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_wounded_blood_elf";
-    newscript->GetAI = &GetAI_npc_wounded_blood_elf;
-    newscript->pQuestAccept = &QuestAccept_npc_wounded_blood_elf;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_wounded_blood_elf";
+    pNewScript->GetAI = &GetAI_npc_wounded_blood_elf;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_wounded_blood_elf;
+    pNewScript->RegisterSelf();
 }

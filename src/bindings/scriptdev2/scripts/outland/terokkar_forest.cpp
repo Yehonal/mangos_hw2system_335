@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: Terokkar_Forest
 SD%Complete: 80
-SDComment: Quest support: 9889, 10009, 10873, 10896, 10446/10447, 10887, 10922, 11096. Skettis->Ogri'la Flight
+SDComment: Quest support: 9889, 10009, 10873, 10896, 10446/10447, 10852, 10887, 10922, 11096, 11093, 10051, 10052.
 SDCategory: Terokkar Forest
 EndScriptData */
 
@@ -28,42 +28,49 @@ mob_rotting_forest_rager
 mob_netherweb_victim
 npc_akuno
 npc_floon
+npc_hungry_nether_ray
 npc_letoll
 npc_mana_bomb_exp_trigger
 go_mana_bomb
-npc_skyguard_handler_deesak
 npc_slim
+go_veil_skith_cage
+npc_captive_child
+npc_isla_starmane
 EndContentData */
 
 #include "precompiled.h"
 #include "escort_ai.h"
+#include "pet_ai.h"
 
 /*######
 ## mob_unkor_the_ruthless
 ######*/
 
-#define SAY_SUBMIT                      -1000194
+enum
+{
+    SAY_SUBMIT                  = -1000194,
 
-#define FACTION_HOSTILE                 45
-#define FACTION_FRIENDLY                35
-#define QUEST_DONTKILLTHEFATONE         9889
+    FACTION_HOSTILE             = 45,
+    FACTION_FRIENDLY            = 35,
+    QUEST_DONT_KILL_THE_FAT_ONE = 9889,
 
-#define SPELL_PULVERIZE                 2676
-//#define SPELL_QUID9889                32174
+    SPELL_PULVERIZE             = 2676,
+    // SPELL_QUID9889           = 32174,                    // TODO Make use of this quest-credit spell
+};
 
 struct MANGOS_DLL_DECL mob_unkor_the_ruthlessAI : public ScriptedAI
 {
     mob_unkor_the_ruthlessAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    bool CanDoQuest;
-    uint32 UnkorUnfriendly_Timer;
-    uint32 Pulverize_Timer;
+    bool m_bCanDoQuest;
+    uint32 m_uiUnfriendlyTimer;
+    uint32 m_uiPulverizeTimer;
 
     void Reset()
     {
-        CanDoQuest = false;
-        UnkorUnfriendly_Timer = 0;
-        Pulverize_Timer = 3000;
+        m_bCanDoQuest = false;
+        m_uiUnfriendlyTimer = 0;
+        m_uiPulverizeTimer = 3000;
         m_creature->SetStandState(UNIT_STAND_STATE_STAND);
         m_creature->setFaction(FACTION_HOSTILE);
     }
@@ -76,64 +83,68 @@ struct MANGOS_DLL_DECL mob_unkor_the_ruthlessAI : public ScriptedAI
         m_creature->RemoveAllAuras();
         m_creature->DeleteThreatList();
         m_creature->CombatStop(true);
-        UnkorUnfriendly_Timer = 60000;
+        m_uiUnfriendlyTimer = 60000;
     }
 
-    void DamageTaken(Unit *done_by, uint32 &damage)
+    void DamageTaken(Unit* pDealer, uint32 &uiDamage)
     {
-        if (done_by->GetTypeId() == TYPEID_PLAYER)
-            if ((m_creature->GetHealth()-damage)*100 / m_creature->GetMaxHealth() < 30)
+        if ((m_creature->GetHealth() - uiDamage)*100 / m_creature->GetMaxHealth() >= 30)
+            return;
+
+        if (Player* pPlayer = pDealer->GetCharmerOrOwnerPlayerOrPlayerItself())
         {
-            if (Group* pGroup = ((Player*)done_by)->GetGroup())
+            if (Group* pGroup = pPlayer->GetGroup())
             {
-                for(GroupReference *itr = pGroup->GetFirstMember(); itr != NULL; itr = itr->next())
+                for(GroupReference* itr = pGroup->GetFirstMember(); itr != NULL; itr = itr->next())
                 {
-                    Player *pGroupie = itr->getSource();
+                    Player* pGroupie = itr->getSource();
                     if (pGroupie &&
-                        pGroupie->GetQuestStatus(QUEST_DONTKILLTHEFATONE) == QUEST_STATUS_INCOMPLETE &&
-                        pGroupie->GetReqKillOrCastCurrentCount(QUEST_DONTKILLTHEFATONE, 18260) == 10)
+                        pGroupie->GetQuestStatus(QUEST_DONT_KILL_THE_FAT_ONE) == QUEST_STATUS_INCOMPLETE &&
+                        pGroupie->GetReqKillOrCastCurrentCount(QUEST_DONT_KILL_THE_FAT_ONE, 18260) == 10)
                     {
-                        pGroupie->AreaExploredOrEventHappens(QUEST_DONTKILLTHEFATONE);
-                        if (!CanDoQuest)
-                            CanDoQuest = true;
+                        pGroupie->AreaExploredOrEventHappens(QUEST_DONT_KILL_THE_FAT_ONE);
+                        if (!m_bCanDoQuest)
+                            m_bCanDoQuest = true;
                     }
                 }
-            } else
-            if (((Player*)done_by)->GetQuestStatus(QUEST_DONTKILLTHEFATONE) == QUEST_STATUS_INCOMPLETE &&
-                ((Player*)done_by)->GetReqKillOrCastCurrentCount(QUEST_DONTKILLTHEFATONE, 18260) == 10)
+            }
+            else if (pPlayer->GetQuestStatus(QUEST_DONT_KILL_THE_FAT_ONE) == QUEST_STATUS_INCOMPLETE &&
+                pPlayer->GetReqKillOrCastCurrentCount(QUEST_DONT_KILL_THE_FAT_ONE, 18260) == 10)
             {
-                ((Player*)done_by)->AreaExploredOrEventHappens(QUEST_DONTKILLTHEFATONE);
-                CanDoQuest = true;
+                pPlayer->AreaExploredOrEventHappens(QUEST_DONT_KILL_THE_FAT_ONE);
+                m_bCanDoQuest = true;
             }
         }
     }
 
-    void UpdateAI(const uint32 diff)
+    void UpdateAI(const uint32 uiDiff)
     {
-        if (CanDoQuest)
+        if (m_bCanDoQuest)
         {
-            if (!UnkorUnfriendly_Timer)
+            if (!m_uiUnfriendlyTimer)
             {
                 //DoCastSpellIfCan(m_creature,SPELL_QUID9889);        //not using spell for now
                 DoNice();
             }
             else
             {
-                if (UnkorUnfriendly_Timer <= diff)
-                {
+                if (m_uiUnfriendlyTimer <= uiDiff)
                     EnterEvadeMode();
-                }else UnkorUnfriendly_Timer -= diff;
+                else
+                    m_uiUnfriendlyTimer -= uiDiff;
             }
         }
 
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        if (Pulverize_Timer < diff)
+        if (m_uiPulverizeTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature,SPELL_PULVERIZE);
-            Pulverize_Timer = 9000;
-        }else Pulverize_Timer -= diff;
+            DoCastSpellIfCan(m_creature, SPELL_PULVERIZE);
+            m_uiPulverizeTimer = 9000;
+        }
+        else
+            m_uiPulverizeTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -148,21 +159,27 @@ CreatureAI* GetAI_mob_unkor_the_ruthless(Creature* pCreature)
 ## mob_infested_root_walker
 ######*/
 
+enum
+{
+    SPELL_SUMMON_WOOD_MITES     = 39130,
+};
+
 struct MANGOS_DLL_DECL mob_infested_root_walkerAI : public ScriptedAI
 {
     mob_infested_root_walkerAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
     void Reset() { }
 
-    void DamageTaken(Unit *done_by, uint32 &damage)
+    void DamageTaken(Unit* pDealer, uint32 &uiDamage)
     {
-        if (done_by && done_by->GetTypeId() == TYPEID_PLAYER)
-            if (m_creature->GetHealth() <= damage)
+        if (m_creature->GetHealth() <= uiDamage)
+            if (pDealer->IsControlledByPlayer())
                 if (urand(0, 3))
                     //Summon Wood Mites
-                    m_creature->CastSpell(m_creature,39130,true);
+                    DoCastSpellIfCan(m_creature, SPELL_SUMMON_WOOD_MITES, CAST_TRIGGERED);
     }
 };
+
 CreatureAI* GetAI_mob_infested_root_walker(Creature* pCreature)
 {
     return new mob_infested_root_walkerAI(pCreature);
@@ -172,19 +189,24 @@ CreatureAI* GetAI_mob_infested_root_walker(Creature* pCreature)
 ## mob_rotting_forest_rager
 ######*/
 
+enum
+{
+    SPELL_SUMMON_LOTS_OF_WOOD_MIGHTS    = 39134,
+};
+
 struct MANGOS_DLL_DECL mob_rotting_forest_ragerAI : public ScriptedAI
 {
     mob_rotting_forest_ragerAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
     void Reset() { }
 
-    void DamageTaken(Unit *done_by, uint32 &damage)
+    void DamageTaken(Unit* pDealer, uint32 &uiDamage)
     {
-        if (done_by->GetTypeId() == TYPEID_PLAYER)
-            if (m_creature->GetHealth() <= damage)
+        if (m_creature->GetHealth() <= uiDamage)
+            if (pDealer->IsControlledByPlayer())
                 if (urand(0, 3))
                     //Summon Lots of Wood Mights
-                    m_creature->CastSpell(m_creature,39134,true);
+                    DoCastSpellIfCan(m_creature, SPELL_SUMMON_LOTS_OF_WOOD_MIGHTS, CAST_TRIGGERED);
     }
 };
 CreatureAI* GetAI_mob_rotting_forest_rager(Creature* pCreature)
@@ -220,17 +242,17 @@ struct MANGOS_DLL_DECL mob_netherweb_victimAI : public ScriptedAI
 
     void JustDied(Unit* pKiller)
     {
-        if (pKiller->GetTypeId() == TYPEID_PLAYER)
+        if (Player* pPlayer = pKiller->GetCharmerOrOwnerPlayerOrPlayerItself())
         {
-            if (((Player*)pKiller)->GetQuestStatus(QUEST_TAKEN_IN_NIGHT) == QUEST_STATUS_INCOMPLETE)
+            if (pPlayer->GetQuestStatus(QUEST_TAKEN_IN_NIGHT) == QUEST_STATUS_INCOMPLETE)
             {
                 if (!urand(0, 3))
                 {
                     m_creature->SummonCreature(NPC_FREED_WARRIOR, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 60000);
-                    ((Player*)pKiller)->KilledMonsterCredit(NPC_FREED_WARRIOR, m_creature->GetGUID());
+                    pPlayer->KilledMonsterCredit(NPC_FREED_WARRIOR, m_creature->GetObjectGuid());
                 }
                 else
-                    m_creature->SummonCreature(netherwebVictims[rand()%6], 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 60000);
+                    m_creature->SummonCreature(netherwebVictims[urand(0, 5)], 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 60000);
             }
         }
     }
@@ -334,7 +356,7 @@ bool QuestAccept_npc_akuno(Player* pPlayer, Creature* pCreature, const Quest* pQ
             pCreature->setFaction(FACTION_ESCORT_N_NEUTRAL_ACTIVE);
 
             DoScriptText(SAY_AKU_START, pCreature);
-            pEscortAI->Start(true, false, pPlayer->GetGUID(), pQuest);
+            pEscortAI->Start(false, pPlayer, pQuest);
         }
     }
     return true;
@@ -346,23 +368,15 @@ CreatureAI* GetAI_npc_akuno(Creature* pCreature)
 }
 
 /*######
-## npc_floon
+## npc_floon -- TODO move to EventAI
 ######*/
 
 enum
 {
-    SAY_FLOON_ATTACK        = -1000195,
-
     SPELL_SILENCE           = 6726,
     SPELL_FROSTBOLT         = 9672,
     SPELL_FROST_NOVA        = 11831,
-
-    FACTION_HOSTILE_FL      = 1738,
-    QUEST_CRACK_SKULLS      = 10009
 };
-
-#define GOSSIP_FLOON1       "You owe Sim'salabim money. Hand them over or die!"
-#define GOSSIP_FLOON2       "Hand over the money or die...again!"
 
 struct MANGOS_DLL_DECL npc_floonAI : public ScriptedAI
 {
@@ -419,59 +433,40 @@ CreatureAI* GetAI_npc_floon(Creature* pCreature)
     return new npc_floonAI(pCreature);
 }
 
-bool GossipHello_npc_floon(Player* pPlayer, Creature* pCreature)
-{
-    if (pPlayer->GetQuestStatus(QUEST_CRACK_SKULLS) == QUEST_STATUS_INCOMPLETE)
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_FLOON1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
-
-    pPlayer->SEND_GOSSIP_MENU(9442, pCreature->GetGUID());
-    return true;
-}
-
-bool GossipSelect_npc_floon(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_INFO_DEF)
-    {
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_FLOON2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-        pPlayer->SEND_GOSSIP_MENU(9443, pCreature->GetGUID());
-    }
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+1)
-    {
-        pPlayer->CLOSE_GOSSIP_MENU();
-        pCreature->setFaction(FACTION_HOSTILE_FL);
-        DoScriptText(SAY_FLOON_ATTACK, pCreature, pPlayer);
-        ((npc_floonAI*)pCreature->AI())->AttackStart(pPlayer);
-    }
-    return true;
-}
-
 /*######
-## npc_skyguard_handler_deesak
+## npc_hungry_nether_ray
 ######*/
 
-#define GOSSIP_SKYGUARD "Fly me to Ogri'la please"
-
-bool GossipHello_npc_skyguard_handler_deesak(Player* pPlayer, Creature* pCreature)
+enum
 {
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetGUID());
+    EMOTE_FEED                  = -1000628,
+    NPC_BLACK_WARP_CHASER       = 23219,
+    SPELL_FEED_CREDIT           = 41427,                    // credit for quest 11093
+};
 
-    if (pPlayer->GetReputationRank(1031) >= REP_HONORED)
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_SKYGUARD, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
-
-    return true;
-}
-
-bool GossipSelect_npc_skyguard_handler_deesak(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+struct MANGOS_DLL_DECL npc_hungry_nether_rayAI : public ScriptedPetAI
 {
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+1)
+    npc_hungry_nether_rayAI(Creature* pCreature) : ScriptedPetAI(pCreature) { Reset(); }
+
+    void Reset() { }
+
+    void OwnerKilledUnit(Unit* pVictim)
     {
-        pPlayer->CLOSE_GOSSIP_MENU();
-        pPlayer->CastSpell(pPlayer,41279,true);               //TaxiPath 705 (Taxi - Skettis to Skyguard Outpost)
+        if (pVictim->GetTypeId() == TYPEID_UNIT && pVictim->GetEntry() == NPC_BLACK_WARP_CHASER)
+        {
+            // Distance expected?
+            if (m_creature->IsWithinDistInMap(pVictim, 10.0f))
+            {
+                DoScriptText(EMOTE_FEED, m_creature);
+                m_creature->CastSpell(m_creature, SPELL_FEED_CREDIT, true);
+            }
+        }
     }
-    return true;
+};
+
+CreatureAI* GetAI_npc_hungry_nether_ray(Creature* pCreature)
+{
+    return new npc_hungry_nether_rayAI(pCreature);
 }
 
 /*######
@@ -717,7 +712,7 @@ bool QuestAccept_npc_letoll(Player* pPlayer, Creature* pCreature, const Quest* p
             DoScriptText(SAY_LE_START, pCreature);
             pCreature->setFaction(FACTION_ESCORT_N_NEUTRAL_PASSIVE);
 
-            pEscortAI->Start(false, false, pPlayer->GetGUID(), pQuest, true);
+            pEscortAI->Start(false, pPlayer, pQuest, true);
         }
     }
 
@@ -768,7 +763,7 @@ struct MANGOS_DLL_DECL npc_mana_bomb_exp_triggerAI : public ScriptedAI
 
         m_bIsActivated = true;
 
-        pPlayer->KilledMonsterCredit(NPC_MANA_BOMB_KILL_TRIGGER, 0);
+        pPlayer->KilledMonsterCredit(NPC_MANA_BOMB_KILL_TRIGGER);
 
         pManaBomb = pGo;
     }
@@ -832,7 +827,7 @@ CreatureAI* GetAI_npc_mana_bomb_exp_trigger(Creature* pCreature)
 ## go_mana_bomb
 ######*/
 
-bool GOHello_go_mana_bomb(Player* pPlayer, GameObject* pGo)
+bool GOUse_go_mana_bomb(Player* pPlayer, GameObject* pGo)
 {
     if (Creature* pCreature = GetClosestCreatureWithEntry(pGo, NPC_MANA_BOMB_EXPL_TRIGGER, INTERACTION_DISTANCE))
     {
@@ -857,10 +852,10 @@ bool GossipHello_npc_slim(Player* pPlayer, Creature* pCreature)
     if (pCreature->isVendor() && pPlayer->GetReputationRank(FACTION_CONSORTIUM) >= REP_FRIENDLY)
     {
         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_VENDOR, GOSSIP_TEXT_BROWSE_GOODS, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
-        pPlayer->SEND_GOSSIP_MENU(9896, pCreature->GetGUID());
+        pPlayer->SEND_GOSSIP_MENU(9896, pCreature->GetObjectGuid());
     }
     else
-        pPlayer->SEND_GOSSIP_MENU(9895, pCreature->GetGUID());
+        pPlayer->SEND_GOSSIP_MENU(9895, pCreature->GetObjectGuid());
 
     return true;
 }
@@ -868,73 +863,294 @@ bool GossipHello_npc_slim(Player* pPlayer, Creature* pCreature)
 bool GossipSelect_npc_slim(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
 {
     if (uiAction == GOSSIP_ACTION_TRADE)
-        pPlayer->SEND_VENDORLIST(pCreature->GetGUID());
+        pPlayer->SEND_VENDORLIST(pCreature->GetObjectGuid());
 
     return true;
 }
 
+/*#####
+## go_veil_skith_cage & npc_captive_child
+#####*/
+
+enum
+{
+    QUEST_MISSING_FRIENDS     = 10852,
+    NPC_CAPTIVE_CHILD         = 22314,
+    SAY_THANKS_1              = -1000590,
+    SAY_THANKS_2              = -1000591,
+    SAY_THANKS_3              = -1000592,
+    SAY_THANKS_4              = -1000593
+};
+
+bool GOUse_go_veil_skith_cage(Player* pPlayer, GameObject* pGo)
+{
+    if (pPlayer->GetQuestStatus(QUEST_MISSING_FRIENDS) == QUEST_STATUS_INCOMPLETE)
+    {
+        std::list<Creature*> lChildrenList;
+        GetCreatureListWithEntryInGrid(lChildrenList, pGo, NPC_CAPTIVE_CHILD, INTERACTION_DISTANCE);
+        for(std::list<Creature*>::const_iterator itr = lChildrenList.begin(); itr != lChildrenList.end(); ++itr)
+        {
+            pPlayer->KilledMonsterCredit(NPC_CAPTIVE_CHILD, (*itr)->GetObjectGuid());
+            switch(urand(0,3))
+            {
+                case 0: DoScriptText(SAY_THANKS_1, *itr); break;
+                case 1: DoScriptText(SAY_THANKS_2, *itr); break;
+                case 2: DoScriptText(SAY_THANKS_3, *itr); break;
+                case 3: DoScriptText(SAY_THANKS_4, *itr); break;
+            }
+
+            (*itr)->GetMotionMaster()->Clear();
+            (*itr)->GetMotionMaster()->MovePoint(0, -2648.049f, 5274.573f, 1.691529f);
+        }
+    }
+    return false;
+};
+
+struct MANGOS_DLL_DECL npc_captive_child : public ScriptedAI
+{
+    npc_captive_child(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
+
+    void Reset() {}
+
+    void MovementInform(uint32 uiMotionType, uint32 uiPointId)
+    {
+        if (uiMotionType == POINT_MOTION_TYPE)
+            m_creature->ForcedDespawn();                    // we only have one waypoint
+    }
+};
+
+CreatureAI* GetAI_npc_captive_child(Creature* pCreature)
+{
+    return new npc_captive_child(pCreature);
+}
+
+/*#####
+## npc_isla_starmane
+##
+##  TODO: Verify SpellIDs, Research Timers, Finish Text?
+#####*/
+
+enum
+{
+    QUEST_ESCAPE_FROM_FIREWING_POINT_A  = 10051,
+    QUEST_ESCAPE_FROM_FIREWING_POINT_H  = 10052,
+
+    SAY_ISLA_PERIODIC_1                 = -1000629,
+    SAY_ISLA_PERIODIC_2                 = -1000630,
+    SAY_ISLA_PERIODIC_3                 = -1000631,
+    SAY_ISLA_START                      = -1000632,
+    SAY_ISLA_WAITING                    = -1000633,
+    SAY_ISLA_LEAVE_BUILDING             = -1000634,
+
+    GO_CAGE                             = 182794,
+
+    SPELL_ENTANGLING_ROOTS              = 33844,            // these spell IDs seem to deal not enough dmg, but are linked
+    SPELL_MOONFIRE                      = 15798,
+    SPELL_WRATH                         = 9739,
+    SPELL_TRAVELFORM                    = 32447             // guesswork
+};
+
+struct MANGOS_DLL_DECL npc_isla_starmaneAI : public npc_escortAI
+{
+    npc_isla_starmaneAI(Creature* pCreature) : npc_escortAI(pCreature)
+    {
+        Reset();
+    }
+
+    uint32 m_uiPeriodicTalkTimer;
+    uint32 m_uiEntanglingRootsTimer;
+    uint32 m_uiMoonfireTimer;
+    uint32 m_uiWrathTimer;
+
+    void Reset()
+    {
+        m_uiPeriodicTalkTimer = urand(20000, 40000);
+        m_uiEntanglingRootsTimer = 100;
+        m_uiMoonfireTimer = 1600;
+        m_uiWrathTimer = 2000;
+
+        if (!HasEscortState(STATE_ESCORT_ESCORTING))
+            m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
+    }
+
+    void JustStartedEscort()
+    {
+        m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
+        DoScriptText(SAY_ISLA_START, m_creature);
+        if (GameObject* pCage = GetClosestGameObjectWithEntry(m_creature, GO_CAGE, 2*INTERACTION_DISTANCE))
+            pCage->Use(m_creature);
+    }
+
+    void WaypointStart(uint32 uiPointId)
+    {
+        switch (uiPointId)
+        {
+            case 7:  DoScriptText(SAY_ISLA_LEAVE_BUILDING, m_creature); break;
+            case 68: DoCastSpellIfCan(m_creature, SPELL_TRAVELFORM);    break;
+        }
+    }
+
+    void WaypointReached(uint32 uiPointId)
+    {
+        switch(uiPointId)
+        {
+            case 6:
+                DoScriptText(SAY_ISLA_WAITING, m_creature);
+                break;
+            case 61:
+                if (Player* pPlayer = GetPlayerForEscort())
+                    pPlayer->GroupEventHappens(pPlayer->GetTeam() == ALLIANCE ? QUEST_ESCAPE_FROM_FIREWING_POINT_A : QUEST_ESCAPE_FROM_FIREWING_POINT_H, m_creature);
+                break;
+            case 67:
+                if (Player* pPlayer = GetPlayerForEscort())
+                    m_creature->SetFacingToObject(pPlayer);
+                m_creature->HandleEmote(EMOTE_ONESHOT_WAVE);
+                break;
+        }
+    }
+
+    void UpdateEscortAI(const uint32 uiDiff)
+    {
+        if (!HasEscortState(STATE_ESCORT_ESCORTING))
+        {
+            if (m_uiPeriodicTalkTimer < uiDiff)
+            {
+                m_uiPeriodicTalkTimer = urand(30000, 60000);
+                switch (urand(0, 2))
+                {
+                    case 0: DoScriptText(SAY_ISLA_PERIODIC_1, m_creature); break;
+                    case 1: DoScriptText(SAY_ISLA_PERIODIC_2, m_creature); break;
+                    case 2: DoScriptText(SAY_ISLA_PERIODIC_3, m_creature); break;
+                }
+            }
+            else
+                m_uiPeriodicTalkTimer -= uiDiff;
+        }
+
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        if (m_uiEntanglingRootsTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_ENTANGLING_ROOTS) == CAST_OK)
+                m_uiEntanglingRootsTimer = urand(8000, 16000);
+        }
+        else
+            m_uiEntanglingRootsTimer -= uiDiff;
+
+        if (m_uiMoonfireTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_MOONFIRE) == CAST_OK)
+                m_uiMoonfireTimer = urand(6000, 12000);
+        }
+        else
+            m_uiMoonfireTimer -= uiDiff;
+
+        if (m_uiWrathTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_WRATH) == CAST_OK)
+                m_uiWrathTimer = 2000;
+        }
+        else
+            m_uiWrathTimer -= uiDiff;
+
+        DoMeleeAttackIfReady();
+    }
+};
+
+bool QuestAccept_npc_isla_starmane(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+{
+    if (pQuest->GetQuestId() == QUEST_ESCAPE_FROM_FIREWING_POINT_A || pQuest->GetQuestId() == QUEST_ESCAPE_FROM_FIREWING_POINT_H)
+    {
+        if (npc_isla_starmaneAI* pEscortAI = dynamic_cast<npc_isla_starmaneAI*>(pCreature->AI()))
+        {
+            pCreature->setFaction(pPlayer->GetTeam() == ALLIANCE ? FACTION_ESCORT_A_NEUTRAL_ACTIVE : FACTION_ESCORT_H_NEUTRAL_ACTIVE);
+            pEscortAI->Start(false, pPlayer, pQuest);
+        }
+    }
+    return true;
+}
+
+CreatureAI* GetAI_npc_isla_starmane(Creature* pCreature)
+{
+    return new npc_isla_starmaneAI(pCreature);
+}
+
 void AddSC_terokkar_forest()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "mob_unkor_the_ruthless";
-    newscript->GetAI = &GetAI_mob_unkor_the_ruthless;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_unkor_the_ruthless";
+    pNewScript->GetAI = &GetAI_mob_unkor_the_ruthless;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_infested_root_walker";
-    newscript->GetAI = &GetAI_mob_infested_root_walker;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_infested_root_walker";
+    pNewScript->GetAI = &GetAI_mob_infested_root_walker;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_rotting_forest_rager";
-    newscript->GetAI = &GetAI_mob_rotting_forest_rager;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_rotting_forest_rager";
+    pNewScript->GetAI = &GetAI_mob_rotting_forest_rager;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_netherweb_victim";
-    newscript->GetAI = &GetAI_mob_netherweb_victim;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_netherweb_victim";
+    pNewScript->GetAI = &GetAI_mob_netherweb_victim;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_akuno";
-    newscript->GetAI = &GetAI_npc_akuno;
-    newscript->pQuestAccept = &QuestAccept_npc_akuno;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_akuno";
+    pNewScript->GetAI = &GetAI_npc_akuno;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_akuno;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_floon";
-    newscript->GetAI = &GetAI_npc_floon;
-    newscript->pGossipHello =  &GossipHello_npc_floon;
-    newscript->pGossipSelect = &GossipSelect_npc_floon;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_floon";
+    pNewScript->GetAI = &GetAI_npc_floon;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_letoll";
-    newscript->GetAI = &GetAI_npc_letoll;
-    newscript->pQuestAccept = &QuestAccept_npc_letoll;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_hungry_nether_ray";
+    pNewScript->GetAI = &GetAI_npc_hungry_nether_ray;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_mana_bomb_exp_trigger";
-    newscript->GetAI = &GetAI_npc_mana_bomb_exp_trigger;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_letoll";
+    pNewScript->GetAI = &GetAI_npc_letoll;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_letoll;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_mana_bomb";
-    newscript->pGOHello = &GOHello_go_mana_bomb;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_mana_bomb_exp_trigger";
+    pNewScript->GetAI = &GetAI_npc_mana_bomb_exp_trigger;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_skyguard_handler_deesak";
-    newscript->pGossipHello =  &GossipHello_npc_skyguard_handler_deesak;
-    newscript->pGossipSelect = &GossipSelect_npc_skyguard_handler_deesak;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_mana_bomb";
+    pNewScript->pGOUse = &GOUse_go_mana_bomb;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_slim";
-    newscript->pGossipHello =  &GossipHello_npc_slim;
-    newscript->pGossipSelect = &GossipSelect_npc_slim;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_slim";
+    pNewScript->pGossipHello =  &GossipHello_npc_slim;
+    pNewScript->pGossipSelect = &GossipSelect_npc_slim;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "go_veil_skith_cage";
+    pNewScript->pGOUse = &GOUse_go_veil_skith_cage;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_captive_child";
+    pNewScript->GetAI = &GetAI_npc_captive_child;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_isla_starmane";
+    pNewScript->GetAI = &GetAI_npc_isla_starmane;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_isla_starmane;
+    pNewScript->RegisterSelf();
 }

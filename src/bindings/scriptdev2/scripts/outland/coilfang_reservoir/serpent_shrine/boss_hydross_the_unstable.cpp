@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -195,7 +195,7 @@ struct MANGOS_DLL_DECL boss_hydross_the_unstableAI : public ScriptedAI
             //VileSludge_Timer
             if (m_uiVileSludge_Timer < uiDiff)
             {
-                if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                     DoCastSpellIfCan(pTarget, SPELL_VILE_SLUDGE);
 
                 m_uiVileSludge_Timer = 15000;
@@ -237,7 +237,7 @@ struct MANGOS_DLL_DECL boss_hydross_the_unstableAI : public ScriptedAI
             {
                 if (m_uiMarkOfHydross_Count <= 5)
                 {
-                    uint32 uiMarkSpell;
+                    uint32 uiMarkSpell = 0;
 
                     switch(m_uiMarkOfHydross_Count)
                     {
@@ -261,7 +261,7 @@ struct MANGOS_DLL_DECL boss_hydross_the_unstableAI : public ScriptedAI
             //WaterTomb_Timer
             if (m_uiWaterTomb_Timer < uiDiff)
             {
-                if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                     DoCastSpellIfCan(pTarget, SPELL_WATER_TOMB);
 
                 m_uiWaterTomb_Timer = 7000;
@@ -314,9 +314,10 @@ CreatureAI* GetAI_boss_hydross_the_unstable(Creature* pCreature)
 
 void AddSC_boss_hydross_the_unstable()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_hydross_the_unstable";
-    newscript->GetAI = &GetAI_boss_hydross_the_unstable;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_hydross_the_unstable";
+    pNewScript->GetAI = &GetAI_boss_hydross_the_unstable;
+    pNewScript->RegisterSelf();
 }

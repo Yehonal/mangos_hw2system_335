@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -128,8 +128,8 @@ struct MANGOS_DLL_DECL boss_gruulAI : public ScriptedAI
             {
                 switch(urand(0, 1))
                 {
-                    case 0: pTarget->CastSpell(pTarget, SPELL_MAGNETIC_PULL, true, NULL, NULL, m_creature->GetGUID()); break;
-                    case 1: pTarget->CastSpell(pTarget, SPELL_KNOCK_BACK, true, NULL, NULL, m_creature->GetGUID()); break;
+                    case 0: pTarget->CastSpell(pTarget, SPELL_MAGNETIC_PULL, true, NULL, NULL, m_creature->GetObjectGuid()); break;
+                    case 1: pTarget->CastSpell(pTarget, SPELL_KNOCK_BACK, true, NULL, NULL, m_creature->GetObjectGuid()); break;
                 }
             }
         }
@@ -196,28 +196,10 @@ struct MANGOS_DLL_DECL boss_gruulAI : public ScriptedAI
             // Hurtful Strike
             if (m_uiHurtfulStrike_Timer < uiDiff)
             {
-                // Find 2nd-aggro target within melee range.
-                Unit *pTarget = NULL;
-                ThreatList const& tList = m_creature->getThreatManager().getThreatList();
-                ThreatList::const_iterator itr = tList.begin();
-                std::advance(itr, 1);
-                for (;itr != tList.end(); ++itr)
-                {
-                    pTarget = Unit::GetUnit(*m_creature, (*itr)->getUnitGuid());
-                    // exclude pets, totems & player out of melee range
-                    if (pTarget->GetTypeId() != TYPEID_PLAYER || !pTarget->IsWithinDist(m_creature, ATTACK_DISTANCE, false))
-                    {
-                        pTarget = NULL;
-                        continue;
-                    }
-                    //we've found someone
-                    break;
-                }
-
-                if (pTarget)
-                    DoCastSpellIfCan(pTarget,SPELL_HURTFUL_STRIKE);
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 1, SPELL_HURTFUL_STRIKE, SELECT_FLAG_PLAYER))
+                    DoCastSpellIfCan(pTarget, SPELL_HURTFUL_STRIKE);
                 else
-                    DoCastSpellIfCan(m_creature->getVictim(),SPELL_HURTFUL_STRIKE);
+                    DoCastSpellIfCan(m_creature->getVictim(), SPELL_HURTFUL_STRIKE);
 
                 m_uiHurtfulStrike_Timer = 8000;
             }
@@ -227,7 +209,7 @@ struct MANGOS_DLL_DECL boss_gruulAI : public ScriptedAI
             // Reverberation
             if (m_uiReverberation_Timer < uiDiff)
             {
-                DoCastSpellIfCan(m_creature->getVictim(), SPELL_REVERBERATION, CAST_TRIGGERED);
+                DoCastSpellIfCan(m_creature, SPELL_REVERBERATION, CAST_TRIGGERED);
                 m_uiReverberation_Timer = urand(15000, 25000);
             }
             else
@@ -236,7 +218,7 @@ struct MANGOS_DLL_DECL boss_gruulAI : public ScriptedAI
             // Cave In
             if (m_uiCaveIn_Timer < uiDiff)
             {
-                if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM,0))
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
                     DoCastSpellIfCan(pTarget,SPELL_CAVE_IN);
 
                 if (m_uiCaveIn_StaticTimer >= 4000)
@@ -274,9 +256,10 @@ CreatureAI* GetAI_boss_gruul(Creature* pCreature)
 
 void AddSC_boss_gruul()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_gruul";
-    newscript->GetAI = &GetAI_boss_gruul;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_gruul";
+    pNewScript->GetAI = &GetAI_boss_gruul;
+    pNewScript->RegisterSelf();
 }

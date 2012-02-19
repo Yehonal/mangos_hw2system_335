@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -24,14 +24,15 @@ EndScriptData */
 #include "precompiled.h"
 #include "hyjalAI.h"
 
-struct sHyjalLocation
+struct HyjalLocation
 {
     eBaseArea m_pBaseArea;
     float m_fX, m_fY, m_fZ;
 };
 
 // Locations for summoning waves
-sHyjalLocation m_aHyjalSpawnLoc[]=
+// Must be even number
+static const HyjalLocation aHyjalSpawnLoc[]=
 {
     {BASE_ALLY,  4979.010f, -1709.134f, 1339.674f},
     {BASE_ALLY,  4969.123f, -1705.904f, 1341.363f},
@@ -44,20 +45,20 @@ sHyjalLocation m_aHyjalSpawnLoc[]=
 };
 
 // used to inform the wave where to move
-sHyjalLocation m_aHyjalWaveMoveTo[]=
+static const HyjalLocation aHyjalWaveMoveTo[]=
 {
     {BASE_ALLY,  5018.654f, -1752.074f, 1322.203f},
     {BASE_HORDE, 5504.569f, -2688.489f, 1479.991f}
 };
 
-struct sHyjalYells
+struct HyjalYells
 {
     uint32   uiCreatureEntry;
     YellType m_pYellType;                                   // Used to determine the type of yell (attack, rally, etc)
     int32    m_iTextId;                                     // The text id to be yelled
 };
 
-sHyjalYells m_aHyjalYell[]=
+static const HyjalYells aHyjalYell[]=
 {
     {NPC_JAINA,  ATTACKED, -1534000},
     {NPC_JAINA,  ATTACKED, -1534001},
@@ -80,11 +81,72 @@ sHyjalYells m_aHyjalYell[]=
     {NPC_THRALL, DEATH,    -1534017}
 };
 
+struct HyjalWave
+{
+    uint32 m_auiMobEntry[MAX_WAVE_MOB];                     // Stores Creature Entries to be summoned in Waves
+    uint32 m_uiWaveTimer;                                   // The timer before the next wave is summoned
+    bool   m_bIsBoss;                                       // Simply used to inform the wave summoner that the next wave contains a boss to halt all waves after that
+};
+
+// Waves that will be summoned in the Alliance Base
+static const HyjalWave aHyjalWavesAlliance[]=
+{
+    // Rage Winterchill Wave 1-8
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_CRYPT, NPC_CRYPT, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_NECRO, NPC_NECRO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_NECRO, NPC_NECRO, NPC_NECRO, NPC_NECRO, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_ABOMI, NPC_ABOMI, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0}, 140000, false},
+    // All 8 Waves are summoned, summon Rage Winterchill, next few waves are for Anetheron
+    {{NPC_WINTERCHILL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, true},
+    // Anetheron Wave 1-8
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_NECRO, NPC_NECRO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_NECRO, NPC_NECRO, NPC_NECRO, NPC_NECRO, NPC_BANSH, NPC_BANSH, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_BANSH, NPC_BANSH, NPC_BANSH, NPC_BANSH, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_ABOMI, NPC_ABOMI, NPC_NECRO, NPC_NECRO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_BANSH, NPC_BANSH, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_BANSH, NPC_BANSH, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0}, 140000, false},
+    // All 8 Waves are summoned, summon Anatheron
+    {{NPC_ANETHERON, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, true}
+};
+
+// Waves that are summoned in the Horde base
+static const HyjalWave aHyjalWavesHorde[]=
+{
+    // Kaz'Rogal Wave 1-8
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_BANSH, NPC_BANSH, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0}, 135000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_GARGO, 0, 0, 0, 0}, 165000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0}, 160000, false},
+    {{NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0}, 165000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_NECRO, NPC_NECRO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0}, 135000, false},
+    {{NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_FROST, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 135000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_FROST, 0, 0, 0, 0, 0, 0, 0}, 195000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_CRYPT, NPC_CRYPT, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_NECRO, NPC_NECRO, NPC_BANSH, NPC_BANSH, 0, 0}, 225000, false},
+    // All 8 Waves are summoned, summon Kaz'Rogal, next few waves are for Azgalor
+    {{NPC_KAZROGAL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, true},
+    // Azgalor Wave 1-8
+    {{NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_NECRO, NPC_NECRO, NPC_NECRO, NPC_NECRO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0}, 135000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_FROST, NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_GARGO, NPC_GARGO, 0, 0, 0, 0}, 165000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GIANT, NPC_GIANT, NPC_GIANT, NPC_GIANT, NPC_GIANT, NPC_GIANT, NPC_GIANT, NPC_GIANT, 0, 0, 0, 0, 0, 0}, 160000, false},
+    {{NPC_GIANT, NPC_GIANT, NPC_GIANT, NPC_GIANT, NPC_GIANT, NPC_GIANT, NPC_STALK, NPC_STALK, NPC_STALK, NPC_STALK, NPC_STALK, NPC_STALK, NPC_STALK, NPC_STALK, 0, 0, 0, 0}, 165000, false},
+    {{NPC_STALK, NPC_STALK, NPC_STALK, NPC_STALK, NPC_STALK, NPC_STALK, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_NECRO, NPC_NECRO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0}, 135000, false},
+    {{NPC_NECRO, NPC_NECRO, NPC_NECRO, NPC_NECRO, NPC_NECRO, NPC_NECRO, NPC_BANSH, NPC_BANSH, NPC_BANSH, NPC_BANSH, NPC_BANSH, NPC_BANSH, 0, 0, 0, 0, 0, 0}, 135000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_CRYPT, NPC_CRYPT, NPC_STALK, NPC_STALK, NPC_GIANT, NPC_GIANT, NPC_GIANT, NPC_GIANT, NPC_GIANT, NPC_GIANT, NPC_GIANT, NPC_GIANT, 0, 0, 0, 0}, 195000, false},
+    {{NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_STALK, NPC_STALK, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_ABOMI, NPC_BANSH, NPC_BANSH, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0}, 225000, false},
+    // All 8 Waves are summoned, summon Azgalor
+    {{NPC_AZGALOR, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, true}
+};
+
 void hyjalAI::Reset()
 {
-    // GUIDs
-    m_uiBossGUID[0] = 0;
-    m_uiBossGUID[1] = 0;
+    // BossGuids
+    m_aBossGuid[0].Clear();
+    m_aBossGuid[1].Clear();
 
     // Timers
     m_uiNextWaveTimer = 10000;
@@ -126,11 +188,11 @@ void hyjalAI::Reset()
     if (!m_pInstance)
         return;
 
-    m_bIsFirstBossDead = m_uiBase ? m_pInstance->GetData(TYPE_KAZROGAL) : m_pInstance->GetData(TYPE_WINTERCHILL);
-    m_bIsSecondBossDead = m_uiBase ? m_pInstance->GetData(TYPE_AZGALOR) : m_pInstance->GetData(TYPE_ANETHERON);
+    m_bIsFirstBossDead = m_uiBase ? m_pInstance->GetData(TYPE_KAZROGAL) == DONE : m_pInstance->GetData(TYPE_WINTERCHILL) == DONE;
+    m_bIsSecondBossDead = m_uiBase ? m_pInstance->GetData(TYPE_AZGALOR) == DONE : m_pInstance->GetData(TYPE_ANETHERON) == DONE;
 
     // Reset Instance Data for trash count
-    m_pInstance->SetData(DATA_RESET_TRASH_COUNT, 0);
+    m_pInstance->SetData(TYPE_TRASH_COUNT, 0);
 }
 
 void hyjalAI::EnterEvadeMode()
@@ -138,7 +200,6 @@ void hyjalAI::EnterEvadeMode()
     m_creature->RemoveAllAuras();
     m_creature->DeleteThreatList();
     m_creature->CombatStop(true);
-    m_creature->LoadCreaturesAddon();
 
     if (m_creature->isAlive())
         m_creature->GetMotionMaster()->MoveTargetedHome();
@@ -151,8 +212,8 @@ void hyjalAI::JustReachedHome()
     if (m_uiBase == BASE_ALLY)
         DoCastSpellIfCan(m_creature, SPELL_BRILLIANCE_AURA, CAST_TRIGGERED);
 
-    m_bIsFirstBossDead = m_uiBase ? m_pInstance->GetData(TYPE_KAZROGAL) : m_pInstance->GetData(TYPE_WINTERCHILL);
-    m_bIsSecondBossDead = m_uiBase ? m_pInstance->GetData(TYPE_AZGALOR) : m_pInstance->GetData(TYPE_ANETHERON);
+    m_bIsFirstBossDead = m_uiBase ? m_pInstance->GetData(TYPE_KAZROGAL) == DONE : m_pInstance->GetData(TYPE_WINTERCHILL) == DONE;
+    m_bIsSecondBossDead = m_uiBase ? m_pInstance->GetData(TYPE_AZGALOR) == DONE : m_pInstance->GetData(TYPE_ANETHERON) == DONE;
 }
 
 void hyjalAI::Aggro(Unit *who)
@@ -166,23 +227,23 @@ void hyjalAI::Aggro(Unit *who)
 
 void hyjalAI::SpawnCreatureForWave(uint32 uiMobEntry)
 {
-    sHyjalLocation* pSpawn = NULL;
+    HyjalLocation const* pSpawn = NULL;
 
-    uint32 uiMaxCount = sizeof(m_aHyjalSpawnLoc)/sizeof(sHyjalLocation);
+    uint32 uiMaxCount = countof(aHyjalSpawnLoc);
     uint32 uiRandId = urand(1, uiMaxCount/2);               //unsafe, if array becomes uneven.
 
     uint32 uiJ = 0;
 
     for (uint32 i = 0; i < uiMaxCount; ++i)
     {
-        if (m_aHyjalSpawnLoc[i].m_pBaseArea != m_uiBase)
+        if (aHyjalSpawnLoc[i].m_pBaseArea != (eBaseArea)m_uiBase)
             continue;
 
         ++uiJ;
 
         if (uiJ == uiRandId)
         {
-            pSpawn = &m_aHyjalSpawnLoc[i];
+            pSpawn = &aHyjalSpawnLoc[i];
             break;
         }
     }
@@ -200,16 +261,14 @@ void hyjalAI::JustSummoned(Creature* pSummoned)
     // Increment Enemy Count to be used in World States and instance script
     ++m_uiEnemyCount;
 
-    sHyjalLocation* pMove = NULL;
+    HyjalLocation const* pMove = NULL;
 
-    uint32 uiMaxCount = sizeof(m_aHyjalWaveMoveTo)/sizeof(sHyjalLocation);
-
-    for (uint32 i = 0; i < uiMaxCount; ++i)
+    for (uint32 i = 0; i < countof(aHyjalWaveMoveTo); ++i)
     {
-        if (m_aHyjalWaveMoveTo[i].m_pBaseArea != m_uiBase)
+        if (aHyjalWaveMoveTo[i].m_pBaseArea != (eBaseArea)m_uiBase)
             continue;
 
-        pMove = &m_aHyjalWaveMoveTo[i];
+        pMove = &aHyjalWaveMoveTo[i];
         break;
     }
 
@@ -218,22 +277,22 @@ void hyjalAI::JustSummoned(Creature* pSummoned)
         float fX, fY, fZ;
         pSummoned->GetRandomPoint(pMove->m_fX, pMove->m_fY, pMove->m_fZ, 10.0f, fX, fY, fZ);
 
-        pSummoned->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
+        pSummoned->SetWalk(false);
         pSummoned->GetMotionMaster()->MovePoint(0, fX, fY, fZ);
     }
 
     // Check if creature is a boss.
-    if (pSummoned->isWorldBoss())
+    if (pSummoned->IsWorldBoss())
     {
         if (!m_bIsFirstBossDead)
-            m_uiBossGUID[0] = pSummoned->GetGUID();
+            m_aBossGuid[0] = pSummoned->GetObjectGuid();
         else
-            m_uiBossGUID[1] = pSummoned->GetGUID();
+            m_aBossGuid[1] = pSummoned->GetObjectGuid();
 
         m_uiCheckTimer = 5000;
     }
     else
-        lWaveMobGUIDList.push_back(pSummoned->GetGUID());
+        lWaveMobGUIDList.push_back(pSummoned->GetObjectGuid());
 }
 
 void hyjalAI::SummonNextWave()
@@ -243,12 +302,9 @@ void hyjalAI::SummonNextWave()
         DoTalk(RALLY);
 
     if (!m_pInstance)
-    {
-        error_log(ERROR_INST_DATA);
         return;
-    }
 
-    sHyjalWave* pWaveData = m_uiBase ? &m_aHyjalWavesHorde[m_uiWaveCount] : &m_aHyjalWavesAlliance[m_uiWaveCount];
+    HyjalWave const* pWaveData = m_uiBase ? &aHyjalWavesHorde[m_uiWaveCount] : &aHyjalWavesAlliance[m_uiWaveCount];
 
     if (!pWaveData)
     {
@@ -256,7 +312,7 @@ void hyjalAI::SummonNextWave()
         return;
     }
 
-    m_uiEnemyCount = m_pInstance->GetData(DATA_TRASH);
+    m_uiEnemyCount = m_pInstance->GetData(TYPE_TRASH_COUNT);
 
     for(uint8 i = 0; i < MAX_WAVE_MOB; ++i)
     {
@@ -276,7 +332,7 @@ void hyjalAI::SummonNextWave()
         // Enable world state
         m_pInstance->DoUpdateWorldState(WORLD_STATE_ENEMY, 1);
 
-        m_pInstance->SetData(DATA_TRASH, m_uiEnemyCount);   // Send data for instance script to update count
+        m_pInstance->SetData(TYPE_TRASH_COUNT, m_uiEnemyCount);   // Send data for instance script to update count
 
         if (!m_bDebugMode)
             m_uiNextWaveTimer = pWaveData->m_uiWaveTimer;
@@ -321,18 +377,19 @@ void hyjalAI::StartEvent()
     m_pInstance->DoUpdateWorldState(WORLD_STATE_WAVES, 0);
     m_pInstance->DoUpdateWorldState(WORLD_STATE_ENEMY, 0);
     m_pInstance->DoUpdateWorldState(WORLD_STATE_ENEMYCOUNT, 0);
+
+    m_creature->SetActiveObjectState(true);
 }
 
 void hyjalAI::DoTalk(YellType pYellType)
 {
-    sHyjalYells* pYell = NULL;
+    HyjalYells const* pYell = NULL;
 
-    uint32 uiMaxCount = sizeof(m_aHyjalYell)/sizeof(sHyjalYells);
     bool bGetNext = false;
 
-    for (uint32 i = 0; i < uiMaxCount; ++i)
+    for (uint32 i = 0; i < countof(aHyjalYell); ++i)
     {
-        if (m_aHyjalYell[i].uiCreatureEntry == m_creature->GetEntry() && m_aHyjalYell[i].m_pYellType == pYellType)
+        if (aHyjalYell[i].uiCreatureEntry == m_creature->GetEntry() && aHyjalYell[i].m_pYellType == pYellType)
         {
             //this would not be safe unless we knew these had two entries in m_aYell
             if (pYellType == ATTACKED || pYellType== RALLY)
@@ -344,7 +401,7 @@ void hyjalAI::DoTalk(YellType pYellType)
                 }
             }
 
-            pYell = &m_aHyjalYell[i];
+            pYell = &aHyjalYell[i];
             break;
         }
     }
@@ -376,6 +433,7 @@ void hyjalAI::Retreat()
 void hyjalAI::JustDied(Unit* pKiller)
 {
     DoTalk(DEATH);
+    m_creature->SetActiveObjectState(false);
 
     //TODO: in case they die during boss encounter, then what? despawn boss?
 }
@@ -390,24 +448,21 @@ void hyjalAI::UpdateAI(const uint32 uiDiff)
         if (m_uiWaveMoveTimer < uiDiff)
         {
             // Skip the master timer, and start next wave in 5. Clear the list, it should not be any here now.
-            if (!m_pInstance->GetData(DATA_TRASH))
+            if (!m_pInstance->GetData(TYPE_TRASH_COUNT))
             {
                 lWaveMobGUIDList.clear();
-                m_uiNextWaveTimer = 5000;
+                m_uiNextWaveTimer = std::min(m_uiNextWaveTimer, (uint32)5000);
             }
 
-            if (!lWaveMobGUIDList.empty())
+            for (GUIDList::const_iterator itr = lWaveMobGUIDList.begin(); itr != lWaveMobGUIDList.end(); ++itr)
             {
-                for(std::list<uint64>::iterator itr = lWaveMobGUIDList.begin(); itr != lWaveMobGUIDList.end(); ++itr)
+                if (Creature* pTemp = m_pInstance->instance->GetCreature(*itr))
                 {
-                    if (Creature* pTemp = m_pInstance->instance->GetCreature(*itr))
-                    {
-                        if (!pTemp->isAlive() || pTemp->getVictim())
-                            continue;
+                    if (!pTemp->isAlive() || pTemp->getVictim())
+                        continue;
 
-                        pTemp->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
-                        pTemp->GetMotionMaster()->MovePoint(1, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ());
-                    }
+                    pTemp->SetWalk(false);
+                    pTemp->GetMotionMaster()->MovePoint(1, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ());
                 }
             }
             m_uiWaveMoveTimer = 10000;
@@ -425,18 +480,18 @@ void hyjalAI::UpdateAI(const uint32 uiDiff)
     {
         for(uint8 i = 0; i < 2; ++i)
         {
-            if (m_uiBossGUID[i])
+            if (m_aBossGuid[i])
             {
-                Unit* pUnit = Unit::GetUnit(*m_creature, m_uiBossGUID[i]);
+                Creature* pBoss = m_creature->GetMap()->GetCreature(m_aBossGuid[i]);
 
-                if (pUnit && !pUnit->isAlive())
+                if (pBoss && !pBoss->isAlive())
                 {
-                    if (m_uiBossGUID[i] == m_uiBossGUID[0])
+                    if (m_aBossGuid[i] == m_aBossGuid[0])
                     {
                         DoTalk(INCOMING);
                         m_bIsFirstBossDead = true;
                     }
-                    else if (m_uiBossGUID[i] == m_uiBossGUID[1])
+                    else if (m_aBossGuid[i] == m_aBossGuid[1])
                     {
                         DoTalk(SUCCESS);
                         m_bIsSecondBossDead = true;
@@ -447,10 +502,12 @@ void hyjalAI::UpdateAI(const uint32 uiDiff)
 
                     m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
 
-                    m_uiBossGUID[i] = 0;
+                    m_aBossGuid[i].Clear();
 
                     // Reset world state for enemies to disable it
                     m_pInstance->DoUpdateWorldState(WORLD_STATE_ENEMY, 0);
+
+                    m_creature->SetActiveObjectState(false);
                 }
             }
         }
@@ -477,7 +534,7 @@ void hyjalAI::UpdateAI(const uint32 uiDiff)
                 switch(m_aSpells[i].m_pType)
                 {
                     case TARGETTYPE_SELF:   pTarget = m_creature; break;
-                    case TARGETTYPE_RANDOM: pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0); break;
+                    case TARGETTYPE_RANDOM: pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0); break;
                     case TARGETTYPE_VICTIM: pTarget = m_creature->getVictim(); break;
                 }
 

@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -50,7 +50,7 @@ struct MANGOS_DLL_DECL npc_kyle_the_frenziedAI : public ScriptedAI
 
     bool m_bEvent;
     bool m_bIsMovingToLunch;
-    uint64 m_uiPlayerGUID;
+    ObjectGuid m_playerGuid;
     uint32 m_uiEventTimer;
     uint8 m_uiEventPhase;
 
@@ -58,7 +58,7 @@ struct MANGOS_DLL_DECL npc_kyle_the_frenziedAI : public ScriptedAI
     {
         m_bEvent = false;
         m_bIsMovingToLunch = false;
-        m_uiPlayerGUID = 0;
+        m_playerGuid.Clear();
         m_uiEventTimer = 5000;
         m_uiEventPhase = 0;
 
@@ -71,7 +71,7 @@ struct MANGOS_DLL_DECL npc_kyle_the_frenziedAI : public ScriptedAI
         if (!m_creature->getVictim() && !m_bEvent && pSpell->Id == SPELL_LUNCH)
         {
             if (pCaster->GetTypeId() == TYPEID_PLAYER)
-                m_uiPlayerGUID = pCaster->GetGUID();
+                m_playerGuid = pCaster->GetObjectGuid();
 
             if (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() == WAYPOINT_MOTION_TYPE)
             {
@@ -82,7 +82,7 @@ struct MANGOS_DLL_DECL npc_kyle_the_frenziedAI : public ScriptedAI
 
             m_bEvent = true;
             DoScriptText(EMOTE_SEE_LUNCH, m_creature);
-            m_creature->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_ONESHOT_CREATURE_SPECIAL);
+            m_creature->HandleEmote(EMOTE_ONESHOT_CREATURE_SPECIAL);
         }
     }
 
@@ -110,32 +110,48 @@ struct MANGOS_DLL_DECL npc_kyle_the_frenziedAI : public ScriptedAI
                 switch(m_uiEventPhase)
                 {
                     case 1:
-                        if (Unit* pUnit = Unit::GetUnit(*m_creature,m_uiPlayerGUID))
+                        if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid))
                         {
-                            if (GameObject* pGo = pUnit->GetGameObject(SPELL_LUNCH))
+                            GameObject* pGo = pPlayer->GetGameObject(SPELL_LUNCH);
+
+                            // Workaround for broken function GetGameObject
+                            if (!pGo)
+                            {
+                                const SpellEntry* pSpell = GetSpellStore()->LookupEntry(SPELL_LUNCH);
+
+                                uint32 uiGameobjectEntry = pSpell->EffectMiscValue[EFFECT_INDEX_1];
+
+                                pGo = GetClosestGameObjectWithEntry(pPlayer, uiGameobjectEntry, 2*INTERACTION_DISTANCE);
+                            }
+
+                            if (pGo)
                             {
                                 m_bIsMovingToLunch = true;
-                                m_creature->GetMotionMaster()->MovePoint(POINT_ID, pGo->GetPositionX(), pGo->GetPositionY(), pGo->GetPositionZ());
+
+                                float fX, fY, fZ;
+                                pGo->GetContactPoint(m_creature, fX, fY, fZ, CONTACT_DISTANCE);
+
+                                m_creature->GetMotionMaster()->MovePoint(POINT_ID, fX, fY, fZ);
                             }
                         }
                         break;
                     case 2:
                         DoScriptText(EMOTE_EAT_LUNCH, m_creature);
-                        m_creature->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_STATE_USESTANDING);
+                        m_creature->HandleEmote(EMOTE_STATE_USESTANDING);
                         break;
                     case 3:
-                        if (Unit* pUnit = Unit::GetUnit(*m_creature,m_uiPlayerGUID))
-                            ((Player*)pUnit)->TalkedToCreature(m_creature->GetEntry(), m_creature->GetGUID());
+                        if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid))
+                            pPlayer->TalkedToCreature(m_creature->GetEntry(), m_creature->GetObjectGuid());
 
                         m_creature->UpdateEntry(NPC_KYLE_FRIENDLY);
                         break;
                     case 4:
                         m_uiEventTimer = 30000;
                         DoScriptText(EMOTE_DANCE, m_creature);
-                        m_creature->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_STATE_DANCESPECIAL);
+                        m_creature->HandleEmote(EMOTE_STATE_DANCESPECIAL);
                         break;
                     case 5:
-                        m_creature->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_STATE_NONE);
+                        m_creature->HandleEmote(EMOTE_STATE_NONE);
                         Reset();
                         m_creature->GetMotionMaster()->Clear();
                         break;
@@ -159,12 +175,12 @@ CreatureAI* GetAI_npc_kyle_the_frenzied(Creature* pCreature)
 bool GossipHello_npc_skorn_whitecloud(Player* pPlayer, Creature* pCreature)
 {
     if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetGUID());
+        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
 
     if (!pPlayer->GetQuestRewardStatus(770))
         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Tell me a story, Skorn.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
 
-    pPlayer->SEND_GOSSIP_MENU(522, pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(522, pCreature->GetObjectGuid());
 
     return true;
 }
@@ -172,23 +188,23 @@ bool GossipHello_npc_skorn_whitecloud(Player* pPlayer, Creature* pCreature)
 bool GossipSelect_npc_skorn_whitecloud(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
 {
     if (uiAction == GOSSIP_ACTION_INFO_DEF)
-        pPlayer->SEND_GOSSIP_MENU(523, pCreature->GetGUID());
+        pPlayer->SEND_GOSSIP_MENU(523, pCreature->GetObjectGuid());
 
     return true;
 }
 
 void AddSC_mulgore()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_kyle_the_frenzied";
-    newscript->GetAI = &GetAI_npc_kyle_the_frenzied;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_kyle_the_frenzied";
+    pNewScript->GetAI = &GetAI_npc_kyle_the_frenzied;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_skorn_whitecloud";
-    newscript->pGossipHello = &GossipHello_npc_skorn_whitecloud;
-    newscript->pGossipSelect = &GossipSelect_npc_skorn_whitecloud;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_skorn_whitecloud";
+    pNewScript->pGossipHello = &GossipHello_npc_skorn_whitecloud;
+    pNewScript->pGossipSelect = &GossipSelect_npc_skorn_whitecloud;
+    pNewScript->RegisterSelf();
 }

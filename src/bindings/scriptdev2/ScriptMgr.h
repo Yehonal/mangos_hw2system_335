@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software licensed under GPL version 2
  * Please see the included DOCS/LICENSE.TXT for more information */
 
@@ -20,58 +20,103 @@ class Map;
 class Unit;
 class WorldObject;
 class Aura;
+class Object;
+class ObjectGuid;
 
-#define MAX_SCRIPTS         5000                            //72 bytes each (approx 351kb)
-#define VISIBLE_RANGE       (166.0f)                        //MAX visible range (size of grid)
+// *********************************************************
+// ************** Some defines used globally ***************
+
+// Basic defines
+#define VISIBLE_RANGE       (166.0f)                        // MAX visible range (size of grid)
 #define DEFAULT_TEXT        "<ScriptDev2 Text Entry Missing!>"
+
+// Some typedefs for storing Guids
+typedef std::list<ObjectGuid> GUIDList;
+typedef std::set<ObjectGuid> GUIDSet;
+typedef std::vector<ObjectGuid> GUIDVector;
+typedef std::map<uint32, ObjectGuid> EntryGuidMap;
+
+/* Escort Factions
+ * TODO: find better namings and definitions.
+ * N=Neutral, A=Alliance, H=Horde.
+ * NEUTRAL or FRIEND = Hostility to player surroundings (not a good definition)
+ * ACTIVE or PASSIVE = Hostility to environment surroundings.
+ */
+enum EscortFaction
+{
+    FACTION_ESCORT_A_NEUTRAL_PASSIVE    = 10,
+    FACTION_ESCORT_H_NEUTRAL_PASSIVE    = 33,
+    FACTION_ESCORT_N_NEUTRAL_PASSIVE    = 113,
+
+    FACTION_ESCORT_A_NEUTRAL_ACTIVE     = 231,
+    FACTION_ESCORT_H_NEUTRAL_ACTIVE     = 232,
+    FACTION_ESCORT_N_NEUTRAL_ACTIVE     = 250,
+
+    FACTION_ESCORT_N_FRIEND_PASSIVE     = 290,
+    FACTION_ESCORT_N_FRIEND_ACTIVE      = 495,
+
+    FACTION_ESCORT_A_PASSIVE            = 774,
+    FACTION_ESCORT_H_PASSIVE            = 775,
+
+    FACTION_ESCORT_N_ACTIVE             = 1986,
+    FACTION_ESCORT_H_ACTIVE             = 2046
+};
+
+// *********************************************************
+// ************* Some structures used globally *************
 
 struct Script
 {
     Script() :
-        pGossipHello(NULL), pGOGossipHello(NULL), pGossipSelect(NULL), pGOGossipSelect(NULL),
-        pGossipSelectWithCode(NULL), pGOGossipSelectWithCode(NULL),
-        pQuestSelect(NULL), pQuestComplete(NULL), pNPCDialogStatus(NULL), pGODialogStatus(NULL),
-        pChooseReward(NULL), pItemHello(NULL), pGOHello(NULL), pAreaTrigger(NULL), pItemQuestAccept(NULL),
-        pQuestAccept(NULL), pGOQuestAccept(NULL), pGOChooseReward(NULL), pItemUse(NULL),
-        pEffectDummyCreature(NULL), pEffectDummyGameObj(NULL), pEffectDummyItem(NULL), pEffectAuraDummy(NULL),
+        pGossipHello(NULL), pGossipHelloGO(NULL), pGossipSelect(NULL), pGossipSelectGO(NULL),
+        pGossipSelectWithCode(NULL), pGossipSelectGOWithCode(NULL),
+        pDialogStatusNPC(NULL), pDialogStatusGO(NULL),
+        pQuestAcceptNPC(NULL), pQuestAcceptGO(NULL), pQuestAcceptItem(NULL),
+        pQuestRewardedNPC(NULL), pQuestRewardedGO(NULL),
+        pGOUse(NULL), pItemUse(NULL), pAreaTrigger(NULL), pProcessEventId(NULL),
+        pEffectDummyNPC(NULL), pEffectDummyGO(NULL), pEffectDummyItem(NULL), pEffectAuraDummy(NULL),
         GetAI(NULL), GetInstanceData(NULL)
     {}
 
     std::string Name;
 
-    //Methods to be scripted
     bool (*pGossipHello             )(Player*, Creature*);
-    bool (*pGOGossipHello           )(Player*, GameObject*);
-    bool (*pQuestAccept             )(Player*, Creature*, const Quest*);
+    bool (*pGossipHelloGO           )(Player*, GameObject*);
     bool (*pGossipSelect            )(Player*, Creature*, uint32, uint32);
-    bool (*pGOGossipSelect          )(Player*, GameObject*, uint32, uint32);
+    bool (*pGossipSelectGO          )(Player*, GameObject*, uint32, uint32);
     bool (*pGossipSelectWithCode    )(Player*, Creature*, uint32, uint32, const char*);
-    bool (*pGOGossipSelectWithCode  )(Player*, GameObject*, uint32, uint32, const char*);
-    bool (*pQuestSelect             )(Player*, Creature*, const Quest*);
-    bool (*pQuestComplete           )(Player*, Creature*, const Quest*);
-    uint32 (*pNPCDialogStatus       )(Player*, Creature*);
-    uint32 (*pGODialogStatus        )(Player*, GameObject*);
-    bool (*pChooseReward            )(Player*, Creature*, const Quest*, uint32);
-    bool (*pItemHello               )(Player*, Item*, const Quest*);
-    bool (*pGOHello                 )(Player*, GameObject*);
-    bool (*pAreaTrigger             )(Player*, AreaTriggerEntry*);
-    bool (*pItemQuestAccept         )(Player*, Item*, const Quest*);
-    bool (*pGOQuestAccept           )(Player*, GameObject*, const Quest*);
-    bool (*pGOChooseReward          )(Player*, GameObject*, const Quest*, uint32);
+    bool (*pGossipSelectGOWithCode  )(Player*, GameObject*, uint32, uint32, const char*);
+    uint32 (*pDialogStatusNPC       )(Player*, Creature*);
+    uint32 (*pDialogStatusGO        )(Player*, GameObject*);
+    bool (*pQuestAcceptNPC          )(Player*, Creature*, Quest const*);
+    bool (*pQuestAcceptGO           )(Player*, GameObject*, Quest const*);
+    bool (*pQuestAcceptItem         )(Player*, Item*, Quest const*);
+    bool (*pQuestRewardedNPC        )(Player*, Creature*, Quest const*);
+    bool (*pQuestRewardedGO         )(Player*, GameObject*, Quest const*);
+    bool (*pGOUse                   )(Player*, GameObject*);
     bool (*pItemUse                 )(Player*, Item*, SpellCastTargets const&);
-    bool (*pEffectDummyCreature     )(Unit*, uint32, SpellEffectIndex, Creature*);
-    bool (*pEffectDummyGameObj      )(Unit*, uint32, SpellEffectIndex, GameObject*);
+    bool (*pAreaTrigger             )(Player*, AreaTriggerEntry const*);
+    bool (*pProcessEventId          )(uint32, Object*, Object*, bool);
+    bool (*pEffectDummyNPC          )(Unit*, uint32, SpellEffectIndex, Creature*);
+    bool (*pEffectDummyGO           )(Unit*, uint32, SpellEffectIndex, GameObject*);
     bool (*pEffectDummyItem         )(Unit*, uint32, SpellEffectIndex, Item*);
     bool (*pEffectAuraDummy         )(const Aura*, bool);
 
-    CreatureAI* (*GetAI)(Creature*);
-    InstanceData* (*GetInstanceData)(Map*);
+    CreatureAI* (*GetAI             )(Creature*);
+    InstanceData* (*GetInstanceData )(Map*);
 
-    void RegisterSelf(uint32 ID = 0);
+    void RegisterSelf(uint32 ID = 0,bool bReportError = true);
 };
 
-//Generic scripting text function
-void DoScriptText(int32 textEntry, WorldObject* pSource, Unit* target = NULL);
+// *********************************************************
+// ************* Some functions used globally **************
+
+// Generic scripting text function
+void DoScriptText(int32 iTextEntry, WorldObject* pSource, Unit* pTarget = NULL);
+void DoOrSimulateScriptTextForMap(int32 iTextEntry, uint32 uiCreatureEntry, Map* pMap, Creature* pCreatureSource = NULL, Unit* pTarget = NULL);
+
+// *********************************************************
+// **************** Internal hook mechanics ****************
 
 #if COMPILER == COMPILER_GNU
 #define FUNC_PTR(name,callconvention,returntype,parameters)    typedef returntype(*name)parameters __attribute__ ((callconvention));

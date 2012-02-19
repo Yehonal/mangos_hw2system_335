@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -82,14 +82,16 @@ struct MANGOS_DLL_DECL boss_akilzonAI : public ScriptedAI
         m_uiGustOfWindTimer = urand(20000, 30000);
         m_uiStormTimer = 50000;
         m_uiSummonEagleTimer = 65000;
-        m_uiBerserkTimer = MINUTE*8*IN_MILISECONDS;
+        m_uiBerserkTimer = MINUTE*8*IN_MILLISECONDS;
         m_bIsBerserk = false;
     }
 
     void Aggro(Unit* pWho)
     {
         DoScriptText(SAY_AGGRO, m_creature);
-        m_creature->SetInCombatWithZone();
+
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_AKILZON, IN_PROGRESS);
     }
 
     void KilledUnit(Unit* pVictim)
@@ -105,6 +107,12 @@ struct MANGOS_DLL_DECL boss_akilzonAI : public ScriptedAI
             return;
 
         m_pInstance->SetData(TYPE_AKILZON, DONE);
+    }
+
+    void JustReachedHome()
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_AKILZON, FAIL);
     }
 
     void JustSummoned(Creature* pSummoned)
@@ -137,7 +145,7 @@ struct MANGOS_DLL_DECL boss_akilzonAI : public ScriptedAI
 
         if (m_uiStaticDisruptTimer < uiDiff)
         {
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 1))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
                 m_creature->CastSpell(pTarget, SPELL_STATIC_DISRUPTION, false);
 
             m_uiStaticDisruptTimer = urand(7000, 14000);
@@ -145,7 +153,7 @@ struct MANGOS_DLL_DECL boss_akilzonAI : public ScriptedAI
 
         if (m_uiStormTimer < uiDiff)
         {
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
             {
                 if (m_creature->IsNonMeleeSpellCasted(false))
                     m_creature->InterruptNonMeleeSpells(false);
@@ -159,7 +167,7 @@ struct MANGOS_DLL_DECL boss_akilzonAI : public ScriptedAI
 
         if (m_uiGustOfWindTimer < uiDiff)
         {
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 1))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
                 m_creature->CastSpell(pTarget, SPELL_GUST_OF_WIND, false);
 
             m_uiGustOfWindTimer = urand(20000, 30000);
@@ -244,14 +252,12 @@ struct MANGOS_DLL_DECL mob_soaring_eagleAI : public ScriptedAI
         if (!m_pInstance)
             return;
 
-        if (Creature* pAzkil = m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_AKILZON)))
+        if (Creature* pAzkil = m_pInstance->GetSingleCreatureFromStorage(NPC_AKILZON))
         {
             float fX, fY, fZ;
             pAzkil->GetRandomPoint(pAzkil->GetPositionX(), pAzkil->GetPositionY(), pAzkil->GetPositionZ()+15.0f, 30.0f, fX, fY, fZ);
 
-            if (m_creature->HasSplineFlag(SPLINEFLAG_WALKMODE))
-                m_creature->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
-
+            m_creature->SetWalk(false);
             m_creature->GetMotionMaster()->MovePoint(POINT_ID_RANDOM, fX, fY, fZ);
 
             m_bCanMoveToRandom = false;
@@ -277,7 +283,7 @@ struct MANGOS_DLL_DECL mob_soaring_eagleAI : public ScriptedAI
 
         if (m_uiEagleSwoopTimer < uiDiff)
         {
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM,0))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
             {
                 DoCastSpellIfCan(pTarget,SPELL_EAGLE_SWOOP);
 
@@ -297,15 +303,15 @@ CreatureAI* GetAI_mob_soaring_eagle(Creature* pCreature)
 
 void AddSC_boss_akilzon()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_akilzon";
-    newscript->GetAI = &GetAI_boss_akilzon;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_akilzon";
+    pNewScript->GetAI = &GetAI_boss_akilzon;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_soaring_eagle";
-    newscript->GetAI = &GetAI_mob_soaring_eagle;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_soaring_eagle";
+    pNewScript->GetAI = &GetAI_mob_soaring_eagle;
+    pNewScript->RegisterSelf();
 }

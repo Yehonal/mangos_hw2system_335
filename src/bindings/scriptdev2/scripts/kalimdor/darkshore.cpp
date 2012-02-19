@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: Darkshore
 SD%Complete: 100
-SDComment: Quest support: 731, 2078, 5321
+SDComment: Quest support: 731, 994, 2078, 5321
 SDCategory: Darkshore
 EndScriptData */
 
@@ -25,6 +25,7 @@ EndScriptData */
 npc_kerlonian
 npc_prospector_remtravel
 npc_threshwackonator
+npc_volcor
 EndContentData */
 
 #include "precompiled.h"
@@ -208,14 +209,14 @@ struct MANGOS_DLL_DECL npc_prospector_remtravelAI : public npc_escortAI
 {
     npc_prospector_remtravelAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
-    void WaypointReached(uint32 i)
+    void WaypointReached(uint32 uiPointId)
     {
         Player* pPlayer = GetPlayerForEscort();
 
         if (!pPlayer)
             return;
 
-        switch(i)
+        switch(uiPointId)
         {
             case 0:
                 DoScriptText(SAY_REM_START, m_creature, pPlayer);
@@ -273,10 +274,10 @@ struct MANGOS_DLL_DECL npc_prospector_remtravelAI : public npc_escortAI
 
     void Reset() { }
 
-    void Aggro(Unit* who)
+    void Aggro(Unit* pWho)
     {
         if (urand(0, 1))
-            DoScriptText(SAY_REM_AGGRO, m_creature, who);
+            DoScriptText(SAY_REM_AGGRO, m_creature, pWho);
     }
 
     void JustSummoned(Creature* pSummoned)
@@ -298,7 +299,7 @@ bool QuestAccept_npc_prospector_remtravel(Player* pPlayer, Creature* pCreature, 
         pCreature->setFaction(FACTION_ESCORT_A_NEUTRAL_PASSIVE);
 
         if (npc_prospector_remtravelAI* pEscortAI = dynamic_cast<npc_prospector_remtravelAI*>(pCreature->AI()))
-            pEscortAI->Start(false, false, pPlayer->GetGUID(), pQuest, true);
+            pEscortAI->Start(false, pPlayer, pQuest, true);
     }
 
     return true;
@@ -360,7 +361,7 @@ bool GossipHello_npc_threshwackonator(Player* pPlayer, Creature* pCreature)
     if (pPlayer->GetQuestStatus(QUEST_GYROMAST_REV) == QUEST_STATUS_INCOMPLETE)
         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_INSERT_KEY, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
 
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
     return true;
 }
 
@@ -380,26 +381,137 @@ bool GossipSelect_npc_threshwackonator(Player* pPlayer, Creature* pCreature, uin
     return true;
 }
 
+/*######
++# npc_volcor
++######*/
+
+enum
+{
+    SAY_START                   = -1000789,
+    SAY_END                     = -1000790,
+    SAY_FIRST_AMBUSH            = -1000791,
+    SAY_AGGRO_1                 = -1000792,
+    SAY_AGGRO_2                 = -1000793,
+    SAY_AGGRO_3                 = -1000794,
+
+    NPC_BLACKWOOD_SHAMAN        = 2171,
+    NPC_BLACKWOOD_URSA          = 2170,
+
+    QUEST_ESCAPE_THROUGH_FORCE  = 994
+};
+
+struct SummonLocation
+{
+    float m_fX, m_fY, m_fZ, m_fO;
+};
+
+// Spawn locations
+static const SummonLocation aVolcorSpawnLocs[] =
+{
+    {4630.2f, 22.6f, 70.1f, 2.4f},
+    {4603.8f, 53.5f, 70.4f, 5.4f},
+    {4627.5f, 100.4f, 62.7f, 5.8f},
+    {4692.8f, 75.8f, 56.7f, 3.1f},
+    {4747.8f, 152.8f, 54.6f, 2.4f},
+    {4711.7f, 109.1f, 53.5f, 2.4f},
+};
+
+struct MANGOS_DLL_DECL npc_volcorAI : public npc_escortAI
+{
+    npc_volcorAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
+
+    void Reset() { }
+
+    void Aggro(Unit* pWho)
+    {
+        // shouldn't always use text on agro
+        switch(urand(0, 4))
+        {
+            case 0: DoScriptText(SAY_AGGRO_1, m_creature); break;
+            case 1: DoScriptText(SAY_AGGRO_2, m_creature); break;
+            case 2: DoScriptText(SAY_AGGRO_3, m_creature); break;
+        }
+    }
+
+    void JustSummoned(Creature* pSummoned)
+    {
+        pSummoned->AI()->AttackStart(m_creature);
+    }
+
+    void WaypointReached(uint32 uiPointId)
+    {
+        switch (uiPointId)
+        {
+            case 4:
+                m_creature->SummonCreature(NPC_BLACKWOOD_SHAMAN, aVolcorSpawnLocs[0].m_fX, aVolcorSpawnLocs[0].m_fY, aVolcorSpawnLocs[0].m_fZ, aVolcorSpawnLocs[0].m_fO, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT,20000);
+                m_creature->SummonCreature(NPC_BLACKWOOD_URSA, aVolcorSpawnLocs[1].m_fX, aVolcorSpawnLocs[1].m_fY, aVolcorSpawnLocs[1].m_fZ, aVolcorSpawnLocs[1].m_fO, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT,20000);
+                break;
+            case 5:
+                DoScriptText(SAY_FIRST_AMBUSH, m_creature);
+                break;
+            case 10:
+                m_creature->SummonCreature(NPC_BLACKWOOD_SHAMAN, aVolcorSpawnLocs[2].m_fX, aVolcorSpawnLocs[2].m_fY, aVolcorSpawnLocs[2].m_fZ, aVolcorSpawnLocs[2].m_fO, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT,20000);
+                m_creature->SummonCreature(NPC_BLACKWOOD_URSA, aVolcorSpawnLocs[3].m_fX, aVolcorSpawnLocs[3].m_fY, aVolcorSpawnLocs[3].m_fZ, aVolcorSpawnLocs[3].m_fO, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT,20000);
+            case 12:
+                m_creature->SummonCreature(NPC_BLACKWOOD_URSA, aVolcorSpawnLocs[4].m_fX, aVolcorSpawnLocs[4].m_fY, aVolcorSpawnLocs[4].m_fZ, aVolcorSpawnLocs[4].m_fO, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 20000);
+                m_creature->SummonCreature(NPC_BLACKWOOD_URSA, aVolcorSpawnLocs[5].m_fX, aVolcorSpawnLocs[5].m_fY, aVolcorSpawnLocs[5].m_fZ, aVolcorSpawnLocs[5].m_fO, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 20000);
+                break;
+            case 14:
+                DoScriptText(SAY_END, m_creature);
+                if (Player* pPlayer = GetPlayerForEscort())
+                    pPlayer->GroupEventHappens(QUEST_ESCAPE_THROUGH_FORCE, m_creature);
+                break;
+        }
+    }
+};
+
+CreatureAI* GetAI_npc_volcor(Creature* pCreature)
+{
+    return new npc_volcorAI(pCreature);
+}
+
+bool QuestAccept_npc_volcor(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+{
+    if (pQuest->GetQuestId() == QUEST_ESCAPE_THROUGH_FORCE)
+    {
+        pCreature->SetFactionTemporary(FACTION_ESCORT_A_NEUTRAL_ACTIVE, TEMPFACTION_RESTORE_RESPAWN);
+        pCreature->SetStandState(UNIT_STAND_STATE_STAND);
+
+        DoScriptText(SAY_START, pCreature);
+
+        if (npc_volcorAI* pEscortAI = dynamic_cast<npc_volcorAI*>(pCreature->AI()))
+            pEscortAI->Start(false, pPlayer, pQuest);
+    }
+
+    return true;
+}
+
 void AddSC_darkshore()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_kerlonian";
-    newscript->GetAI = &GetAI_npc_kerlonian;
-    newscript->pQuestAccept = &QuestAccept_npc_kerlonian;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_kerlonian";
+    pNewScript->GetAI = &GetAI_npc_kerlonian;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_kerlonian;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_prospector_remtravel";
-    newscript->GetAI = &GetAI_npc_prospector_remtravel;
-    newscript->pQuestAccept = &QuestAccept_npc_prospector_remtravel;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_prospector_remtravel";
+    pNewScript->GetAI = &GetAI_npc_prospector_remtravel;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_prospector_remtravel;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_threshwackonator";
-    newscript->GetAI = &GetAI_npc_threshwackonator;
-    newscript->pGossipHello = &GossipHello_npc_threshwackonator;
-    newscript->pGossipSelect = &GossipSelect_npc_threshwackonator;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_threshwackonator";
+    pNewScript->GetAI = &GetAI_npc_threshwackonator;
+    pNewScript->pGossipHello = &GossipHello_npc_threshwackonator;
+    pNewScript->pGossipSelect = &GossipSelect_npc_threshwackonator;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_volcor";
+    pNewScript->GetAI = &GetAI_npc_volcor;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_volcor;
+    pNewScript->RegisterSelf();
 }

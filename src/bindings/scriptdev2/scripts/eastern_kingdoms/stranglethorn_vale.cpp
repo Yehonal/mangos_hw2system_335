@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -45,7 +45,7 @@ struct MANGOS_DLL_DECL mob_yennikuAI : public ScriptedAI
     void Reset()
     {
         Reset_Timer = 0;
-        m_creature->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_STATE_NONE);
+        m_creature->HandleEmote(EMOTE_STATE_NONE);
     }
 
     void SpellHit(Unit *caster, const SpellEntry *spell)
@@ -55,7 +55,7 @@ struct MANGOS_DLL_DECL mob_yennikuAI : public ScriptedAI
                                                             //Yenniku's Release
             if (!bReset && ((Player*)caster)->GetQuestStatus(592) == QUEST_STATUS_INCOMPLETE && spell->Id == 3607)
             {
-                m_creature->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_STATE_STUN);
+                m_creature->HandleEmote(EMOTE_STATE_STUN);
                 m_creature->CombatStop();                   //stop combat
                 m_creature->DeleteThreatList();             //unsure of this
                 m_creature->setFaction(83);                 //horde generic
@@ -81,7 +81,7 @@ struct MANGOS_DLL_DECL mob_yennikuAI : public ScriptedAI
         else Reset_Timer -= diff;
 
         //Return since we have no target
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim() )
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
         DoMeleeAttackIfReady();
@@ -98,10 +98,10 @@ CreatureAI* GetAI_mob_yenniku(Creature *_Creature)
 
 void AddSC_stranglethorn_vale()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "mob_yenniku";
-    newscript->GetAI = &GetAI_mob_yenniku;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_yenniku";
+    pNewScript->GetAI = &GetAI_mob_yenniku;
+    pNewScript->RegisterSelf();
 }

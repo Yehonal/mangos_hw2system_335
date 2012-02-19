@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -28,16 +28,17 @@ EndScriptData */
 (2.2) Positioning of broken NPCs.
 (3) The channelers are casting their spell somestimes even if they are daed (move out of view distance and then move in - they are dead but they channel - maybe some clientspecific issue?).
 (4) Unbanish Shade of Akama if a ashtongue sorcerer is spawned but not reached Shade of Akama and channels his spell?
+(5) Unsure: If sourcer channels the banish spell, shade should be banished again?
 */
 
 #include "precompiled.h"
 #include "black_temple.h"
 
-#define GOSSIP_ITEM                 "We are ready to fight alongside you, Akama"
-
-// Spells
 enum
 {
+    GOSSIP_ITEM_START_ENCOUNTER     = -3564000,
+    TEXT_ID_AKAMA                   = 907,
+
     SAY_DEATH                       = -1564013,
     SAY_LOW_HEALTH                  = -1564014,
     // Ending cinematic text
@@ -52,7 +53,6 @@ enum
     SPELL_AKAMA_SOUL_CHANNEL        = 40447,
     SPELL_AKAMA_SOUL_RETRIEVE       = 40902,
 
-    NPC_AKAMA                       = 22990,
     NPC_ASH_CHANNELER               = 23421,
     NPC_ASH_SORCERER                = 23215,
     NPC_ASH_DEFENDER                = 23216,
@@ -67,39 +67,39 @@ enum
     //PHASE_ON_PLATFORM               = 3
 };
 
-const uint32 m_auiRandSpawnEntry[]=
+static const uint32 auiRandSpawnEntry[]=
 {
     NPC_ASH_ELEMENTAL,
     NPC_ASH_ROGUE,
     NPC_ASH_SPIRITBIND
 };
 
-const float LOC_RAND_TO_CENTER_X        = 482.793182f;
-const float LOC_RAND_TO_CENTER_Y        = 401.270172f;
-const float LOC_RAND_TO_CENTER_Z        = 112.783928f;
+static const float LOC_RAND_TO_CENTER_X        = 482.793182f;
+static const float LOC_RAND_TO_CENTER_Y        = 401.270172f;
+static const float LOC_RAND_TO_CENTER_Z        = 112.783928f;
 
-const float LOC_PLATFORM_Z              = 118.537f;
-const float LOC_LOW_Z                   = 112.784f;
+static const float LOC_PLATFORM_Z              = 118.537f;
+static const float LOC_LOW_Z                   = 112.784f;
 
 struct Location
 {
     float m_fX, m_fY, m_fZ, m_fO;
 };
 
-Location m_afSpawnLoc[]=
+static const Location afSpawnLoc[]=
 {
     {498.652740f, 461.728119f, LOC_LOW_Z, 0.0f},
     {498.505003f, 339.619324f, LOC_LOW_Z, 0.0f}
 };
 
-Location m_afAkamaWP[]=
+static const Location afAkamaWP[]=
 {
     //{516.885193, 400.836060, LOC_LOW_Z_SPAWN, 0.0},       //not used yet, he moves to here before start channel
     {482.352448f, 401.162720f, LOC_LOW_Z, 0.0f},
     {469.597443f, 402.264404f, LOC_PLATFORM_Z, 0.0f}
 };
 
-Location m_afBrokenSpawnLoc[]=
+static const Location afBrokenSpawnLoc[]=
 {
     {541.375916f, 401.439575f, LOC_LOW_Z, M_PI_F},          // The place where Akama channels
     {534.130005f, 352.394531f, LOC_LOW_Z, 2.164150f},       // Behind a 'pillar' which is behind the east alcove
@@ -107,7 +107,7 @@ Location m_afBrokenSpawnLoc[]=
     {499.151093f, 461.036438f, LOC_LOW_Z, 4.770888f}        // West Alcove
 };
 
-Location m_afBrokenWP[]=
+static const Location afBrokenWP[]=
 {
     {492.491638f, 400.744690f, LOC_LOW_Z, 3.122336f},
     {494.335724f, 382.221771f, LOC_LOW_Z, 2.676230f},
@@ -120,20 +120,15 @@ struct MANGOS_DLL_DECL boss_shade_of_akamaAI : public ScriptedAI
     boss_shade_of_akamaAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
         m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        m_lChannelersGUIDList.clear();
-        m_lSorcerersGUIDList.clear();
         Reset();
     }
 
     ScriptedInstance* m_pInstance;
 
-    std::list<uint64> m_lChannelersGUIDList;
-    std::list<uint64> m_lSorcerersGUIDList;
+    GUIDList m_lChannelersGUIDList;
+    GUIDList m_lSorcerersGUIDList;
 
-    uint64 m_uiAkamaGUID;
-
-    uint32 m_uiSorcererCount;
-    uint32 m_uiDeathCount;
+    uint32 m_uiDeathChannelerCount;
 
     uint32 m_uiReduceHealthTimer;
     uint32 m_uiSummonTimer;
@@ -145,8 +140,7 @@ struct MANGOS_DLL_DECL boss_shade_of_akamaAI : public ScriptedAI
 
     void Reset()
     {
-        m_uiSorcererCount = 0;
-        m_uiDeathCount = 0;
+        m_uiDeathChannelerCount = 0;
 
         m_uiSummonTimer = 10000;
         m_uiReduceHealthTimer = 0;
@@ -158,7 +152,7 @@ struct MANGOS_DLL_DECL boss_shade_of_akamaAI : public ScriptedAI
 
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
 
-        m_creature->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_STATE_STUN);
+        m_creature->HandleEmote(EMOTE_STATE_STUN);
     }
 
     void AttackStart(Unit* pWho)
@@ -185,15 +179,16 @@ struct MANGOS_DLL_DECL boss_shade_of_akamaAI : public ScriptedAI
         RespawnChannelersIfDeadOrEvade();
     }
 
-    void IncrementDeathCount(uint64 uiGuid = 0)               // If guid is set, will remove it from list of sorcerer
+    // If guid is set, will remove it from list of sorcerer
+    void IncrementDeathCount(ObjectGuid uiGuid = ObjectGuid())
     {
         debug_log("SD2: Increasing Death Count for Shade of Akama encounter");
-        ++m_uiDeathCount;
+        ++m_uiDeathChannelerCount;
 
         if (uiGuid)
         {
             if (m_lSorcerersGUIDList.empty())
-                error_log("SD2: boss_shade_of_akamaAI attempt to remove guid " UI64FMTD " from Sorcerers list but list is already empty", uiGuid);
+                error_log("SD2: boss_shade_of_akamaAI attempt to remove guid %s from Sorcerers list but list is already empty", uiGuid.GetString().c_str());
             else
                 m_lSorcerersGUIDList.remove(uiGuid);
         }
@@ -201,36 +196,33 @@ struct MANGOS_DLL_DECL boss_shade_of_akamaAI : public ScriptedAI
 
     void SummonCreature()
     {
-        uint32 uiRand = sizeof(m_afSpawnLoc)/sizeof(Location);
+        uint32 uiRand = urand(0, countof(afSpawnLoc) - 1);
 
-        // max of 6 sorcerers can be summoned
-        if (!urand(0, 2) && (m_uiDeathCount > 0) && (m_uiSorcererCount < 7))
+        // max of 6 sorcerers can be summoned at one time!
+        if (!urand(0, 2) && (m_uiDeathChannelerCount > 0) && (m_lSorcerersGUIDList.size() < 7))
         {
             if (Creature* pSorcerer = m_creature->SummonCreature(NPC_ASH_SORCERER,
-                m_afSpawnLoc[uiRand].m_fX, m_afSpawnLoc[uiRand].m_fY, m_afSpawnLoc[uiRand].m_fZ, m_afSpawnLoc[uiRand].m_fO,
+                afSpawnLoc[uiRand].m_fX, afSpawnLoc[uiRand].m_fY, afSpawnLoc[uiRand].m_fZ, afSpawnLoc[uiRand].m_fO,
                 TEMPSUMMON_DEAD_DESPAWN, 0))
             {
-                pSorcerer->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
+                pSorcerer->SetWalk(false);
                 pSorcerer->GetMotionMaster()->MovePoint(0, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ());
-                pSorcerer->SetUInt64Value(UNIT_FIELD_TARGET, m_creature->GetGUID());
+                pSorcerer->SetTargetGuid(m_creature->GetObjectGuid());
 
-                m_lSorcerersGUIDList.push_back(pSorcerer->GetGUID());
+                m_lSorcerersGUIDList.push_back(pSorcerer->GetObjectGuid());
 
-                --m_uiDeathCount;
-                ++m_uiSorcererCount;
+                --m_uiDeathChannelerCount;
             }
         }
         else
         {
-            int iSize = (sizeof(m_auiRandSpawnEntry) / sizeof(uint32));
-
-            for(uint8 i = 0; i < iSize; ++i)
+            for (uint8 i = 0; i < countof(auiRandSpawnEntry); ++i)
             {
-                if (Creature* pSpawn = m_creature->SummonCreature(m_auiRandSpawnEntry[i],
-                    m_afSpawnLoc[uiRand].m_fX, m_afSpawnLoc[uiRand].m_fY, m_afSpawnLoc[uiRand].m_fZ, m_afSpawnLoc[uiRand].m_fO,
+                if (Creature* pSpawn = m_creature->SummonCreature(auiRandSpawnEntry[i],
+                    afSpawnLoc[uiRand].m_fX, afSpawnLoc[uiRand].m_fY, afSpawnLoc[uiRand].m_fZ, afSpawnLoc[uiRand].m_fO,
                     TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 25000))
                 {
-                    pSpawn->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
+                    pSpawn->SetWalk(false);
                     pSpawn->GetMotionMaster()->MovePoint(0, LOC_RAND_TO_CENTER_X, LOC_RAND_TO_CENTER_Y, LOC_RAND_TO_CENTER_Z);
                 }
             }
@@ -239,36 +231,28 @@ struct MANGOS_DLL_DECL boss_shade_of_akamaAI : public ScriptedAI
 
     void DespawnSorceres()
     {
-        if (!m_lSorcerersGUIDList.empty() && m_pInstance)
+        for (GUIDList::const_iterator itr = m_lSorcerersGUIDList.begin(); itr != m_lSorcerersGUIDList.end(); ++itr)
         {
-            for(std::list<uint64>::iterator itr = m_lSorcerersGUIDList.begin(); itr != m_lSorcerersGUIDList.end(); ++itr)
+            if (Creature* pSorcerer = m_creature->GetMap()->GetCreature(*itr))
             {
-                if (Creature* pSorcerer = m_pInstance->instance->GetCreature(*itr))
-                {
-                    if (pSorcerer->isAlive())
-                        pSorcerer->ForcedDespawn();
-                }
+                if (pSorcerer->isAlive())
+                    pSorcerer->ForcedDespawn();
             }
         }
     }
 
     void RespawnChannelersIfDeadOrEvade()
     {
-        if (!m_lChannelersGUIDList.empty() && m_pInstance)
+        for (GUIDList::const_iterator itr = m_lChannelersGUIDList.begin(); itr != m_lChannelersGUIDList.end(); ++itr)
         {
-            for(std::list<uint64>::iterator itr = m_lChannelersGUIDList.begin(); itr != m_lChannelersGUIDList.end(); ++itr)
+            if (Creature* pChanneler = m_creature->GetMap()->GetCreature(*itr))
             {
-                if (Creature* pChanneler = m_pInstance->instance->GetCreature(*itr))
-                {
-                    if (!pChanneler->isAlive())
-                        pChanneler->Respawn();
-                    else
-                        pChanneler->AI()->EnterEvadeMode();
-                }
+                if (!pChanneler->isAlive())
+                    pChanneler->Respawn();
+                else
+                    pChanneler->AI()->EnterEvadeMode();
             }
         }
-        else
-            error_log("SD2: boss_shade_of_akamaAI not able to respawn channelers, list is empty.");
     }
 
     void PrepareChannelers()
@@ -281,10 +265,9 @@ struct MANGOS_DLL_DECL boss_shade_of_akamaAI : public ScriptedAI
             //clear this, we want a clean start
             m_lChannelersGUIDList.clear();
 
-            for(std::list<Creature*>::iterator itr = lChannelerList.begin(); itr != lChannelerList.end(); ++itr)
+            for (std::list<Creature*>::iterator itr = lChannelerList.begin(); itr != lChannelerList.end(); ++itr)
             {
-                m_lChannelersGUIDList.push_back((*itr)->GetGUID());
-                debug_log("SD2: boss_shade_of_akamaAI found channeler " UI64FMTD ". Adding to list", (*itr)->GetGUID());
+                m_lChannelersGUIDList.push_back((*itr)->GetObjectGuid());
 
                 (*itr)->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
             }
@@ -318,13 +301,13 @@ struct MANGOS_DLL_DECL boss_shade_of_akamaAI : public ScriptedAI
 
             if (m_uiDefenderTimer < uiDiff)
             {
-                uint32 uiRand = sizeof(m_afSpawnLoc)/sizeof(Location);
+                uint32 uiRand = urand(0, countof(afSpawnLoc) - 1);
 
                 if (Creature* pDefender = m_creature->SummonCreature(NPC_ASH_DEFENDER,
-                    m_afSpawnLoc[uiRand].m_fX, m_afSpawnLoc[uiRand].m_fY, m_afSpawnLoc[uiRand].m_fZ, m_afSpawnLoc[uiRand].m_fO,
+                    afSpawnLoc[uiRand].m_fX, afSpawnLoc[uiRand].m_fY, afSpawnLoc[uiRand].m_fZ, afSpawnLoc[uiRand].m_fO,
                     TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 25000))
                 {
-                    if (Unit* pAkama = Unit::GetUnit(*m_creature, m_pInstance->GetData64(DATA_AKAMA_SHADE)))
+                    if (Creature* pAkama = m_pInstance->GetSingleCreatureFromStorage(NPC_AKAMA_SHADE))
                         pDefender->AI()->AttackStart(pAkama);
                 }
 
@@ -341,9 +324,9 @@ struct MANGOS_DLL_DECL boss_shade_of_akamaAI : public ScriptedAI
             else
                 m_uiSummonTimer -= uiDiff;
 
-            if (m_uiDeathCount >= 6)
+            if (m_uiDeathChannelerCount >= 6)
             {
-                if (Unit* pAkama = Unit::GetUnit(*m_creature, m_pInstance->GetData64(DATA_AKAMA_SHADE)))
+                if (Creature* pAkama = m_pInstance->GetSingleCreatureFromStorage(NPC_AKAMA_SHADE))
                 {
                     if (pAkama && pAkama->isAlive())
                     {
@@ -365,7 +348,7 @@ struct MANGOS_DLL_DECL boss_shade_of_akamaAI : public ScriptedAI
         {
             if (m_uiReduceHealthTimer < uiDiff)
             {
-                if (Unit* pAkama = Unit::GetUnit(*m_creature, m_pInstance->GetData64(DATA_AKAMA_SHADE)))
+                if (Creature* pAkama = m_pInstance->GetSingleCreatureFromStorage(NPC_AKAMA_SHADE))
                 {
                     if (pAkama->isAlive())
                     {
@@ -422,7 +405,7 @@ struct MANGOS_DLL_DECL npc_akamaAI : public ScriptedAI
     uint32 m_uiWayPointId;
     uint32 m_uiBrokenSummonIndex;
 
-    std::list<uint64> m_lBrokenGUIDList;
+    GUIDList m_lBrokenGUIDList;
 
     bool m_bIsEventBegun;
     bool m_bIsShadeDead;
@@ -456,7 +439,7 @@ struct MANGOS_DLL_DECL npc_akamaAI : public ScriptedAI
         if (!m_pInstance)
             return;
 
-        if (Creature* pShade = m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_SHADEOFAKAMA)))
+        if (Creature* pShade = m_pInstance->GetSingleCreatureFromStorage(NPC_SHADE_OF_AKAMA))
         {
             if (boss_shade_of_akamaAI* pShadeAI = dynamic_cast<boss_shade_of_akamaAI*>(pShade->AI()))
                 pShadeAI->PrepareChannelers();
@@ -470,8 +453,8 @@ struct MANGOS_DLL_DECL npc_akamaAI : public ScriptedAI
             pShade->SetInCombatWith(m_creature);
             m_creature->SetInCombatWith(pShade);
 
-            pShade->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_STATE_NONE);
-            pShade->SetUInt64Value(UNIT_FIELD_TARGET, m_creature->GetGUID());
+            pShade->HandleEmote(EMOTE_STATE_NONE);
+            pShade->SetTargetGuid(m_creature->GetObjectGuid());
 
             pShade->SetInCombatWithZone();
 
@@ -490,7 +473,7 @@ struct MANGOS_DLL_DECL npc_akamaAI : public ScriptedAI
                 ++m_uiWayPointId;
                 break;
             case 1:
-                if (Unit* pShade = Unit::GetUnit(*m_creature, m_pInstance->GetData64(DATA_SHADEOFAKAMA)))
+                if (Creature* pShade = m_pInstance->GetSingleCreatureFromStorage(NPC_SHADE_OF_AKAMA))
                 {
                     DoCastSpellIfCan(pShade, SPELL_AKAMA_SOUL_RETRIEVE);
                     m_uiEndingTalkCount = 0;
@@ -512,7 +495,7 @@ struct MANGOS_DLL_DECL npc_akamaAI : public ScriptedAI
 
         if (!m_bCanStartCombat)
         {
-            if (Creature* pShade = m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_SHADEOFAKAMA)))
+            if (Creature* pShade = m_pInstance->GetSingleCreatureFromStorage(NPC_SHADE_OF_AKAMA))
             {
                 if (!pShade->isAlive())
                 {
@@ -543,7 +526,7 @@ struct MANGOS_DLL_DECL npc_akamaAI : public ScriptedAI
 
         if (m_bIsShadeDead && (m_uiWayPointId == 1))
         {
-            m_creature->GetMotionMaster()->MovePoint(m_uiWayPointId, m_afAkamaWP[1].m_fX, m_afAkamaWP[1].m_fY, m_afAkamaWP[1].m_fZ);
+            m_creature->GetMotionMaster()->MovePoint(m_uiWayPointId, afAkamaWP[1].m_fX, afAkamaWP[1].m_fY, afAkamaWP[1].m_fZ);
             ++m_uiWayPointId;
         }
 
@@ -551,14 +534,14 @@ struct MANGOS_DLL_DECL npc_akamaAI : public ScriptedAI
         {
             if (m_uiCheckTimer < uiDiff)
             {
-                if (Unit* pShade = Unit::GetUnit(*m_creature, m_pInstance->GetData64(DATA_SHADEOFAKAMA)))
+                if (Creature* pShade = m_pInstance->GetSingleCreatureFromStorage(NPC_SHADE_OF_AKAMA))
                 {
                     if (!pShade->isAlive())
                     {
                         m_bIsShadeDead = true;
                         m_uiWayPointId = 0;
-                        m_creature->AddSplineFlag(SPLINEFLAG_WALKMODE);
-                        m_creature->GetMotionMaster()->MovePoint(m_uiWayPointId, m_afAkamaWP[0].m_fX, m_afAkamaWP[0].m_fY, m_afAkamaWP[0].m_fZ);
+                        m_creature->SetWalk(true);
+                        m_creature->GetMotionMaster()->MovePoint(m_uiWayPointId, afAkamaWP[0].m_fX, afAkamaWP[0].m_fY, afAkamaWP[0].m_fZ);
                     }
                 }
                 m_uiCheckTimer = 5000;
@@ -567,27 +550,27 @@ struct MANGOS_DLL_DECL npc_akamaAI : public ScriptedAI
                 m_uiCheckTimer -= uiDiff;
         }
 
-        if (m_uiSummonBrokenTimer && m_uiBrokenSummonIndex < 4)
+        if (m_uiSummonBrokenTimer && m_uiBrokenSummonIndex < countof(afBrokenSpawnLoc))
         {
             if (m_uiSummonBrokenTimer <= uiDiff)
             {
-                for(uint8 i = 0; i < 4; ++i)
+                for (uint8 i = 0; i < 4; ++i)
                 {
-                    float x = m_afBrokenSpawnLoc[m_uiBrokenSummonIndex].m_fX + (i*5);
-                    float y = m_afBrokenSpawnLoc[m_uiBrokenSummonIndex].m_fY + (1*5);
-                    float z = m_afBrokenSpawnLoc[m_uiBrokenSummonIndex].m_fZ;
-                    float o = m_afBrokenSpawnLoc[m_uiBrokenSummonIndex].m_fO;
+                    float x = afBrokenSpawnLoc[m_uiBrokenSummonIndex].m_fX + (i*5);
+                    float y = afBrokenSpawnLoc[m_uiBrokenSummonIndex].m_fY + (1*5);
+                    float z = afBrokenSpawnLoc[m_uiBrokenSummonIndex].m_fZ;
+                    float o = afBrokenSpawnLoc[m_uiBrokenSummonIndex].m_fO;
 
                     if (Creature* pBroken = m_creature->SummonCreature(NPC_ASH_BROKEN, x, y, z, o, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 360000))
                     {
-                        float wx = m_afBrokenWP[m_uiBrokenSummonIndex].m_fX + (i*5);
-                        float wy = m_afBrokenWP[m_uiBrokenSummonIndex].m_fY + (i*5);
-                        float wz = m_afBrokenWP[m_uiBrokenSummonIndex].m_fZ;
+                        float wx = afBrokenWP[m_uiBrokenSummonIndex].m_fX + (i*5);
+                        float wy = afBrokenWP[m_uiBrokenSummonIndex].m_fY + (i*5);
+                        float wz = afBrokenWP[m_uiBrokenSummonIndex].m_fZ;
 
                         pBroken->GetMotionMaster()->MovePoint(0, wx, wy, wz);
                         pBroken->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
 
-                        m_lBrokenGUIDList.push_back(pBroken->GetGUID());
+                        m_lBrokenGUIDList.push_back(pBroken->GetObjectGuid());
                     }
                 }
 
@@ -605,7 +588,7 @@ struct MANGOS_DLL_DECL npc_akamaAI : public ScriptedAI
                 switch(m_uiEndingTalkCount)
                 {
                     case 0:
-                        m_creature->HandleEmoteCommand(EMOTE_ONESHOT_ROAR);
+                        m_creature->HandleEmote(EMOTE_ONESHOT_ROAR);
                         ++m_uiEndingTalkCount;
                         m_uiSoulRetrieveTimer = 2000;
                         m_uiSummonBrokenTimer = 1;
@@ -620,16 +603,17 @@ struct MANGOS_DLL_DECL npc_akamaAI : public ScriptedAI
                         {
                             bool bYelled = false;
 
-                            for(std::list<uint64>::iterator itr = m_lBrokenGUIDList.begin(); itr != m_lBrokenGUIDList.end(); ++itr)
+                            for (GUIDList::const_iterator itr = m_lBrokenGUIDList.begin(); itr != m_lBrokenGUIDList.end(); ++itr)
                             {
-                                if (Unit* pUnit = Unit::GetUnit(*m_creature, *itr))
+                                if (Creature* pBroken = m_creature->GetMap()->GetCreature(*itr))
                                 {
                                     if (!bYelled)
                                     {
-                                        DoScriptText(SAY_BROKEN_FREE_01, pUnit);
+                                        DoScriptText(SAY_BROKEN_FREE_01, pBroken);
                                         bYelled = true;
                                     }
-                                    pUnit->HandleEmoteCommand(EMOTE_ONESHOT_KNEEL);
+
+                                    pBroken->HandleEmote(EMOTE_ONESHOT_KNEEL);
                                 }
                             }
                         }
@@ -637,26 +621,20 @@ struct MANGOS_DLL_DECL npc_akamaAI : public ScriptedAI
                         m_uiSoulRetrieveTimer = 1500;
                         break;
                     case 3:
-                        if (!m_lBrokenGUIDList.empty())
+                        for (GUIDList::const_iterator itr = m_lBrokenGUIDList.begin(); itr != m_lBrokenGUIDList.end(); ++itr)
                         {
-                            for(std::list<uint64>::iterator itr = m_lBrokenGUIDList.begin(); itr != m_lBrokenGUIDList.end(); ++itr)
-                            {
-                                // This is the incorrect spell, but can't seem to find the right one.
-                                if (Unit* pUnit = Unit::GetUnit(*m_creature, *itr))
-                                    pUnit->CastSpell(pUnit, 39656, true);
-                            }
+                            // This is the incorrect spell, but can't seem to find the right one.
+                            if (Creature* pBroken = m_creature->GetMap()->GetCreature(*itr))
+                                pBroken->CastSpell(pBroken, 39656, true);
                         }
                         ++m_uiEndingTalkCount;
                         m_uiSoulRetrieveTimer = 5000;
                         break;
                     case 4:
-                        if (!m_lBrokenGUIDList.empty())
+                        for (GUIDList::const_iterator itr = m_lBrokenGUIDList.begin(); itr != m_lBrokenGUIDList.end(); ++itr)
                         {
-                            for(std::list<uint64>::iterator itr = m_lBrokenGUIDList.begin(); itr != m_lBrokenGUIDList.end(); ++itr)
-                            {
-                                if (Unit* pUnit = Unit::GetUnit((*m_creature), *itr))
-                                    DoScriptText(SAY_BROKEN_FREE_02, pUnit);
-                            }
+                            if (Creature* pBroken = m_creature->GetMap()->GetCreature(*itr))
+                                DoScriptText(SAY_BROKEN_FREE_02, pBroken);
                         }
                         m_uiSoulRetrieveTimer = 0;
                         break;
@@ -677,7 +655,7 @@ struct MANGOS_DLL_DECL npc_akamaAI : public ScriptedAI
 
         if (m_uiDestructivePoisonTimer < uiDiff)
         {
-            if (Unit* pShade = Unit::GetUnit(*m_creature, m_pInstance->GetData64(DATA_SHADEOFAKAMA)))
+            if (Creature* pShade = m_pInstance->GetSingleCreatureFromStorage(NPC_SHADE_OF_AKAMA))
             {
                 if (pShade->isAlive())
                     DoCastSpellIfCan(pShade, SPELL_DESTRUCTIVE_POISON);
@@ -705,10 +683,10 @@ bool GossipHello_npc_akama(Player* pPlayer, Creature* pCreature)
     if (ScriptedInstance* pInstance = (ScriptedInstance*)pCreature->GetInstanceData())
     {
         if (pInstance->GetData(TYPE_SHADE) != DONE)
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+            pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_START_ENCOUNTER, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
     }
 
-    pPlayer->SEND_GOSSIP_MENU(907, pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(TEXT_ID_AKAMA, pCreature->GetObjectGuid());
     return true;
 }
 
@@ -755,7 +733,7 @@ struct MANGOS_DLL_DECL mob_ashtongue_channelerAI : public ScriptedAI
         if (!m_pInstance)
             return;
 
-        if (Creature* pShade = m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_SHADEOFAKAMA)))
+        if (Creature* pShade = m_pInstance->GetSingleCreatureFromStorage(NPC_SHADE_OF_AKAMA))
         {
             if (pShade->isAlive())
             {
@@ -775,7 +753,7 @@ struct MANGOS_DLL_DECL mob_ashtongue_channelerAI : public ScriptedAI
         //start channel (not nice way to start channeling)
         if (!m_creature->IsNonMeleeSpellCasted(false) && !m_creature->getVictim() && m_pInstance)
         {
-            if (Creature* pShade = m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_SHADEOFAKAMA)))
+            if (Creature* pShade = m_pInstance->GetSingleCreatureFromStorage(NPC_SHADE_OF_AKAMA))
                 m_creature->CastSpell(pShade, SPELL_SHADE_SOUL_CHANNEL, false);
         }
     }
@@ -808,12 +786,12 @@ struct MANGOS_DLL_DECL mob_ashtongue_sorcererAI : public ScriptedAI
         if (!m_pInstance)
             return;
 
-        if (Creature* pShade = m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_SHADEOFAKAMA)))
+        if (Creature* pShade = m_pInstance->GetSingleCreatureFromStorage(NPC_SHADE_OF_AKAMA))
         {
             if (pShade->isAlive())
             {
                 if (boss_shade_of_akamaAI* pShadeAI = dynamic_cast<boss_shade_of_akamaAI*>(pShade->AI()))
-                    pShadeAI->IncrementDeathCount(m_creature->GetGUID());
+                    pShadeAI->IncrementDeathCount(m_creature->GetObjectGuid());
                 else
                     error_log("SD2: mob_ashtongue_sorcererAI dead but unable to increment DeathCount for Shade of Akama.");
             }
@@ -827,7 +805,7 @@ struct MANGOS_DLL_DECL mob_ashtongue_sorcererAI : public ScriptedAI
 
         if (m_uiCheckTimer < uiDiff)
         {
-            Unit* pShade = Unit::GetUnit(*m_creature, m_pInstance->GetData64(DATA_SHADEOFAKAMA));
+            Creature* pShade = m_pInstance->GetSingleCreatureFromStorage(NPC_SHADE_OF_AKAMA);
 
             if (pShade && pShade->isAlive() && m_creature->isAlive())
             {
@@ -836,9 +814,8 @@ struct MANGOS_DLL_DECL mob_ashtongue_sorcererAI : public ScriptedAI
                     m_creature->GetMotionMaster()->Clear(false);
                     m_creature->GetMotionMaster()->MoveIdle();
 
-                    DoCastSpellIfCan(pShade, SPELL_SHADE_SOUL_CHANNEL, CAST_TRIGGERED);
-
-                    m_bStartBanishing = true;
+                    if (DoCastSpellIfCan(pShade, SPELL_SHADE_SOUL_CHANNEL) == CAST_OK)
+                        m_bStartBanishing = true;
                 }
             }
             m_uiCheckTimer = 2000;
@@ -870,26 +847,27 @@ CreatureAI* GetAI_mob_ashtongue_sorcerer(Creature* pCreature)
 
 void AddSC_boss_shade_of_akama()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_shade_of_akama";
-    newscript->GetAI = &GetAI_boss_shade_of_akama;
-    newscript->RegisterSelf();
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_akama_shade";
-    newscript->GetAI = &GetAI_npc_akama_shade;
-    newscript->pGossipHello = &GossipHello_npc_akama;
-    newscript->pGossipSelect = &GossipSelect_npc_akama;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_shade_of_akama";
+    pNewScript->GetAI = &GetAI_boss_shade_of_akama;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_ashtongue_channeler";
-    newscript->GetAI = &GetAI_mob_ashtongue_channeler;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_akama_shade";
+    pNewScript->GetAI = &GetAI_npc_akama_shade;
+    pNewScript->pGossipHello = &GossipHello_npc_akama;
+    pNewScript->pGossipSelect = &GossipSelect_npc_akama;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_ashtongue_sorcerer";
-    newscript->GetAI = &GetAI_mob_ashtongue_sorcerer;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_ashtongue_channeler";
+    pNewScript->GetAI = &GetAI_mob_ashtongue_channeler;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "mob_ashtongue_sorcerer";
+    pNewScript->GetAI = &GetAI_mob_ashtongue_sorcerer;
+    pNewScript->RegisterSelf();
 }

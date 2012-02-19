@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -48,7 +48,7 @@ enum
     SAY_PLAYER_KILLED           = -1544010,
     SAY_DEATH                   = -1544011,
 
-    EMOTE_BERSERK               = -1544012,
+    EMOTE_GENERIC_ENRAGED       = -1000003,
     EMOTE_BLASTNOVA             = -1544013,
     EMOTE_BEGIN                 = -1544014,
     EMOTE_FREED                 = -1544015,
@@ -85,7 +85,7 @@ enum
     MAX_CLICK                   = 5
 };
 
-typedef std::map<uint64, uint64> CubeMap;
+typedef std::map<ObjectGuid, ObjectGuid> CubeMap;
 
 struct MANGOS_DLL_DECL mob_abyssalAI : public ScriptedAI
 {
@@ -197,7 +197,7 @@ struct MANGOS_DLL_DECL boss_magtheridonAI : public ScriptedAI
         Reset();
     }
 
-    CubeMap Cube;
+    CubeMap m_mCube;
 
     ScriptedInstance* m_pInstance;
 
@@ -244,18 +244,18 @@ struct MANGOS_DLL_DECL boss_magtheridonAI : public ScriptedAI
         }
     }
 
-    void SetClicker(uint64 uiCubeGUID, uint64 uiClickerGUID)
+    void SetClicker(GameObject* pGo, Player* pPlayer)
     {
         // to avoid multiclicks from 1 cube
-        if (uint64 guid = Cube[uiCubeGUID])
-            DebuffClicker(Unit::GetUnit(*m_creature, guid));
+        if (ObjectGuid guid = m_mCube[pGo->GetObjectGuid()])
+            DebuffClicker(m_creature->GetMap()->GetPlayer(guid));
 
-        Cube[uiCubeGUID] = uiClickerGUID;
+        m_mCube[pGo->GetObjectGuid()] = pPlayer->GetObjectGuid();
         m_bNeedCheckCube = true;
     }
 
     //function to interrupt channeling and debuff clicker with mind exhaused if second person clicks with same cube or after dispeling/ending shadow grasp DoT)
-    void DebuffClicker(Unit* pClicker)
+    void DebuffClicker(Player* pClicker)
     {
         if (!pClicker || !pClicker->isAlive())
             return;
@@ -279,13 +279,14 @@ struct MANGOS_DLL_DECL boss_magtheridonAI : public ScriptedAI
 
         // now checking if every clicker has debuff from manticron
         // if not - apply mind exhaustion and delete from clicker's list
-        for(CubeMap::iterator i = Cube.begin(); i != Cube.end(); ++i)
+        for(CubeMap::iterator i = m_mCube.begin(); i != m_mCube.end(); ++i)
         {
-            Unit *clicker = Unit::GetUnit(*m_creature, (*i).second);
-            if (!clicker || !clicker->HasAura(SPELL_SHADOW_GRASP, EFFECT_INDEX_1))
+            Player* pClicker = m_creature->GetMap()->GetPlayer(i->second);
+
+            if (!pClicker || !pClicker->HasAura(SPELL_SHADOW_GRASP, EFFECT_INDEX_1))
             {
-                DebuffClicker(clicker);
-                (*i).second = 0;
+                DebuffClicker(pClicker);
+                i->second.Clear();
             }
             else
                 ++ClickerNum;
@@ -330,7 +331,6 @@ struct MANGOS_DLL_DECL boss_magtheridonAI : public ScriptedAI
 
     void Aggro(Unit* pWho)
     {
-        m_creature->SetInCombatWithZone();
         DoScriptText(SAY_AGGRO, m_creature);
     }
 
@@ -382,9 +382,11 @@ struct MANGOS_DLL_DECL boss_magtheridonAI : public ScriptedAI
 
         if (m_uiBerserk_Timer < uiDiff)
         {
-            DoScriptText(EMOTE_BERSERK, m_creature);
-            m_creature->CastSpell(m_creature, SPELL_BERSERK, true);
-            m_uiBerserk_Timer = 60000;
+            if (DoCastSpellIfCan(m_creature, SPELL_BERSERK) == CAST_OK)
+            {
+                DoScriptText(EMOTE_GENERIC_ENRAGED, m_creature);
+                m_uiBerserk_Timer = 60000;
+            }
         }
         else
             m_uiBerserk_Timer -= uiDiff;
@@ -426,16 +428,18 @@ struct MANGOS_DLL_DECL boss_magtheridonAI : public ScriptedAI
 
         if (m_uiBlaze_Timer < uiDiff)
         {
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
             {
                 float x, y, z;
                 pTarget->GetPosition(x, y, z);
-                Creature *summon = m_creature->SummonCreature(NPC_BURNING_ABYSS, x, y, z, 0, TEMPSUMMON_CORPSE_DESPAWN, 0);
-                if (summon)
+
+                if (Creature* pSummon = m_creature->SummonCreature(NPC_BURNING_ABYSS, x, y, z, 0.0f, TEMPSUMMON_CORPSE_DESPAWN, 0))
                 {
-                    ((mob_abyssalAI*)summon->AI())->SetTrigger(2);
-                    m_creature->CastSpell(summon, SPELL_BLAZE_TARGET, true);
-                    summon->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                    if (mob_abyssalAI* pAbyssAI = dynamic_cast<mob_abyssalAI*>(pSummon->AI()))
+                        pAbyssAI->SetTrigger(2);
+
+                    m_creature->CastSpell(pSummon, SPELL_BLAZE_TARGET, true);
+                    pSummon->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                 }
             }
 
@@ -475,13 +479,17 @@ struct MANGOS_DLL_DECL boss_magtheridonAI : public ScriptedAI
                         m_uiPhase3_Timer = 15000;
                         break;
                     case 3:
-                        if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+                        if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                         {
                             float x, y, z;
                             pTarget->GetPosition(x, y, z);
-                            Creature *summon = m_creature->SummonCreature(NPC_BURNING_ABYSS, x, y, z, 0, TEMPSUMMON_CORPSE_DESPAWN, 0);
-                            if (summon)
-                                ((mob_abyssalAI*)summon->AI())->SetTrigger(1);
+
+                            if (Creature* pSummon = m_creature->SummonCreature(NPC_BURNING_ABYSS, x, y, z, 0.0f, TEMPSUMMON_CORPSE_DESPAWN, 0))
+                            {
+                                if (mob_abyssalAI* pAbyssAI = dynamic_cast<mob_abyssalAI*>(pSummon->AI()))
+                                    pAbyssAI->SetTrigger(1);
+                            }
+
                             m_uiPhase3_Timer = 15000;
                         }
                         break;
@@ -529,7 +537,7 @@ struct MANGOS_DLL_DECL mob_hellfire_channelerAI : public ScriptedAI
 
         m_creature->InterruptNonMeleeSpells(false);
 
-        if (Creature* pMagtheridon = m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_MAGTHERIDON)))
+        if (Creature* pMagtheridon = m_pInstance->GetSingleCreatureFromStorage(NPC_MAGTHERIDON))
         {
             if (!pMagtheridon->isAlive())
                 return;
@@ -539,8 +547,6 @@ struct MANGOS_DLL_DECL mob_hellfire_channelerAI : public ScriptedAI
         }
 
         m_pInstance->SetData(TYPE_CHANNELER_EVENT, IN_PROGRESS);
-
-        m_creature->SetInCombatWithZone();
     }
 
     void JustSummoned(Creature* pSummoned)
@@ -606,7 +612,7 @@ struct MANGOS_DLL_DECL mob_hellfire_channelerAI : public ScriptedAI
         //Fear
         if (m_uiFear_Timer < uiDiff)
         {
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 1))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
                 DoCastSpellIfCan(pTarget, SPELL_FEAR);
 
             m_uiFear_Timer = urand(25000, 40000);
@@ -617,7 +623,7 @@ struct MANGOS_DLL_DECL mob_hellfire_channelerAI : public ScriptedAI
         //Infernal spawning
         if (!m_bIsInfernalSpawned && m_uiInfernal_Timer < uiDiff)
         {
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 m_creature->CastSpell(pTarget, SPELL_BURNING_ABYSSAL, true);
 
             m_bIsInfernalSpawned = true;
@@ -630,14 +636,14 @@ struct MANGOS_DLL_DECL mob_hellfire_channelerAI : public ScriptedAI
 };
 
 //Manticron Cube
-bool GOHello_go_manticron_cube(Player* pPlayer, GameObject* pGo)
+bool GOUse_go_manticron_cube(Player* pPlayer, GameObject* pGo)
 {
     if (ScriptedInstance* pInstance = (ScriptedInstance*)pGo->GetInstanceData())
     {
         if (pInstance->GetData(TYPE_MAGTHERIDON_EVENT) != IN_PROGRESS)
             return true;
 
-        if (Creature* pMagtheridon = pInstance->instance->GetCreature(pInstance->GetData64(DATA_MAGTHERIDON)))
+        if (Creature* pMagtheridon = pInstance->GetSingleCreatureFromStorage(NPC_MAGTHERIDON))
         {
             if (!pMagtheridon->isAlive())
                 return true;
@@ -651,7 +657,7 @@ bool GOHello_go_manticron_cube(Player* pPlayer, GameObject* pGo)
             pPlayer->CastSpell(pPlayer, SPELL_SHADOW_GRASP_VISUAL, false);
 
             if (boss_magtheridonAI* pMagAI = dynamic_cast<boss_magtheridonAI*>(pMagtheridon->AI()))
-                pMagAI->SetClicker(pGo->GetGUID(), pPlayer->GetGUID());
+                pMagAI->SetClicker(pGo, pPlayer);
         }
     }
 
@@ -675,24 +681,25 @@ CreatureAI* GetAI_mob_abyssalAI(Creature* pCreature)
 
 void AddSC_boss_magtheridon()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_magtheridon";
-    newscript->GetAI = &GetAI_boss_magtheridon;
-    newscript->RegisterSelf();
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "mob_hellfire_channeler";
-    newscript->GetAI = &GetAI_mob_hellfire_channeler;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_magtheridon";
+    pNewScript->GetAI = &GetAI_boss_magtheridon;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_manticron_cube";
-    newscript->pGOHello = &GOHello_go_manticron_cube;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_hellfire_channeler";
+    pNewScript->GetAI = &GetAI_mob_hellfire_channeler;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_abyssal";
-    newscript->GetAI = &GetAI_mob_abyssalAI;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_manticron_cube";
+    pNewScript->pGOUse = &GOUse_go_manticron_cube;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "mob_abyssal";
+    pNewScript->GetAI = &GetAI_mob_abyssalAI;
+    pNewScript->RegisterSelf();
 }

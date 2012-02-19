@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -92,21 +92,21 @@ struct MANGOS_DLL_DECL boss_twinemperorsAI : public ScriptedAI
         EnrageTimer = 15*60000;
     }
 
-    Creature *GetOtherBoss()
+    Creature* GetOtherBoss()
     {
         if (m_pInstance)
         {
-            return (Creature *)Unit::GetUnit((*m_creature), m_pInstance->GetData64(IAmVeklor() ? DATA_VEKNILASH : DATA_VEKLOR));
+            return m_pInstance->GetSingleCreatureFromStorage(IAmVeklor() ? NPC_VEKNILASH : NPC_VEKLOR);
         }
         else
         {
-            return (Creature *)0;
+            return NULL;
         }
     }
 
     void DamageTaken(Unit *done_by, uint32 &damage)
     {
-        Unit *pOtherBoss = GetOtherBoss();
+        Creature *pOtherBoss = GetOtherBoss();
         if (pOtherBoss)
         {
             float dPercent = ((float)damage) / ((float)m_creature->GetMaxHealth());
@@ -115,7 +115,7 @@ struct MANGOS_DLL_DECL boss_twinemperorsAI : public ScriptedAI
             pOtherBoss->SetHealth(ohealth > 0 ? ohealth : 0);
             if (ohealth <= 0)
             {
-                pOtherBoss->setDeathState(JUST_DIED);
+                pOtherBoss->SetDeathState(JUST_DIED);
                 pOtherBoss->SetUInt32Value(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
             }
         }
@@ -123,16 +123,21 @@ struct MANGOS_DLL_DECL boss_twinemperorsAI : public ScriptedAI
 
     void JustDied(Unit* Killer)
     {
-        Creature *pOtherBoss = GetOtherBoss();
-        if (pOtherBoss)
+        if (Creature* pOtherBoss = GetOtherBoss())
         {
             pOtherBoss->SetHealth(0);
-            pOtherBoss->setDeathState(JUST_DIED);
+            pOtherBoss->SetDeathState(JUST_DIED);
             pOtherBoss->SetUInt32Value(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
-            ((boss_twinemperorsAI *)pOtherBoss->AI())->DontYellWhenDead = true;
+
+            if (boss_twinemperorsAI* pOtherAI = dynamic_cast<boss_twinemperorsAI*>(pOtherBoss->AI()))
+                pOtherAI->DontYellWhenDead = true;
         }
+
         if (!DontYellWhenDead)                              // I hope AI is not threaded
             DoPlaySoundToSet(m_creature, IAmVeklor() ? SOUND_VL_DEATH : SOUND_VN_DEATH);
+
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_TWINS, DONE);
     }
 
     void KilledUnit(Unit* victim)
@@ -142,8 +147,6 @@ struct MANGOS_DLL_DECL boss_twinemperorsAI : public ScriptedAI
 
     void Aggro(Unit* pWho)
     {
-        m_creature->SetInCombatWithZone();
-
         Creature *pOtherBoss = GetOtherBoss();
         if (pOtherBoss)
         {
@@ -155,6 +158,15 @@ struct MANGOS_DLL_DECL boss_twinemperorsAI : public ScriptedAI
                 pOtherBoss->AI()->AttackStart(pWho);
             }
         }
+
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_TWINS, IN_PROGRESS);
+    }
+
+    void JustReachedHome()
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_TWINS, DONE);
     }
 
     void SpellHit(Unit *caster, const SpellEntry *entry)
@@ -174,8 +186,6 @@ struct MANGOS_DLL_DECL boss_twinemperorsAI : public ScriptedAI
         #define HEAL_BROTHER_AMOUNT 30000.0f
         uint32 largerAmount = (uint32)((HEAL_BROTHER_AMOUNT * mult) - HEAL_BROTHER_AMOUNT);
 
-        uint32 myh = m_creature->GetHealth();
-        uint32 hish = pOtherBoss->GetHealth();
         if (mytotal > histotal)
         {
             uint32 h = m_creature->GetHealth()+largerAmount;
@@ -212,8 +222,9 @@ struct MANGOS_DLL_DECL boss_twinemperorsAI : public ScriptedAI
         ThreatList const& tList = m_creature->getThreatManager().getThreatList();
         for (ThreatList::const_iterator i = tList.begin();i != tList.end(); ++i)
         {
-            Unit* pUnit = Unit::GetUnit((*m_creature), (*i)->getUnitGuid());
-            if (m_creature->IsWithinDistInMap(pUnit, dist))
+            Unit* pUnit = m_creature->GetMap()->GetUnit((*i)->getUnitGuid());
+
+            if (m_creature->GetCombatDistance(pUnit) < dist)
             {
                 if (!totallyRandom)
                     return pUnit;
@@ -226,7 +237,7 @@ struct MANGOS_DLL_DECL boss_twinemperorsAI : public ScriptedAI
         for (int randomi = rand() % cnt; randomi > 0; randomi --)
             candidates.pop_front();
 
-        Unit *ret = Unit::GetUnit((*m_creature), candidates.front()->getUnitGuid());
+        Unit *ret = m_creature->GetMap()->GetUnit(candidates.front()->getUnitGuid());
         candidates.clear();
         return ret;
     }
@@ -238,10 +249,11 @@ struct MANGOS_DLL_DECL boss_twinemperorsAI : public ScriptedAI
         ThreatList const& tList = m_creature->getThreatManager().getThreatList();
         for (ThreatList::const_iterator i = tList.begin();i != tList.end(); ++i)
         {
-            Unit* pUnit = NULL;
-            pUnit = Unit::GetUnit((*m_creature), (*i)->getUnitGuid());
+            Unit* pUnit = m_creature->GetMap()->GetUnit((*i)->getUnitGuid());
+
             if (!pUnit)
                 continue;
+
             float pudist = pUnit->GetDistance((const Creature *)m_creature);
             if (!nearp || (neardist > pudist))
             {
@@ -265,7 +277,7 @@ struct MANGOS_DLL_DECL boss_twinemperorsAI : public ScriptedAI
         Creature *pOtherBoss = GetOtherBoss();
         if (pOtherBoss)
         {
-            //m_creature->MonsterYell("Teleporting ...", LANG_UNIVERSAL, 0);
+            //m_creature->MonsterYell("Teleporting ...", LANG_UNIVERSAL);
             float other_x = pOtherBoss->GetPositionX();
             float other_y = pOtherBoss->GetPositionY();
             float other_z = pOtherBoss->GetPositionZ();
@@ -277,7 +289,9 @@ struct MANGOS_DLL_DECL boss_twinemperorsAI : public ScriptedAI
             thismap->CreatureRelocation(m_creature, other_x, other_y, other_z, other_o);
 
             SetAfterTeleport();
-            ((boss_twinemperorsAI*) pOtherBoss->AI())->SetAfterTeleport();
+
+            if (boss_twinemperorsAI* pOtherAI = dynamic_cast<boss_twinemperorsAI*>(pOtherBoss->AI()))
+                pOtherAI->SetAfterTeleport();
         }
     }
 
@@ -481,7 +495,7 @@ struct MANGOS_DLL_DECL boss_veknilashAI : public boss_twinemperorsAI
 
         if (UpperCut_Timer < diff)
         {
-            Unit* randomMelee = GetAnyoneCloseEnough(ATTACK_DISTANCE, true);
+            Unit* randomMelee = GetAnyoneCloseEnough(2*ATTACK_DISTANCE, true);
             if (randomMelee)
                 DoCastSpellIfCan(randomMelee,SPELL_UPPERCUT);
             UpperCut_Timer = urand(15000, 30000);
@@ -580,7 +594,7 @@ struct MANGOS_DLL_DECL boss_veklorAI : public boss_twinemperorsAI
         if (ArcaneBurst_Timer < diff)
         {
             Unit *mvic;
-            if ((mvic=GetAnyoneCloseEnough(ATTACK_DISTANCE, false))!=NULL)
+            if ((mvic=GetAnyoneCloseEnough(2*ATTACK_DISTANCE, false))!=NULL)
             {
                 DoCastSpellIfCan(mvic,SPELL_ARCANEBURST);
                 ArcaneBurst_Timer = 5000;
@@ -633,15 +647,15 @@ CreatureAI* GetAI_boss_veklor(Creature* pCreature)
 
 void AddSC_boss_twinemperors()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_veknilash";
-    newscript->GetAI = &GetAI_boss_veknilash;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_veknilash";
+    pNewScript->GetAI = &GetAI_boss_veknilash;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_veklor";
-    newscript->GetAI = &GetAI_boss_veklor;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_veklor";
+    pNewScript->GetAI = &GetAI_boss_veklor;
+    pNewScript->RegisterSelf();
 }

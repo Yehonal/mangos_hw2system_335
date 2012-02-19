@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -91,7 +91,6 @@ struct MANGOS_DLL_DECL boss_priestess_delrissaAI : public ScriptedAI
     {
         m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
         m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
-        memset(&m_auiLackeyGUID, 0, sizeof(m_auiLackeyGUID));
         LackeyEntryList.clear();
         Reset();
     }
@@ -100,7 +99,7 @@ struct MANGOS_DLL_DECL boss_priestess_delrissaAI : public ScriptedAI
     bool m_bIsRegularMode;
 
     std::vector<uint32> LackeyEntryList;
-    uint64 m_auiLackeyGUID[MAX_ACTIVE_LACKEY];
+    ObjectGuid m_aLackeyGuid[MAX_ACTIVE_LACKEY];
 
     uint8 PlayersKilled;
 
@@ -127,7 +126,7 @@ struct MANGOS_DLL_DECL boss_priestess_delrissaAI : public ScriptedAI
     void JustReachedHome()
     {
         if (m_pInstance)
-            m_pInstance->SetData(DATA_DELRISSA_EVENT, FAIL);
+            m_pInstance->SetData(TYPE_DELRISSA, FAIL);
     }
 
     void Aggro(Unit* pWho)
@@ -136,7 +135,7 @@ struct MANGOS_DLL_DECL boss_priestess_delrissaAI : public ScriptedAI
 
         for(uint8 i = 0; i < MAX_ACTIVE_LACKEY; ++i)
         {
-            if (Unit* pAdd = Unit::GetUnit(*m_creature, m_auiLackeyGUID[i]))
+            if (Creature* pAdd = m_creature->GetMap()->GetCreature(m_aLackeyGuid[i]))
             {
                 if (!pAdd->getVictim())
                 {
@@ -147,7 +146,7 @@ struct MANGOS_DLL_DECL boss_priestess_delrissaAI : public ScriptedAI
         }
 
         if (m_pInstance)
-            m_pInstance->SetData(DATA_DELRISSA_EVENT, IN_PROGRESS);
+            m_pInstance->SetData(TYPE_DELRISSA, IN_PROGRESS);
     }
 
     void InitializeLackeys()
@@ -176,7 +175,7 @@ struct MANGOS_DLL_DECL boss_priestess_delrissaAI : public ScriptedAI
             for(std::vector<uint32>::iterator itr = LackeyEntryList.begin(); itr != LackeyEntryList.end(); ++itr)
             {
                 if (Creature* pAdd = m_creature->SummonCreature((*itr), LackeyLocations[j][0], LackeyLocations[j][1], fZLocation, fOrientation, TEMPSUMMON_CORPSE_DESPAWN, 0))
-                    m_auiLackeyGUID[j] = pAdd->GetGUID();
+                    m_aLackeyGuid[j] = pAdd->GetObjectGuid();
 
                 ++j;
             }
@@ -185,13 +184,13 @@ struct MANGOS_DLL_DECL boss_priestess_delrissaAI : public ScriptedAI
         {
             for(std::vector<uint32>::iterator itr = LackeyEntryList.begin(); itr != LackeyEntryList.end(); ++itr)
             {
-                Unit* pAdd = Unit::GetUnit(*m_creature, m_auiLackeyGUID[j]);
+                Creature* pAdd = m_creature->GetMap()->GetCreature(m_aLackeyGuid[j]);
 
                 //object already removed, not exist
                 if (!pAdd)
                 {
                     if (Creature* pAdd = m_creature->SummonCreature((*itr), LackeyLocations[j][0], LackeyLocations[j][1], fZLocation, fOrientation, TEMPSUMMON_CORPSE_DESPAWN, 0))
-                        m_auiLackeyGUID[j] = pAdd->GetGUID();
+                        m_aLackeyGuid[j] = pAdd->GetObjectGuid();
                 }
                 ++j;
             }
@@ -216,8 +215,8 @@ struct MANGOS_DLL_DECL boss_priestess_delrissaAI : public ScriptedAI
         if (!m_pInstance)
             return;
 
-        if (m_pInstance->GetData(DATA_DELRISSA_DEATH_COUNT) == MAX_ACTIVE_LACKEY)
-            m_pInstance->SetData(DATA_DELRISSA_EVENT, DONE);
+        if (m_pInstance->GetData(TYPE_DELRISSA_DEATH_COUNT) == MAX_ACTIVE_LACKEY)
+            m_pInstance->SetData(TYPE_DELRISSA, DONE);
         else
         {
             if (m_creature->HasFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE))
@@ -233,11 +232,11 @@ struct MANGOS_DLL_DECL boss_priestess_delrissaAI : public ScriptedAI
         if (HealTimer < diff)
         {
             uint32 health = m_creature->GetHealth();
-            Unit* target = m_creature;
+            Creature* target = m_creature;
 
             for(uint8 i = 0; i < MAX_ACTIVE_LACKEY; ++i)
             {
-                if (Unit* pAdd = Unit::GetUnit(*m_creature, m_auiLackeyGUID[i]))
+                if (Creature* pAdd = m_creature->GetMap()->GetCreature(m_aLackeyGuid[i]))
                 {
                     if (pAdd->isAlive() && pAdd->GetHealth() < health)
                         target = pAdd;
@@ -250,11 +249,11 @@ struct MANGOS_DLL_DECL boss_priestess_delrissaAI : public ScriptedAI
 
         if (RenewTimer < diff)
         {
-            Unit* target = m_creature;
+            Creature* target = m_creature;
 
             if (urand(0, 1))
             {
-                if (Unit* pAdd = Unit::GetUnit(*m_creature, m_auiLackeyGUID[rand()%MAX_ACTIVE_LACKEY]))
+                if (Creature* pAdd = m_creature->GetMap()->GetCreature(m_aLackeyGuid[rand()%MAX_ACTIVE_LACKEY]))
                 {
                     if (pAdd->isAlive())
                         target = pAdd;
@@ -267,11 +266,11 @@ struct MANGOS_DLL_DECL boss_priestess_delrissaAI : public ScriptedAI
 
         if (ShieldTimer < diff)
         {
-            Unit* target = m_creature;
+            Creature* target = m_creature;
 
             if (urand(0, 1))
             {
-                if (Unit* pAdd = Unit::GetUnit(*m_creature, m_auiLackeyGUID[rand()%MAX_ACTIVE_LACKEY]))
+                if (Creature* pAdd = m_creature->GetMap()->GetCreature(m_aLackeyGuid[rand()%MAX_ACTIVE_LACKEY]))
                 {
                     if (pAdd->isAlive() && !pAdd->HasAura(SPELL_SHIELD))
                         target = pAdd;
@@ -288,7 +287,7 @@ struct MANGOS_DLL_DECL boss_priestess_delrissaAI : public ScriptedAI
             bool friendly = false;
 
             if (urand(0, 1))
-                target = SelectUnit(SELECT_TARGET_RANDOM, 0);
+                target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
             else
             {
                 friendly = true;
@@ -297,7 +296,7 @@ struct MANGOS_DLL_DECL boss_priestess_delrissaAI : public ScriptedAI
                     target = m_creature;
                 else
                 {
-                    if (Unit* pAdd = Unit::GetUnit(*m_creature, m_auiLackeyGUID[rand()%MAX_ACTIVE_LACKEY]))
+                    if (Creature* pAdd = m_creature->GetMap()->GetCreature(m_aLackeyGuid[rand()%MAX_ACTIVE_LACKEY]))
                     {
                         if (pAdd->isAlive())
                             target = pAdd;
@@ -313,7 +312,7 @@ struct MANGOS_DLL_DECL boss_priestess_delrissaAI : public ScriptedAI
 
         if (SWPainTimer < diff)
         {
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 DoCastSpellIfCan(pTarget, m_bIsRegularMode ? SPELL_SW_PAIN_NORMAL : SPELL_SW_PAIN_HEROIC);
 
             SWPainTimer = 10000;
@@ -339,14 +338,13 @@ struct MANGOS_DLL_DECL boss_priestess_lackey_commonAI : public ScriptedAI
     boss_priestess_lackey_commonAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
         m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        memset(&m_auiLackeyGUIDs, 0, sizeof(m_auiLackeyGUIDs));
         Reset();
-        AcquireGUIDs();
+        AcquireGuids();
     }
 
     ScriptedInstance* m_pInstance;
 
-    uint64 m_auiLackeyGUIDs[MAX_ACTIVE_LACKEY];
+    ObjectGuid m_aLackeyGuid[MAX_ACTIVE_LACKEY];
     uint32 m_uiResetThreatTimer;
     bool m_bUsedPotion;
 
@@ -361,7 +359,7 @@ struct MANGOS_DLL_DECL boss_priestess_lackey_commonAI : public ScriptedAI
         m_uiResetThreatTimer = urand(5000, 15000);
 
         // in case she is not alive and Reset was for some reason called, respawn her (most likely party wipe after killing her)
-        if (Creature* pDelrissa = (Creature*)Unit::GetUnit(*m_creature, m_pInstance->GetData64(DATA_DELRISSA)))
+        if (Creature* pDelrissa = m_pInstance->GetSingleCreatureFromStorage(NPC_DELRISSA))
         {
             if (!pDelrissa->isAlive())
                 pDelrissa->Respawn();
@@ -377,7 +375,7 @@ struct MANGOS_DLL_DECL boss_priestess_lackey_commonAI : public ScriptedAI
         {
             for(uint8 i = 0; i < MAX_ACTIVE_LACKEY; ++i)
             {
-                if (Unit* pAdd = Unit::GetUnit(*m_creature, m_auiLackeyGUIDs[i]))
+                if (Creature* pAdd = m_creature->GetMap()->GetCreature(m_aLackeyGuid[i]))
                 {
                     if (!pAdd->getVictim() && pAdd != m_creature)
                     {
@@ -387,7 +385,7 @@ struct MANGOS_DLL_DECL boss_priestess_lackey_commonAI : public ScriptedAI
                 }
             }
 
-            if (Creature* pDelrissa = (Creature*)Unit::GetUnit(*m_creature, m_pInstance->GetData64(DATA_DELRISSA)))
+            if (Creature* pDelrissa = m_pInstance->GetSingleCreatureFromStorage(NPC_DELRISSA))
             {
                 if (pDelrissa->isAlive() && !pDelrissa->getVictim())
                 {
@@ -405,8 +403,8 @@ struct MANGOS_DLL_DECL boss_priestess_lackey_commonAI : public ScriptedAI
         if (!m_pInstance)
             return;
 
-        Creature* pDelrissa = (Creature*)Unit::GetUnit(*m_creature, m_pInstance->GetData64(DATA_DELRISSA));
-        uint32 uiLackeyDeathCount = m_pInstance->GetData(DATA_DELRISSA_DEATH_COUNT);
+        Creature* pDelrissa = m_pInstance->GetSingleCreatureFromStorage(NPC_DELRISSA);
+        uint32 uiLackeyDeathCount = m_pInstance->GetData(TYPE_DELRISSA_DEATH_COUNT);
 
         if (!pDelrissa)
             return;
@@ -414,7 +412,7 @@ struct MANGOS_DLL_DECL boss_priestess_lackey_commonAI : public ScriptedAI
         //should delrissa really yell if dead?
         DoScriptText(LackeyDeath[uiLackeyDeathCount].id, pDelrissa);
 
-        m_pInstance->SetData(DATA_DELRISSA_DEATH_COUNT, SPECIAL);
+        m_pInstance->SetData(TYPE_DELRISSA_DEATH_COUNT, SPECIAL);
 
         //increase local var, since we now may have four dead
         ++uiLackeyDeathCount;
@@ -427,7 +425,7 @@ struct MANGOS_DLL_DECL boss_priestess_lackey_commonAI : public ScriptedAI
                 if (!pDelrissa->HasFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE))
                     pDelrissa->SetFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
 
-                m_pInstance->SetData(DATA_DELRISSA_EVENT, DONE);
+                m_pInstance->SetData(TYPE_DELRISSA, DONE);
             }
         }
     }
@@ -437,19 +435,24 @@ struct MANGOS_DLL_DECL boss_priestess_lackey_commonAI : public ScriptedAI
         if (!m_pInstance)
             return;
 
-        if (Creature* pDelrissa = (Creature*)Unit::GetUnit(*m_creature, m_pInstance->GetData64(DATA_DELRISSA)))
+        if (Creature* pDelrissa = m_pInstance->GetSingleCreatureFromStorage(NPC_DELRISSA))
             pDelrissa->AI()->KilledUnit(pVictim);
     }
 
-    void AcquireGUIDs()
+    void AcquireGuids()
     {
         if (!m_pInstance)
             return;
 
-        if (Creature* pDelrissa = (Creature*)Unit::GetUnit(*m_creature, m_pInstance->GetData64(DATA_DELRISSA)))
+        if (Creature* pDelrissa = m_pInstance->GetSingleCreatureFromStorage(NPC_DELRISSA))
         {
+            boss_priestess_delrissaAI* pDelrissaAI = dynamic_cast<boss_priestess_delrissaAI*>(pDelrissa->AI());
+
+            if (!pDelrissaAI)
+                return;
+
             for(uint8 i = 0; i < MAX_ACTIVE_LACKEY; ++i)
-                m_auiLackeyGUIDs[i] = ((boss_priestess_delrissaAI*)pDelrissa->AI())->m_auiLackeyGUID[i];
+                m_aLackeyGuid[i] = pDelrissaAI->m_aLackeyGuid[i];
         }
     }
 
@@ -515,7 +518,7 @@ struct MANGOS_DLL_DECL boss_kagani_nightstrikeAI : public boss_priestess_lackey_
         {
             DoCastSpellIfCan(m_creature, SPELL_VANISH);
 
-            Unit* pUnit = SelectUnit(SELECT_TARGET_RANDOM, 0);
+            Unit* pUnit = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
 
             DoResetThreat();
 
@@ -625,7 +628,7 @@ struct MANGOS_DLL_DECL boss_ellris_duskhallowAI : public boss_priestess_lackey_c
 
         if (Seed_of_Corruption_Timer < diff)
         {
-            if (Unit* pUnit = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pUnit = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 DoCastSpellIfCan(pUnit, SPELL_SEED_OF_CORRUPTION);
 
             Seed_of_Corruption_Timer = 10000;
@@ -633,7 +636,7 @@ struct MANGOS_DLL_DECL boss_ellris_duskhallowAI : public boss_priestess_lackey_c
 
         if (Curse_of_Agony_Timer < diff)
         {
-            if (Unit* pUnit = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pUnit = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 DoCastSpellIfCan(pUnit, SPELL_CURSE_OF_AGONY);
 
             Curse_of_Agony_Timer = 13000;
@@ -641,7 +644,7 @@ struct MANGOS_DLL_DECL boss_ellris_duskhallowAI : public boss_priestess_lackey_c
 
         if (Fear_Timer < diff)
         {
-            if (Unit* pUnit = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pUnit = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 DoCastSpellIfCan(pUnit, SPELL_FEAR);
 
             Fear_Timer = 10000;
@@ -758,7 +761,7 @@ struct MANGOS_DLL_DECL boss_yazzaiAI : public boss_priestess_lackey_commonAI
 
         if (Polymorph_Timer < diff)
         {
-            if (Unit* target = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
             {
                 DoCastSpellIfCan(target, SPELL_POLYMORPH);
                 Polymorph_Timer = 20000;
@@ -773,7 +776,7 @@ struct MANGOS_DLL_DECL boss_yazzaiAI : public boss_priestess_lackey_commonAI
 
         if (Blizzard_Timer < diff)
         {
-            if (Unit* pUnit = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pUnit = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 DoCastSpellIfCan(pUnit, SPELL_BLIZZARD);
 
             Blizzard_Timer = 8000;
@@ -799,23 +802,8 @@ struct MANGOS_DLL_DECL boss_yazzaiAI : public boss_priestess_lackey_commonAI
 
         if (Blink_Timer < diff)
         {
-            bool InMeleeRange = false;
-            ThreatList const& tList = m_creature->getThreatManager().getThreatList();
-            for (ThreatList::const_iterator itr = tList.begin();itr != tList.end(); ++itr)
-            {
-                if (Unit* target = Unit::GetUnit(*m_creature, (*itr)->getUnitGuid()))
-                {
-                    //if in melee range
-                    if (target->IsWithinDistInMap(m_creature, 5))
-                    {
-                        InMeleeRange = true;
-                        break;
-                    }
-                }
-            }
-
             //if anybody is in melee range than escape by blink
-            if (InMeleeRange)
+            if (m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 0, uint32(0), SELECT_FLAG_IN_MELEE_RANGE))
                 DoCastSpellIfCan(m_creature, SPELL_BLINK);
 
             Blink_Timer = 8000;
@@ -879,30 +867,19 @@ struct MANGOS_DLL_DECL boss_warlord_salarisAI : public boss_priestess_lackey_com
 
         if (Intercept_Stun_Timer < diff)
         {
-            bool InMeleeRange = false;
-            ThreatList const& tList = m_creature->getThreatManager().getThreatList();
-            for (ThreatList::const_iterator itr = tList.begin();itr != tList.end(); ++itr)
+            //if nobody is in melee range than try to use Intercept
+            if (!m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 0, uint32(0), SELECT_FLAG_IN_MELEE_RANGE))
             {
-                if (Unit* target = Unit::GetUnit(*m_creature, (*itr)->getUnitGuid()))
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_INTERCEPT_STUN, SELECT_FLAG_IN_LOS))
                 {
-                    //if in melee range
-                    if (target->IsWithinDistInMap(m_creature, ATTACK_DISTANCE))
-                    {
-                        InMeleeRange = true;
-                        break;
-                    }
+                    if (DoCastSpellIfCan(pTarget, SPELL_INTERCEPT_STUN) == CAST_OK)
+                        Intercept_Stun_Timer = 10000;
                 }
             }
-
-            //if nobody is in melee range than try to use Intercept
-            if (!InMeleeRange)
-            {
-                if (Unit* pUnit = SelectUnit(SELECT_TARGET_RANDOM, 0))
-                    DoCastSpellIfCan(pUnit, SPELL_INTERCEPT_STUN);
-            }
-
-            Intercept_Stun_Timer = 10000;
-        }else Intercept_Stun_Timer -= diff;
+            else
+                Intercept_Stun_Timer = 2000;
+        }else
+            Intercept_Stun_Timer -= diff;
 
         if (Disarm_Timer < diff)
         {
@@ -961,11 +938,10 @@ struct MANGOS_DLL_DECL boss_garaxxasAI : public boss_priestess_lackey_commonAI
     boss_garaxxasAI(Creature* pCreature) : boss_priestess_lackey_commonAI(pCreature)
     {
         SetCombatMovement(false);
-        m_uiPetGUID = 0;
         Reset();
     }
 
-    uint64 m_uiPetGUID;
+    ObjectGuid m_petGuid;
 
     uint32 Aimed_Shot_Timer;
     uint32 Shoot_Timer;
@@ -983,7 +959,7 @@ struct MANGOS_DLL_DECL boss_garaxxasAI : public boss_priestess_lackey_commonAI
         Wing_Clip_Timer = 4000;
         Freezing_Trap_Timer = 15000;
 
-        Unit* pPet = Unit::GetUnit(*m_creature,m_uiPetGUID);
+        Creature* pPet = m_creature->GetMap()->GetCreature(m_petGuid);
         if (!pPet)
             m_creature->SummonCreature(NPC_SLIVER, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_CORPSE_DESPAWN, 0);
 
@@ -992,7 +968,7 @@ struct MANGOS_DLL_DECL boss_garaxxasAI : public boss_priestess_lackey_commonAI
 
     void JustSummoned(Creature* pSummoned)
     {
-        m_uiPetGUID = pSummoned->GetGUID();
+        m_petGuid = pSummoned->GetObjectGuid();
     }
 
     void UpdateAI(const uint32 diff)
@@ -1002,7 +978,7 @@ struct MANGOS_DLL_DECL boss_garaxxasAI : public boss_priestess_lackey_commonAI
 
         boss_priestess_lackey_commonAI::UpdateAI(diff);
 
-        if (m_creature->IsWithinDistInMap(m_creature->getVictim(), ATTACK_DISTANCE))
+        if (m_creature->CanReachWithMeleeAttack(m_creature->getVictim()))
         {
             if (Wing_Clip_Timer < diff)
             {
@@ -1124,7 +1100,7 @@ struct MANGOS_DLL_DECL boss_apokoAI : public boss_priestess_lackey_commonAI
 
         if (Purge_Timer < diff)
         {
-            if (Unit* pUnit = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pUnit = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 DoCastSpellIfCan(pUnit, SPELL_PURGE);
 
             Purge_Timer = 15000;
@@ -1139,10 +1115,10 @@ struct MANGOS_DLL_DECL boss_apokoAI : public boss_priestess_lackey_commonAI
         if (Healing_Wave_Timer < diff)
         {
             // std::vector<Add*>::iterator itr = Group.begin() + rand()%Group.size();
-            // uint64 guid = (*itr)->guid;
+            // ObjectGuid guid = (*itr)->guid;
             // if (guid)
             // {
-            //   Unit* pAdd = Unit::GetUnit(*m_creature, (*itr)->guid);
+            //   Unit* pAdd = m_creature->GetMap()->GetUnit((*itr)->guid);
             //   if (pAdd && pAdd->isAlive())
             //   {
             DoCastSpellIfCan(m_creature, SPELL_LESSER_HEALING_WAVE);
@@ -1221,7 +1197,7 @@ struct MANGOS_DLL_DECL boss_zelfanAI : public boss_priestess_lackey_commonAI
         {
             for(uint8 i = 0; i < MAX_ACTIVE_LACKEY; ++i)
             {
-                if (Unit* pAdd = Unit::GetUnit(*m_creature, m_auiLackeyGUIDs[i]))
+                if (Creature* pAdd = m_creature->GetMap()->GetCreature(m_aLackeyGuid[i]))
                 {
                     if (pAdd->IsPolymorphed())
                     {
@@ -1278,55 +1254,55 @@ CreatureAI* GetAI_zelfan(Creature* pCreature)
 
 void AddSC_boss_priestess_delrissa()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_priestess_delrissa";
-    newscript->GetAI = &GetAI_boss_priestess_delrissa;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_priestess_delrissa";
+    pNewScript->GetAI = &GetAI_boss_priestess_delrissa;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_kagani_nightstrike";
-    newscript->GetAI = &GetAI_boss_kagani_nightstrike;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_kagani_nightstrike";
+    pNewScript->GetAI = &GetAI_boss_kagani_nightstrike;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_ellris_duskhallow";
-    newscript->GetAI = &GetAI_ellris_duskhallow;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_ellris_duskhallow";
+    pNewScript->GetAI = &GetAI_ellris_duskhallow;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_eramas_brightblaze";
-    newscript->GetAI = &GetAI_eramas_brightblaze;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_eramas_brightblaze";
+    pNewScript->GetAI = &GetAI_eramas_brightblaze;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_yazzai";
-    newscript->GetAI = &GetAI_yazzai;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_yazzai";
+    pNewScript->GetAI = &GetAI_yazzai;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_warlord_salaris";
-    newscript->GetAI = &GetAI_warlord_salaris;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_warlord_salaris";
+    pNewScript->GetAI = &GetAI_warlord_salaris;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_garaxxas";
-    newscript->GetAI = &GetAI_garaxxas;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_garaxxas";
+    pNewScript->GetAI = &GetAI_garaxxas;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_apoko";
-    newscript->GetAI = &GetAI_apoko;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_apoko";
+    pNewScript->GetAI = &GetAI_apoko;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_zelfan";
-    newscript->GetAI = &GetAI_zelfan;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_zelfan";
+    pNewScript->GetAI = &GetAI_zelfan;
+    pNewScript->RegisterSelf();
 
-    /*newscript = new Script;
-    newscript->Name = "mob_high_explosive_sheep";
-    newscript->GetAI = &GetAI_mob_high_explosive_sheep;
-    newscript->RegisterSelf();*/
+    /*pNewScript = new Script;
+    pNewScript->Name = "mob_high_explosive_sheep";
+    pNewScript->GetAI = &GetAI_mob_high_explosive_sheep;
+    pNewScript->RegisterSelf();*/
 }

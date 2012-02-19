@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -23,55 +23,65 @@ EndScriptData */
 
 #include "precompiled.h"
 
-#define SPELL_WHIRLWIND                 26038
-#define SPELL_CLEAVE                    20691
-#define SPELL_THUNDERCLAP               23931               //Not sure if he cast this spell
+enum
+{
+    SPELL_WHIRLWIND   = 26038,
+    SPELL_CLEAVE      = 20691,
+    SPELL_THUNDERCLAP = 23931                               //Not sure if he cast this spell
+};
 
 struct MANGOS_DLL_DECL boss_rend_blackhandAI : public ScriptedAI
 {
     boss_rend_blackhandAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    uint32 WhirlWind_Timer;
-    uint32 Cleave_Timer;
-    uint32 Thunderclap_Timer;
+    uint32 m_uiWhirlWindTimer;
+    uint32 m_uiCleaveTimer;
+    uint32 m_uiThunderclapTimer;
 
     void Reset()
     {
-        WhirlWind_Timer = 20000;
-        Cleave_Timer = 5000;
-        Thunderclap_Timer = 9000;
+        m_uiWhirlWindTimer   = 20000;
+        m_uiCleaveTimer      = 5000;
+        m_uiThunderclapTimer = 9000;
     }
 
-    void UpdateAI(const uint32 diff)
+    void UpdateAI(const uint32 uiDiff)
     {
-        //Return since we have no target
+        // Return since we have no target
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //WhirlWind_Timer
-        if (WhirlWind_Timer < diff)
+        // WhirlWind
+        if (m_uiWhirlWindTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_WHIRLWIND);
-            WhirlWind_Timer = 18000;
-        }else WhirlWind_Timer -= diff;
+            DoCastSpellIfCan(m_creature, SPELL_WHIRLWIND);
+            m_uiWhirlWindTimer = 18000;
+        }
+        else
+            m_uiWhirlWindTimer -= uiDiff;
 
-        //Cleave_Timer
-        if (Cleave_Timer < diff)
+        // Cleave
+        if (m_uiCleaveTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_CLEAVE);
-            Cleave_Timer = 10000;
-        }else Cleave_Timer -= diff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE);
+            m_uiCleaveTimer = 10000;
+        }
+        else
+            m_uiCleaveTimer -= uiDiff;
 
-        //Thunderclap_Timer
-        if (Thunderclap_Timer < diff)
+        // Thunderclap
+        if (m_uiThunderclapTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_THUNDERCLAP);
-            Thunderclap_Timer = 16000;
-        }else Thunderclap_Timer -= diff;
+            DoCastSpellIfCan(m_creature, SPELL_THUNDERCLAP);
+            m_uiThunderclapTimer = 16000;
+        }
+        else
+            m_uiThunderclapTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
 };
+
 CreatureAI* GetAI_boss_rend_blackhand(Creature* pCreature)
 {
     return new boss_rend_blackhandAI(pCreature);
@@ -79,9 +89,10 @@ CreatureAI* GetAI_boss_rend_blackhand(Creature* pCreature)
 
 void AddSC_boss_rend_blackhand()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_rend_blackhand";
-    newscript->GetAI = &GetAI_boss_rend_blackhand;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_rend_blackhand";
+    pNewScript->GetAI = &GetAI_boss_rend_blackhand;
+    pNewScript->RegisterSelf();
 }

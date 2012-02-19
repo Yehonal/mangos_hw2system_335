@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -121,7 +121,7 @@ CreatureAI* GetAI_boss_skadi(Creature* pCreature)
     return new boss_skadiAI(pCreature);
 }
 
-bool AreaTrigger_at_skadi(Player* pPlayer, AreaTriggerEntry* pAt)
+bool AreaTrigger_at_skadi(Player* pPlayer, AreaTriggerEntry const* pAt)
 {
     if (ScriptedInstance* pInstance = (ScriptedInstance*)pPlayer->GetInstanceData())
     {
@@ -134,15 +134,15 @@ bool AreaTrigger_at_skadi(Player* pPlayer, AreaTriggerEntry* pAt)
 
 void AddSC_boss_skadi()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_skadi";
-    newscript->GetAI = &GetAI_boss_skadi;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_skadi";
+    pNewScript->GetAI = &GetAI_boss_skadi;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "at_skadi";
-    newscript->pAreaTrigger = &AreaTrigger_at_skadi;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "at_skadi";
+    pNewScript->pAreaTrigger = &AreaTrigger_at_skadi;
+    pNewScript->RegisterSelf();
 }

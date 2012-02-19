@@ -30,7 +30,7 @@ EndScriptData */
 #define SPELL_FROST_MIST	      29292			// rallenta del 75% in 8 yard range x 10 sec., tanto x far qualcosa k nn siano i soliti k di dmg
 #define SPELL_FROST_SHOCK         43524			// 2,5k di dmg, random target. lo alterno con switch a freeze
 #define SPELL_FROST_VOLLEY	      29923			// 2k di dmg ad area + slow in 20 yard (x me: self)
-#define SPELL_WHIRLWIND           26038			// si mette a girare su se stesso k è 1 figata e fa 1k di dmg al secondo a tt qll intorno
+#define SPELL_WHIRLWIND           26038			// si mette a girare su se stesso k ï¿½ 1 figata e fa 1k di dmg al secondo a tt qll intorno
 #define SPELL_FREEZE			  18763			// stunna x 15 sec e fa circa 150 di danno ogni 3 secondi
 
 
@@ -106,7 +106,7 @@ struct MANGOS_DLL_DECL boss_the_lurker_belowAI : public ScriptedAI
 
         if(frostshock_freeze_Timer < diff)
         {   
-            target = SelectUnit(SELECT_TARGET_RANDOM,0);
+            target = m_creature->SelectRandomUnfriendlyTarget();
             switch(rand()%3)
             {
                 case 0:
@@ -142,7 +142,7 @@ struct MANGOS_DLL_DECL boss_the_lurker_belowAI : public ScriptedAI
 
         if(hcurrentlife / maxlife < 80) // al 80% inizia il divertimento. ahahah!
         {
-            switch(cambia)  // aumento var cambia ogni volta k la vita diminuisce e quindi faccio 1 cast, è come memorizzare il livello di vita corrente.
+            switch(cambia)  // aumento var cambia ogni volta k la vita diminuisce e quindi faccio 1 cast, ï¿½ come memorizzare il livello di vita corrente.
 			{
 				//efficiente e professionale, by edoz.
 				case 0:
@@ -178,7 +178,7 @@ struct MANGOS_DLL_DECL boss_the_lurker_belowAI : public ScriptedAI
 						break;
 					}
 					
-					target = SelectUnit(SELECT_TARGET_RANDOM,0);
+					target = m_creature->SelectRandomUnfriendlyTarget();
 					DoCast(target,SPELL_WATERBALL);
 					cambia++;
 				}
@@ -219,7 +219,7 @@ struct MANGOS_DLL_DECL boss_the_lurker_belowAI : public ScriptedAI
 						break;
 					}
 					
-					target = SelectUnit(SELECT_TARGET_RANDOM,0);
+					target = m_creature->SelectRandomUnfriendlyTarget();
 					DoCast(target,SPELL_WATERBALL);
 					cambia++;
 				}
@@ -252,7 +252,7 @@ struct MANGOS_DLL_DECL boss_the_lurker_belowAI : public ScriptedAI
 						break;
 					}
 
-					target = SelectUnit(SELECT_TARGET_RANDOM,0);
+					target = m_creature->SelectRandomUnfriendlyTarget();
 					DoCast(target,SPELL_WATERBALL);
 					cambia++;
 				}
@@ -292,7 +292,7 @@ struct MANGOS_DLL_DECL boss_the_lurker_belowAI : public ScriptedAI
 					case 1:
 						break;
 					}
-					target = SelectUnit(SELECT_TARGET_RANDOM,0);
+					target = m_creature->SelectRandomUnfriendlyTarget();
 					DoCast(target,SPELL_WATERBALL);
 					cambia++;
 				}

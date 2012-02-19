@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -120,7 +120,7 @@ struct MANGOS_DLL_DECL npc_barnesAI : public npc_escortAI
 
     ScriptedInstance* m_pInstance;
 
-    uint64 m_uiSpotlightGUID;
+    ObjectGuid m_spotlightGuid;
 
     uint32 m_uiTalkCount;
     uint32 m_uiTalkTimer;
@@ -132,7 +132,7 @@ struct MANGOS_DLL_DECL npc_barnesAI : public npc_escortAI
 
     void Reset()
     {
-        m_uiSpotlightGUID = 0;
+        m_spotlightGuid.Clear();
 
         m_uiTalkCount = 0;
         m_uiTalkTimer = 2000;
@@ -155,7 +155,7 @@ struct MANGOS_DLL_DECL npc_barnesAI : public npc_escortAI
         if (m_uiEventId == EVENT_OZ)
             m_pInstance->SetData(DATA_OPERA_OZ_DEATHCOUNT, IN_PROGRESS);
 
-        Start(false, false, 0, NULL, true);
+        Start(false, NULL, NULL, true);
     }
 
     void WaypointReached(uint32 uiPointId)
@@ -167,7 +167,7 @@ struct MANGOS_DLL_DECL npc_barnesAI : public npc_escortAI
         {
             case 0:
                 m_creature->CastSpell(m_creature, SPELL_TUXEDO, false);
-                m_pInstance->DoUseDoorOrButton(m_pInstance->GetData64(DATA_GO_STAGEDOORLEFT));
+                m_pInstance->DoUseDoorOrButton(GO_STAGE_DOOR_LEFT);
                 break;
             case 4:
                 m_uiTalkCount = 0;
@@ -179,16 +179,16 @@ struct MANGOS_DLL_DECL npc_barnesAI : public npc_escortAI
                 {
                     pSpotlight->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                     pSpotlight->CastSpell(pSpotlight, SPELL_SPOTLIGHT, false);
-                    m_uiSpotlightGUID = pSpotlight->GetGUID();
+                    m_spotlightGuid = pSpotlight->GetObjectGuid();
                 }
                 break;
             case 8:
-                m_pInstance->DoUseDoorOrButton(m_pInstance->GetData64(DATA_GO_STAGEDOORLEFT));
+                m_pInstance->DoUseDoorOrButton(GO_STAGE_DOOR_LEFT);
                 m_bPerformanceReady = true;
                 break;
             case 9:
                 PrepareEncounter();
-                m_pInstance->DoUseDoorOrButton(m_pInstance->GetData64(DATA_GO_CURTAINS));
+                m_pInstance->DoUseDoorOrButton(GO_STAGE_CURTAIN);
                 break;
         }
     }
@@ -233,13 +233,13 @@ struct MANGOS_DLL_DECL npc_barnesAI : public npc_escortAI
         {
             case EVENT_OZ:
                 for(int i=0; i < 4; ++i)
-                    m_creature->SummonCreature(aSpawns_OZ[i].uiEntry, aSpawns_OZ[i].fPosX, SPAWN_Y, SPAWN_Z, SPAWN_O, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, HOUR*2*IN_MILISECONDS);
+                    m_creature->SummonCreature(aSpawns_OZ[i].uiEntry, aSpawns_OZ[i].fPosX, SPAWN_Y, SPAWN_Z, SPAWN_O, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, HOUR*2*IN_MILLISECONDS);
                 break;
             case EVENT_HOOD:
-                m_creature->SummonCreature(Spawn_HOOD.uiEntry, Spawn_HOOD.fPosX, SPAWN_Y, SPAWN_Z, SPAWN_O, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, HOUR*2*IN_MILISECONDS);
+                m_creature->SummonCreature(Spawn_HOOD.uiEntry, Spawn_HOOD.fPosX, SPAWN_Y, SPAWN_Z, SPAWN_O, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, HOUR*2*IN_MILLISECONDS);
                 break;
             case EVENT_RAJ:
-                m_creature->SummonCreature(Spawn_RAJ.uiEntry, Spawn_RAJ.fPosX, SPAWN_Y, SPAWN_Z, SPAWN_O, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, HOUR*2*IN_MILISECONDS);
+                m_creature->SummonCreature(Spawn_RAJ.uiEntry, Spawn_RAJ.fPosX, SPAWN_Y, SPAWN_Z, SPAWN_O, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, HOUR*2*IN_MILLISECONDS);
                 break;
             default:
                 error_log("SD2: Barnes Opera Event - Wrong EventId set: %d", m_uiEventId);
@@ -257,7 +257,7 @@ struct MANGOS_DLL_DECL npc_barnesAI : public npc_escortAI
             {
                 if (m_uiTalkCount > 3)
                 {
-                    if (Creature* pSpotlight = (Creature*)Unit::GetUnit(*m_creature, m_uiSpotlightGUID))
+                    if (Creature* pSpotlight = m_creature->GetMap()->GetCreature(m_spotlightGuid))
                         pSpotlight->ForcedDespawn();
 
                     SetEscortPaused(false);
@@ -330,16 +330,16 @@ bool GossipHello_npc_barnes(Player* pPlayer, Creature* pCreature)
             if (npc_barnesAI* pBarnesAI = dynamic_cast<npc_barnesAI*>(pCreature->AI()))
             {
                 if (!pBarnesAI->m_bRaidWiped)
-                    pPlayer->SEND_GOSSIP_MENU(8970, pCreature->GetGUID());
+                    pPlayer->SEND_GOSSIP_MENU(8970, pCreature->GetObjectGuid());
                 else
-                    pPlayer->SEND_GOSSIP_MENU(8975, pCreature->GetGUID());
+                    pPlayer->SEND_GOSSIP_MENU(8975, pCreature->GetObjectGuid());
 
                 return true;
             }
         }
     }
 
-    pPlayer->SEND_GOSSIP_MENU(8978, pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(8978, pCreature->GetObjectGuid());
     return true;
 }
 
@@ -351,7 +351,7 @@ bool GossipSelect_npc_barnes(Player* pPlayer, Creature* pCreature, uint32 uiSend
     {
         case GOSSIP_ACTION_INFO_DEF+1:
             pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, OZ_GOSSIP2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
-            pPlayer->SEND_GOSSIP_MENU(8971, pCreature->GetGUID());
+            pPlayer->SEND_GOSSIP_MENU(8971, pCreature->GetObjectGuid());
             break;
         case GOSSIP_ACTION_INFO_DEF+2:
             pPlayer->CLOSE_GOSSIP_MENU();
@@ -362,19 +362,19 @@ bool GossipSelect_npc_barnes(Player* pPlayer, Creature* pCreature, uint32 uiSend
             pPlayer->CLOSE_GOSSIP_MENU();
             if (pBarnesAI && pPlayer->isGameMaster())
                 pBarnesAI->m_uiEventId = EVENT_OZ;
-            outstring_log("SD2: pPlayer (GUID " UI64FMTD ") manually set Opera event to EVENT_OZ", pPlayer->GetGUID());
+            outstring_log("SD2: %s manually set Opera event to EVENT_OZ", pPlayer->GetGuidStr().c_str());
             break;
         case GOSSIP_ACTION_INFO_DEF+4:
             pPlayer->CLOSE_GOSSIP_MENU();
             if (pBarnesAI && pPlayer->isGameMaster())
                 pBarnesAI->m_uiEventId = EVENT_HOOD;
-            outstring_log("SD2: pPlayer (GUID " UI64FMTD ") manually set Opera event to EVENT_HOOD", pPlayer->GetGUID());
+            outstring_log("SD2: %s manually set Opera event to EVENT_HOOD", pPlayer->GetGuidStr().c_str());
             break;
         case GOSSIP_ACTION_INFO_DEF+5:
             pPlayer->CLOSE_GOSSIP_MENU();
             if (pBarnesAI && pPlayer->isGameMaster())
                 pBarnesAI->m_uiEventId = EVENT_RAJ;
-            outstring_log("SD2: pPlayer (GUID " UI64FMTD ") manually set Opera event to EVENT_RAJ", pPlayer->GetGUID());
+            outstring_log("SD2: %s manually set Opera event to EVENT_RAJ", pPlayer->GetGuidStr().c_str());
             break;
     }
 
@@ -401,7 +401,7 @@ bool GossipHello_npc_berthold(Player* pPlayer, Creature* pCreature)
             pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_TELEPORT, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
     }
 
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
     return true;
 }
 
@@ -416,18 +416,18 @@ bool GossipSelect_npc_berthold(Player* pPlayer, Creature* pCreature, uint32 uiSe
 
 void AddSC_karazhan()
 {
-    Script* newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_barnes";
-    newscript->GetAI = &GetAI_npc_barnesAI;
-    newscript->pGossipHello = &GossipHello_npc_barnes;
-    newscript->pGossipSelect = &GossipSelect_npc_barnes;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_barnes";
+    pNewScript->GetAI = &GetAI_npc_barnesAI;
+    pNewScript->pGossipHello = &GossipHello_npc_barnes;
+    pNewScript->pGossipSelect = &GossipSelect_npc_barnes;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_berthold";
-    newscript->pGossipHello = &GossipHello_npc_berthold;
-    newscript->pGossipSelect = &GossipSelect_npc_berthold;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_berthold";
+    pNewScript->pGossipHello = &GossipHello_npc_berthold;
+    pNewScript->pGossipSelect = &GossipSelect_npc_berthold;
+    pNewScript->RegisterSelf();
 }

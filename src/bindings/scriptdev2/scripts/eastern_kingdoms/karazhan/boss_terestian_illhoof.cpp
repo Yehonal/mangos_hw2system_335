@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -61,26 +61,22 @@ enum
 
 struct MANGOS_DLL_DECL mob_demon_chainAI : public ScriptedAI
 {
-    mob_demon_chainAI(Creature* pCreature) : ScriptedAI(pCreature)
-    {
-        Reset();
-    }
+    mob_demon_chainAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    uint64 m_uiSacrificeGUID;
+    ObjectGuid m_sacrificeGuid;
 
-    void Reset()
-    {
-        m_uiSacrificeGUID = 0;
-    }
+    void Reset(){}
 
     void AttackStart(Unit* pWho) {}
     void MoveInLineOfSight(Unit* pWho) {}
 
     void JustDied(Unit* pKiller)
     {
-        if (m_uiSacrificeGUID)
-            if (Unit* pSacrifice = Unit::GetUnit((*m_creature), m_uiSacrificeGUID))
+        if (m_sacrificeGuid)
+        {
+            if (Player* pSacrifice = m_creature->GetMap()->GetPlayer(m_sacrificeGuid))
                 pSacrifice->RemoveAurasDueToSpell(SPELL_SACRIFICE);
+        }
     }
 };
 
@@ -88,7 +84,6 @@ struct MANGOS_DLL_DECL boss_terestianAI : public ScriptedAI
 {
     boss_terestianAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        memset(&m_uiPortalGUID, 0, sizeof(m_uiPortalGUID));
         m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
         m_bSummonKilrek = true;
         Reset();
@@ -96,7 +91,7 @@ struct MANGOS_DLL_DECL boss_terestianAI : public ScriptedAI
 
     ScriptedInstance* m_pInstance;
 
-    uint64 m_uiPortalGUID[2];
+    ObjectGuid m_aPortalGuid[2];
 
     uint32 m_uiSummonKilrekTimer;
     uint32 m_uiSacrifice_Timer;
@@ -124,12 +119,12 @@ struct MANGOS_DLL_DECL boss_terestianAI : public ScriptedAI
 
         for(uint8 i = 0; i < 2; ++i)
         {
-            if (m_uiPortalGUID[i])
+            if (m_aPortalGuid[i])
             {
-                if (Creature* pPortal = m_pInstance->instance->GetCreature(m_uiPortalGUID[i]))
+                if (Creature* pPortal = m_pInstance->instance->GetCreature(m_aPortalGuid[i]))
                     pPortal->ForcedDespawn();
 
-                m_uiPortalGUID[i] = 0;
+                m_aPortalGuid[i].Clear();
             }
         }
 
@@ -144,8 +139,6 @@ struct MANGOS_DLL_DECL boss_terestianAI : public ScriptedAI
 
     void Aggro(Unit* pWho)
     {
-        m_creature->SetInCombatWithZone();
-
         if (Pet* pKilrek = m_creature->GetPet())
             pKilrek->SetInCombatWithZone();
 
@@ -153,8 +146,6 @@ struct MANGOS_DLL_DECL boss_terestianAI : public ScriptedAI
 
         if (m_pInstance)
             m_pInstance->SetData(TYPE_TERESTIAN, IN_PROGRESS);
-        else
-            ERROR_INST_DATA(m_creature);
     }
 
     void KilledUnit(Unit* pVictim)
@@ -168,16 +159,16 @@ struct MANGOS_DLL_DECL boss_terestianAI : public ScriptedAI
         {
             case NPC_PORTAL:
             {
-                if (m_uiPortalGUID[0])
+                if (m_aPortalGuid[0])
                 {
-                    m_uiPortalGUID[1] = pSummoned->GetGUID();
+                    m_aPortalGuid[1] = pSummoned->GetObjectGuid();
 
-                    if (npc_fiendish_portalAI* pPortalAI = (npc_fiendish_portalAI*)pSummoned->AI())
+                    if (npc_fiendish_portalAI* pPortalAI = dynamic_cast<npc_fiendish_portalAI*>(pSummoned->AI()))
                         pPortalAI->m_uiSummonTimer = 10000;
                 }
                 else
                 {
-                    m_uiPortalGUID[0] = pSummoned->GetGUID();
+                    m_aPortalGuid[0] = pSummoned->GetObjectGuid();
                     DoCastSpellIfCan(m_creature, SPELL_FIENDISH_PORTAL_1, CAST_TRIGGERED);
                 }
 
@@ -207,12 +198,12 @@ struct MANGOS_DLL_DECL boss_terestianAI : public ScriptedAI
 
         for(uint8 i = 0; i < 2; ++i)
         {
-            if (m_uiPortalGUID[i])
+            if (m_aPortalGuid[i])
             {
-                if (Creature* pPortal = m_pInstance->instance->GetCreature(m_uiPortalGUID[i]))
+                if (Creature* pPortal = m_pInstance->instance->GetCreature(m_aPortalGuid[i]))
                     pPortal->ForcedDespawn();
 
-                m_uiPortalGUID[i] = 0;
+                m_aPortalGuid[i].Clear();
             }
         }
 
@@ -240,15 +231,15 @@ struct MANGOS_DLL_DECL boss_terestianAI : public ScriptedAI
 
         if (m_uiSacrifice_Timer < uiDiff)
         {
-            Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 1);
-            if (pTarget && pTarget->isAlive() && pTarget->GetTypeId() == TYPEID_PLAYER)
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1, SPELL_SACRIFICE, SELECT_FLAG_PLAYER))
             {
                 DoCastSpellIfCan(pTarget, SPELL_SACRIFICE, CAST_TRIGGERED);
 
-                Creature* pChains = m_creature->SummonCreature(NPC_DEMONCHAINS, pTarget->GetPositionX(), pTarget->GetPositionY(), pTarget->GetPositionZ(), 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 21000);
-                if (pChains)
+                if (Creature* pChains = m_creature->SummonCreature(NPC_DEMONCHAINS, pTarget->GetPositionX(), pTarget->GetPositionY(), pTarget->GetPositionZ(), 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 21000))
                 {
-                    ((mob_demon_chainAI*)pChains->AI())->m_uiSacrificeGUID = pTarget->GetGUID();
+                    if (mob_demon_chainAI* pDemonAI = dynamic_cast<mob_demon_chainAI*>(pChains->AI()))
+                        pDemonAI->m_sacrificeGuid = pTarget->GetObjectGuid();
+
                     pChains->CastSpell(pChains, SPELL_DEMON_CHAINS, true);
 
                     DoScriptText(urand(0, 1) ? SAY_SACRIFICE1 : SAY_SACRIFICE2, m_creature);
@@ -341,20 +332,20 @@ CreatureAI* GetAI_boss_terestian_illhoof(Creature* pCreature)
 
 void AddSC_boss_terestian_illhoof()
 {
-    Script* newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_terestian_illhoof";
-    newscript->GetAI = &GetAI_boss_terestian_illhoof;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_terestian_illhoof";
+    pNewScript->GetAI = &GetAI_boss_terestian_illhoof;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_fiendish_portal";
-    newscript->GetAI = &GetAI_npc_fiendish_portal;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_fiendish_portal";
+    pNewScript->GetAI = &GetAI_npc_fiendish_portal;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_demon_chain";
-    newscript->GetAI = &GetAI_mob_demon_chain;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_demon_chain";
+    pNewScript->GetAI = &GetAI_mob_demon_chain;
+    pNewScript->RegisterSelf();
 }

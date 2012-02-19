@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -92,7 +92,7 @@ void SummonCroneIfReady(ScriptedInstance* pInstance, Creature* pCreature)
 
     if (pInstance->GetData(DATA_OPERA_OZ_DEATHCOUNT) == 4)
     {
-        if (Creature* pCrone = pCreature->SummonCreature(CREATURE_CRONE, -10891.96f, -1755.95f, pCreature->GetPositionZ(), 4.64f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, HOUR*2*IN_MILISECONDS))
+        if (Creature* pCrone = pCreature->SummonCreature(CREATURE_CRONE, -10891.96f, -1755.95f, pCreature->GetPositionZ(), 4.64f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, HOUR*2*IN_MILLISECONDS))
         {
             if (pCreature->getVictim())
                 pCrone->AI()->AttackStart(pCreature->getVictim());
@@ -183,7 +183,7 @@ struct MANGOS_DLL_DECL boss_dorotheeAI : public ScriptedAI
 
         if (WaterBoltTimer < diff)
         {
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 DoCastSpellIfCan(pTarget, SPELL_WATERBOLT);
 
             WaterBoltTimer = TitoDied ? 1500 : 5000;
@@ -213,23 +213,24 @@ struct MANGOS_DLL_DECL mob_titoAI : public ScriptedAI
         Reset();
     }
 
-    uint64 DorotheeGUID;
+    ObjectGuid m_dorotheeGuid;
     uint32 YipTimer;
 
     void Reset()
     {
-        DorotheeGUID = 0;
         YipTimer = 10000;
     }
 
     void JustDied(Unit* killer)
     {
-        if (DorotheeGUID)
+        if (m_dorotheeGuid)
         {
-            Creature* Dorothee = ((Creature*)Unit::GetUnit((*m_creature), DorotheeGUID));
+            Creature* Dorothee = m_creature->GetMap()->GetCreature(m_dorotheeGuid);
             if (Dorothee && Dorothee->isAlive())
             {
-                ((boss_dorotheeAI*)Dorothee->AI())->TitoDied = true;
+                if (boss_dorotheeAI* pDoroAI = dynamic_cast<boss_dorotheeAI*>(Dorothee->AI()))
+                    pDoroAI->TitoDied = true;
+
                 DoScriptText(SAY_DOROTHEE_TITO_DEATH, Dorothee);
             }
         }
@@ -256,7 +257,9 @@ void boss_dorotheeAI::SummonTito()
     {
         DoScriptText(SAY_DOROTHEE_SUMMON, m_creature);
 
-        ((mob_titoAI*)pTito->AI())->DorotheeGUID = m_creature->GetGUID();
+        if (mob_titoAI* pTitoAI = dynamic_cast<mob_titoAI*>(pTito->AI()))
+            pTitoAI->m_dorotheeGuid = m_creature->GetObjectGuid();
+
         pTito->AI()->AttackStart(m_creature->getVictim());
 
         SummonedTito = true;
@@ -359,7 +362,7 @@ struct MANGOS_DLL_DECL boss_strawmanAI : public ScriptedAI
 
         if (BrainWipeTimer < diff)
         {
-            if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 DoCastSpellIfCan(pTarget, SPELL_BRAIN_WIPE);
 
             BrainWipeTimer = 20000;
@@ -725,7 +728,7 @@ CreatureAI* GetAI_mob_cyclone(Creature* pCreature)
 bool GossipHello_npc_grandmother(Player* pPlayer, Creature* pCreature)
 {
     pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_GRANDMA, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
-    pPlayer->SEND_GOSSIP_MENU(8990, pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(8990, pCreature->GetObjectGuid());
 
     return true;
 }
@@ -734,7 +737,7 @@ bool GossipSelect_npc_grandmother(Player* pPlayer, Creature* pCreature, uint32 u
 {
     if (uiAction == GOSSIP_ACTION_INFO_DEF)
     {
-        if (Creature* pBigBadWolf = pCreature->SummonCreature(CREATURE_BIG_BAD_WOLF, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, HOUR*2*IN_MILISECONDS))
+        if (Creature* pBigBadWolf = pCreature->SummonCreature(CREATURE_BIG_BAD_WOLF, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, HOUR*2*IN_MILLISECONDS))
             pBigBadWolf->AI()->AttackStart(pPlayer);
 
         pCreature->ForcedDespawn();
@@ -757,7 +760,7 @@ struct MANGOS_DLL_DECL boss_bigbadwolfAI : public ScriptedAI
     uint32 FearTimer;
     uint32 SwipeTimer;
 
-    uint64 HoodGUID;
+    ObjectGuid m_hoodGuid;
     float TempThreat;
 
     bool IsChasing;
@@ -768,7 +771,7 @@ struct MANGOS_DLL_DECL boss_bigbadwolfAI : public ScriptedAI
         FearTimer = urand(25000, 35000);
         SwipeTimer = 5000;
 
-        HoodGUID = 0;
+        m_hoodGuid.Clear();
         TempThreat = 0;
 
         IsChasing = false;
@@ -803,8 +806,7 @@ struct MANGOS_DLL_DECL boss_bigbadwolfAI : public ScriptedAI
         {
             if (!IsChasing)
             {
-                Unit* target = SelectUnit(SELECT_TARGET_RANDOM, 0);
-                if (target && target->GetTypeId() == TYPEID_PLAYER)
+                if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_LITTLE_RED_RIDING_HOOD, SELECT_FLAG_PLAYER))
                 {
                     DoScriptText(SAY_WOLF_HOOD, m_creature);
                     DoCastSpellIfCan(target, SPELL_LITTLE_RED_RIDING_HOOD, CAST_TRIGGERED);
@@ -813,7 +815,7 @@ struct MANGOS_DLL_DECL boss_bigbadwolfAI : public ScriptedAI
                     if (TempThreat)
                         m_creature->getThreatManager().modifyThreatPercent(target, -100);
 
-                    HoodGUID = target->GetGUID();
+                    m_hoodGuid = target->GetObjectGuid();
                     m_creature->AddThreat(target, 1000000.0f);
                     ChaseTimer = 20000;
                     IsChasing = true;
@@ -823,9 +825,10 @@ struct MANGOS_DLL_DECL boss_bigbadwolfAI : public ScriptedAI
             {
                 IsChasing = false;
 
-                if (Unit* target = Unit::GetUnit((*m_creature), HoodGUID))
+                if (Player* target = m_creature->GetMap()->GetPlayer(m_hoodGuid))
                 {
-                    HoodGUID = 0;
+                    m_hoodGuid.Clear();
+
                     if (m_creature->getThreatManager().getThreat(target))
                         m_creature->getThreatManager().modifyThreatPercent(target, -100);
 
@@ -948,7 +951,7 @@ struct MANGOS_DLL_DECL boss_julianneAI : public ScriptedAI
     uint32 EntryYellTimer;
     uint32 AggroYellTimer;
 
-    uint64 RomuloGUID;
+    ObjectGuid m_romuloGuid;
     uint32 Phase;
 
     uint32 BlindingPassionTimer;
@@ -966,7 +969,7 @@ struct MANGOS_DLL_DECL boss_julianneAI : public ScriptedAI
 
     void Reset()
     {
-        RomuloGUID = 0;
+        m_romuloGuid.Clear();
         Phase = PHASE_JULIANNE;
 
         BlindingPassionTimer = 30000;
@@ -1048,7 +1051,7 @@ struct MANGOS_DLL_DECL boss_romuloAI : public ScriptedAI
 
     ScriptedInstance* m_pInstance;
 
-    uint64 JulianneGUID;
+    ObjectGuid m_julianneGuid;
     uint32 Phase;
 
     uint32 EntryYellTimer;
@@ -1064,7 +1067,7 @@ struct MANGOS_DLL_DECL boss_romuloAI : public ScriptedAI
 
     void Reset()
     {
-        JulianneGUID = 0;
+        m_julianneGuid.Clear();
         Phase = PHASE_ROMULO;
 
         BackwardLungeTimer = 15000;
@@ -1088,13 +1091,12 @@ struct MANGOS_DLL_DECL boss_romuloAI : public ScriptedAI
     {
         DoScriptText(SAY_ROMULO_AGGRO, m_creature);
 
-        if (JulianneGUID)
+        if (m_julianneGuid)
         {
-            Creature* Julianne = ((Creature*)Unit::GetUnit((*m_creature), JulianneGUID));
+            Creature* Julianne = m_creature->GetMap()->GetCreature(m_julianneGuid);
+
             if (Julianne && Julianne->getVictim())
-            {
                 m_creature->AddThreat(Julianne->getVictim());
-            }
         }
     }
 
@@ -1156,11 +1158,11 @@ void boss_julianneAI::DamageTaken(Unit* done_by, uint32 &damage)
         //if this is true then we have to kill romulo too
         if (RomuloDead)
         {
-            if (Creature* Romulo = ((Creature*)Unit::GetUnit((*m_creature), RomuloGUID)))
+            if (Creature* Romulo = m_creature->GetMap()->GetCreature(m_romuloGuid))
             {
                 Romulo->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                 Romulo->GetMotionMaster()->Clear();
-                Romulo->setDeathState(JUST_DIED);
+                Romulo->SetDeathState(JUST_DIED);
                 Romulo->CombatStop(true);
                 Romulo->DeleteThreatList();
                 Romulo->SetUInt32Value(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
@@ -1169,12 +1171,17 @@ void boss_julianneAI::DamageTaken(Unit* done_by, uint32 &damage)
         }
 
         //if not already returned, then romulo is alive and we can pretend die
-        if (Creature* Romulo = ((Creature*)Unit::GetUnit((*m_creature), RomuloGUID)))
+        if (Creature* Romulo = m_creature->GetMap()->GetCreature(m_romuloGuid))
         {
             PretendToDie(m_creature);
             IsFakingDeath = true;
-            ((boss_romuloAI*)Romulo->AI())->ResurrectTimer = 10000;
-            ((boss_romuloAI*)Romulo->AI())->JulianneDead = true;
+
+            if (boss_romuloAI* pRomAI = dynamic_cast<boss_romuloAI*>(Romulo->AI()))
+            {
+                pRomAI->ResurrectTimer = 10000;
+                pRomAI->JulianneDead = true;
+            }
+
             damage = 0;
             return;
         }
@@ -1197,10 +1204,13 @@ void boss_romuloAI::DamageTaken(Unit* done_by, uint32 &damage)
         IsFakingDeath = true;
         Phase = PHASE_BOTH;
 
-        if (Creature* Julianne = ((Creature*)Unit::GetUnit((*m_creature), JulianneGUID)))
+        if (Creature* Julianne = m_creature->GetMap()->GetCreature(m_julianneGuid))
         {
-            ((boss_julianneAI*)Julianne->AI())->RomuloDead = true;
-            ((boss_julianneAI*)Julianne->AI())->ResurrectSelfTimer = 10000;
+            if (boss_julianneAI* pJulAI = dynamic_cast<boss_julianneAI*>(Julianne->AI()))
+            {
+                pJulAI->ResurrectSelfTimer = 10000;
+                pJulAI->RomuloDead = true;
+            }
         }
 
         damage = 0;
@@ -1211,11 +1221,11 @@ void boss_romuloAI::DamageTaken(Unit* done_by, uint32 &damage)
     {
         if (JulianneDead)
         {
-            if (Creature* Julianne = ((Creature*)Unit::GetUnit((*m_creature), JulianneGUID)))
+            if (Creature* Julianne = m_creature->GetMap()->GetCreature(m_julianneGuid))
             {
                 Julianne->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                 Julianne->GetMotionMaster()->Clear();
-                Julianne->setDeathState(JUST_DIED);
+                Julianne->SetDeathState(JUST_DIED);
                 Julianne->CombatStop(true);
                 Julianne->DeleteThreatList();
                 Julianne->SetUInt32Value(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
@@ -1223,12 +1233,17 @@ void boss_romuloAI::DamageTaken(Unit* done_by, uint32 &damage)
             return;
         }
 
-        if (Creature* Julianne = ((Creature*)Unit::GetUnit((*m_creature), JulianneGUID)))
+        if (Creature* Julianne = m_creature->GetMap()->GetCreature(m_julianneGuid))
         {
             PretendToDie(m_creature);
             IsFakingDeath = true;
-            ((boss_julianneAI*)Julianne->AI())->ResurrectTimer = 10000;
-            ((boss_julianneAI*)Julianne->AI())->RomuloDead = true;
+
+            if (boss_julianneAI* pJulAI = dynamic_cast<boss_julianneAI*>(Julianne->AI()))
+            {
+                pJulAI->ResurrectTimer = 10000;
+                pJulAI->RomuloDead = true;
+            }
+
             damage = 0;
             return;
         }
@@ -1275,15 +1290,20 @@ void boss_julianneAI::UpdateAI(const uint32 diff)
     {
         if (SummonRomuloTimer < diff)
         {
-            if (Creature* pRomulo = m_creature->SummonCreature(CREATURE_ROMULO, ROMULO_X, ROMULO_Y, m_creature->GetPositionZ(), 0, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, HOUR*2*IN_MILISECONDS))
+            if (Creature* pRomulo = m_creature->SummonCreature(CREATURE_ROMULO, ROMULO_X, ROMULO_Y, m_creature->GetPositionZ(), 0, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, HOUR*2*IN_MILLISECONDS))
             {
-                RomuloGUID = pRomulo->GetGUID();
-                ((boss_romuloAI*)pRomulo->AI())->JulianneGUID = m_creature->GetGUID();
-                ((boss_romuloAI*)pRomulo->AI())->Phase = PHASE_ROMULO;
-                pRomulo->SetInCombatWithZone();
+                m_romuloGuid = pRomulo->GetObjectGuid();
+
+                if (boss_romuloAI* pRomAI = dynamic_cast<boss_romuloAI*>(pRomulo->AI()))
+                {
+                    pRomAI->m_julianneGuid = m_creature->GetObjectGuid();
+                    pRomAI->Phase = PHASE_ROMULO;
+                }
 
                 //why?
                 pRomulo->setFaction(16);
+
+                pRomulo->SetInCombatWithZone();
             }
             SummonedRomulo = true;
         }else SummonRomuloTimer -= diff;
@@ -1312,12 +1332,16 @@ void boss_julianneAI::UpdateAI(const uint32 diff)
     {
         if (ResurrectTimer < diff)
         {
-            Creature* Romulo = ((Creature*)Unit::GetUnit((*m_creature), RomuloGUID));
-            if (Romulo && ((boss_romuloAI*)Romulo->AI())->IsFakingDeath)
+            Creature* pRomulo = m_creature->GetMap()->GetCreature(m_romuloGuid);
+            boss_romuloAI* pRomAI = dynamic_cast<boss_romuloAI*>(pRomulo->AI());
+
+            if (pRomulo && pRomAI && pRomAI->IsFakingDeath)
             {
                 DoScriptText(SAY_JULIANNE_RESURRECT, m_creature);
-                Resurrect(Romulo);
-                ((boss_romuloAI*)Romulo->AI())->IsFakingDeath = false;
+                Resurrect(pRomulo);
+
+                pRomAI->IsFakingDeath = false;
+
                 RomuloDead = false;
                 ResurrectTimer = 10000;
             }
@@ -1326,7 +1350,7 @@ void boss_julianneAI::UpdateAI(const uint32 diff)
 
     if (BlindingPassionTimer < diff)
     {
-        if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+        if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
             DoCastSpellIfCan(pTarget, SPELL_BLINDING_PASSION);
 
         BlindingPassionTimer = urand(30000, 45000);
@@ -1340,7 +1364,7 @@ void boss_julianneAI::UpdateAI(const uint32 diff)
 
     if (PowerfulAttractionTimer < diff)
     {
-        if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+        if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
             DoCastSpellIfCan(pTarget, SPELL_POWERFUL_ATTRACTION);
 
         PowerfulAttractionTimer = urand(5000, 30000);
@@ -1350,7 +1374,7 @@ void boss_julianneAI::UpdateAI(const uint32 diff)
     {
         if (urand(0, 1) && SummonedRomulo)
         {
-            Creature* Romulo = ((Creature*)Unit::GetUnit((*m_creature), RomuloGUID));
+            Creature* Romulo = m_creature->GetMap()->GetCreature(m_romuloGuid);
             if (Romulo && Romulo->isAlive() && !RomuloDead)
                 DoCastSpellIfCan(Romulo, SPELL_ETERNAL_AFFECTION);
         } else DoCastSpellIfCan(m_creature, SPELL_ETERNAL_AFFECTION);
@@ -1370,12 +1394,16 @@ void boss_romuloAI::UpdateAI(const uint32 diff)
     {
         if (ResurrectTimer < diff)
         {
-            Creature* Julianne = ((Creature*)Unit::GetUnit((*m_creature), JulianneGUID));
-            if (Julianne && ((boss_julianneAI*)Julianne->AI())->IsFakingDeath)
+            Creature* pJulianne = m_creature->GetMap()->GetCreature(m_julianneGuid);
+            boss_julianneAI* pJulAI = dynamic_cast<boss_julianneAI*>(pJulianne->AI());
+
+            if (pJulianne && pJulAI && pJulAI->IsFakingDeath)
             {
                 DoScriptText(SAY_ROMULO_RESURRECT, m_creature);
-                Resurrect(Julianne);
-                ((boss_julianneAI*)Julianne->AI())->IsFakingDeath = false;
+                Resurrect(pJulianne);
+
+                pJulAI->IsFakingDeath = false;
+
                 JulianneDead = false;
                 ResurrectTimer = 10000;
             }
@@ -1384,7 +1412,7 @@ void boss_romuloAI::UpdateAI(const uint32 diff)
 
     if (BackwardLungeTimer < diff)
     {
-        Unit* target = SelectUnit(SELECT_TARGET_RANDOM, 1);
+        Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1);
         if (target && !m_creature->HasInArc(M_PI_F, target))
         {
             DoCastSpellIfCan(target, SPELL_BACKWARD_LUNGE);
@@ -1400,7 +1428,7 @@ void boss_romuloAI::UpdateAI(const uint32 diff)
 
     if (DeadlySwatheTimer < diff)
     {
-        if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM, 0))
+        if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
             DoCastSpellIfCan(pTarget, SPELL_DEADLY_SWATHE);
 
         DeadlySwatheTimer = urand(15000, 25000);
@@ -1427,64 +1455,64 @@ CreatureAI* GetAI_boss_romulo(Creature* pCreature)
 
 void AddSC_bosses_opera()
 {
-    Script* newscript;
+    Script* pNewScript;
 
     // Oz
-    newscript = new Script;
-    newscript->GetAI = &GetAI_boss_dorothee;
-    newscript->Name = "boss_dorothee";
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->GetAI = &GetAI_boss_dorothee;
+    pNewScript->Name = "boss_dorothee";
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->GetAI = &GetAI_boss_strawman;
-    newscript->Name = "boss_strawman";
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->GetAI = &GetAI_boss_strawman;
+    pNewScript->Name = "boss_strawman";
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->GetAI = &GetAI_boss_tinhead;
-    newscript->Name = "boss_tinhead";
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->GetAI = &GetAI_boss_tinhead;
+    pNewScript->Name = "boss_tinhead";
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->GetAI = &GetAI_boss_roar;
-    newscript->Name = "boss_roar";
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->GetAI = &GetAI_boss_roar;
+    pNewScript->Name = "boss_roar";
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->GetAI = &GetAI_boss_crone;
-    newscript->Name = "boss_crone";
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->GetAI = &GetAI_boss_crone;
+    pNewScript->Name = "boss_crone";
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->GetAI = &GetAI_mob_tito;
-    newscript->Name = "mob_tito";
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->GetAI = &GetAI_mob_tito;
+    pNewScript->Name = "mob_tito";
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->GetAI = &GetAI_mob_cyclone;
-    newscript->Name = "mob_cyclone";
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->GetAI = &GetAI_mob_cyclone;
+    pNewScript->Name = "mob_cyclone";
+    pNewScript->RegisterSelf();
 
     // Hood
-    newscript = new Script;
-    newscript->pGossipHello = &GossipHello_npc_grandmother;
-    newscript->pGossipSelect = &GossipSelect_npc_grandmother;
-    newscript->Name = "npc_grandmother";
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->pGossipHello = &GossipHello_npc_grandmother;
+    pNewScript->pGossipSelect = &GossipSelect_npc_grandmother;
+    pNewScript->Name = "npc_grandmother";
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->GetAI = &GetAI_boss_bigbadwolf;
-    newscript->Name = "boss_bigbadwolf";
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->GetAI = &GetAI_boss_bigbadwolf;
+    pNewScript->Name = "boss_bigbadwolf";
+    pNewScript->RegisterSelf();
 
     // Romeo And Juliet
-    newscript = new Script;
-    newscript->GetAI = &GetAI_boss_julianne;
-    newscript->Name = "boss_julianne";
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->GetAI = &GetAI_boss_julianne;
+    pNewScript->Name = "boss_julianne";
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->GetAI = &GetAI_boss_romulo;
-    newscript->Name = "boss_romulo";
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->GetAI = &GetAI_boss_romulo;
+    pNewScript->Name = "boss_romulo";
+    pNewScript->RegisterSelf();
 }

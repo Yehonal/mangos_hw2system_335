@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,8 +16,8 @@
 
 /* ScriptData
 SDName: Boss_Bloodboil
-SD%Complete: 80
-SDComment: Bloodboil not working correctly, missing enrage
+SD%Complete: 85
+SDComment: Bloodboil not working correctly
 SDCategory: Black Temple
 EndScriptData */
 
@@ -50,6 +50,7 @@ EndScriptData */
 #define SPELL_TAUNT_GURTOGG      40603
 #define SPELL_INSIGNIFIGANCE     40618
 #define SPELL_BERSERK            45078
+#define SPELL_ENRAGE             27680
 
 struct MANGOS_DLL_DECL boss_gurtogg_bloodboilAI : public ScriptedAI
 {
@@ -61,7 +62,7 @@ struct MANGOS_DLL_DECL boss_gurtogg_bloodboilAI : public ScriptedAI
 
     ScriptedInstance* m_pInstance;
 
-    uint64 TargetGUID;
+    ObjectGuid m_targetGuid;
 
     float TargetThreat;
 
@@ -75,12 +76,13 @@ struct MANGOS_DLL_DECL boss_gurtogg_bloodboilAI : public ScriptedAI
     uint32 EjectTimer;
     uint32 BewilderingStrikeTimer;
     uint32 PhaseChangeTimer;
+    uint32 m_uiEnrageTimer;
 
     bool Phase1;
 
     void Reset()
     {
-        TargetGUID = 0;
+        m_targetGuid.Clear();
 
         TargetThreat = 0;
 
@@ -94,6 +96,7 @@ struct MANGOS_DLL_DECL boss_gurtogg_bloodboilAI : public ScriptedAI
         EjectTimer = 10000;
         BewilderingStrikeTimer = 15000;
         PhaseChangeTimer = 60000;
+        m_uiEnrageTimer = 600000;
 
         Phase1 = true;
     }
@@ -106,8 +109,6 @@ struct MANGOS_DLL_DECL boss_gurtogg_bloodboilAI : public ScriptedAI
 
     void Aggro(Unit *who)
     {
-        m_creature->SetInCombatWithZone();
-
         DoScriptText(SAY_AGGRO, m_creature);
 
         if (m_pInstance)
@@ -142,7 +143,8 @@ struct MANGOS_DLL_DECL boss_gurtogg_bloodboilAI : public ScriptedAI
         //store the threat list in a different container
         for (ThreatList::const_iterator itr = tList.begin();itr != tList.end(); ++itr)
         {
-            Unit *target = Unit::GetUnit(*m_creature, (*itr)->getUnitGuid());
+            Unit *target = m_creature->GetMap()->GetUnit((*itr)->getUnitGuid());
+
             //only on alive players
             if (target && target->isAlive() && target->GetTypeId() == TYPEID_PLAYER)
                 targets.push_back(target);
@@ -174,18 +176,15 @@ struct MANGOS_DLL_DECL boss_gurtogg_bloodboilAI : public ScriptedAI
         }*/
     }
 
-    void RevertThreatOnTarget(uint64 guid)
+    void RevertThreatOnTarget(ObjectGuid guid)
     {
-        Unit* pUnit = NULL;
-        pUnit = Unit::GetUnit((*m_creature), guid);
-
-        if (pUnit)
+        if (Player* pPlayer = m_creature->GetMap()->GetPlayer(guid))
         {
-            if (m_creature->getThreatManager().getThreat(pUnit))
-                m_creature->getThreatManager().modifyThreatPercent(pUnit, -100);
+            if (m_creature->getThreatManager().getThreat(pPlayer))
+                m_creature->getThreatManager().modifyThreatPercent(pPlayer, -100);
 
             if (TargetThreat)
-                m_creature->AddThreat(pUnit, TargetThreat);
+                m_creature->AddThreat(pPlayer, TargetThreat);
         }
     }
 
@@ -222,7 +221,7 @@ struct MANGOS_DLL_DECL boss_gurtogg_bloodboilAI : public ScriptedAI
                 DoCastSpellIfCan(m_creature->getVictim(), SPELL_BEWILDERING_STRIKE);
                 float mt_threat = m_creature->getThreatManager().getThreat(m_creature->getVictim());
 
-                if (Unit* target = SelectUnit(SELECT_TARGET_TOPAGGRO, 1))
+                if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 1))
                     m_creature->AddThreat(target, mt_threat);
 
                 BewilderingStrikeTimer = 20000;
@@ -272,13 +271,13 @@ struct MANGOS_DLL_DECL boss_gurtogg_bloodboilAI : public ScriptedAI
         {
             if (Phase1)
             {
-                Unit* target = SelectUnit(SELECT_TARGET_RANDOM, 0);
+                Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
                 if (target && target->isAlive())
                 {
                     Phase1 = false;
 
                     TargetThreat = m_creature->getThreatManager().getThreat(target);
-                    TargetGUID = target->GetGUID();
+                    m_targetGuid = target->GetObjectGuid();
                     target->CastSpell(m_creature, SPELL_TAUNT_GURTOGG, true);
 
                     if (m_creature->getThreatManager().getThreat(target))
@@ -305,10 +304,10 @@ struct MANGOS_DLL_DECL boss_gurtogg_bloodboilAI : public ScriptedAI
                 }
             }else                                           // Encounter is a loop pretty much. Phase 1 -> Phase 2 -> Phase 1 -> Phase 2 till death or enrage
             {
-                if (TargetGUID)
-                    RevertThreatOnTarget(TargetGUID);
+                if (m_targetGuid)
+                    RevertThreatOnTarget(m_targetGuid);
 
-                TargetGUID = 0;
+                m_targetGuid.Clear();
                 Phase1 = true;
                 BloodboilTimer = 10000;
                 BloodboilCount = 0;
@@ -319,6 +318,13 @@ struct MANGOS_DLL_DECL boss_gurtogg_bloodboilAI : public ScriptedAI
                 PhaseChangeTimer = 60000;
             }
         }else PhaseChangeTimer -= diff;
+
+        //Enrage
+        if (m_uiEnrageTimer < diff)
+        {
+            DoCast(m_creature, SPELL_ENRAGE);
+            m_uiEnrageTimer = 60000;
+        }else m_uiEnrageTimer -= diff;
 
         DoMeleeAttackIfReady();
     }
@@ -331,9 +337,10 @@ CreatureAI* GetAI_boss_gurtogg_bloodboil(Creature* pCreature)
 
 void AddSC_boss_gurtogg_bloodboil()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_gurtogg_bloodboil";
-    newscript->GetAI = &GetAI_boss_gurtogg_bloodboil;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_gurtogg_bloodboil";
+    pNewScript->GetAI = &GetAI_boss_gurtogg_bloodboil;
+    pNewScript->RegisterSelf();
 }

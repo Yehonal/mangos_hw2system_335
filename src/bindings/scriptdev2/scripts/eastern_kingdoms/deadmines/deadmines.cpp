@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,54 +16,34 @@
 
 /* ScriptData
 SDName: Deadmines
-SD%Complete: 90
-SDComment: Contains GO for event at end door
+SD%Complete: 100
+SDComment: Contains GO for Iron Clad door event
 SDCategory: Deadmines
 EndScriptData */
 
 #include "precompiled.h"
 #include "deadmines.h"
 
-bool GOHello_go_door_lever_dm(Player* pPlayer, GameObject* pGo)
+bool GOUse_go_defias_cannon(Player* pPlayer, GameObject* pGo)
 {
     ScriptedInstance* pInstance = (ScriptedInstance*)pGo->GetInstanceData();
 
     if (!pInstance)
         return false;
 
-    GameObject* pGoDoor = pInstance->instance->GetGameObject(pInstance->GetData64(DATA_DEFIAS_DOOR));
-
-    if (pGoDoor && pGoDoor->GetGoState() == 1)
+    if (pInstance->GetData(TYPE_IRON_CLAD_DOOR) == DONE)
         return false;
 
-    return true;
-}
-
-bool GOHello_go_defias_cannon(Player* pPlayer, GameObject* pGo)
-{
-    ScriptedInstance* pInstance = (ScriptedInstance*)pGo->GetInstanceData();
-
-    if (!pInstance)
-        return false;
-
-    if (pInstance->GetData(TYPE_DEFIAS_ENDDOOR) == DONE || pInstance->GetData(TYPE_DEFIAS_ENDDOOR) == IN_PROGRESS)
-        return false;
-
-    pInstance->SetData(TYPE_DEFIAS_ENDDOOR, IN_PROGRESS);
+    pInstance->SetData(TYPE_IRON_CLAD_DOOR, DONE);
     return false;
 }
 
 void AddSC_deadmines()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "go_door_lever_dm";
-    newscript->pGOHello = &GOHello_go_door_lever_dm;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "go_defias_cannon";
-    newscript->pGOHello = &GOHello_go_defias_cannon;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_defias_cannon";
+    pNewScript->pGOUse = &GOUse_go_defias_cannon;
+    pNewScript->RegisterSelf();
 }

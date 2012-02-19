@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -98,7 +98,7 @@ CreatureAI* GetAI_boss_taldaram(Creature* pCreature)
 ## go_nerubian_device
 ######*/
 
-bool GOHello_go_nerubian_device(Player* pPlayer, GameObject* pGo)
+bool GOUse_go_nerubian_device(Player* pPlayer, GameObject* pGo)
 {
     ScriptedInstance* pInstance = (ScriptedInstance*)pGo->GetInstanceData();
 
@@ -106,21 +106,21 @@ bool GOHello_go_nerubian_device(Player* pPlayer, GameObject* pGo)
         return false;
 
     pInstance->SetData(TYPE_TALDARAM, SPECIAL);
-    pGo->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK1);
+    pGo->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT);
     return false;
 }
 
 void AddSC_boss_taldaram()
 {
-    Script* newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_taldaram";
-    newscript->GetAI = &GetAI_boss_taldaram;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_taldaram";
+    pNewScript->GetAI = &GetAI_boss_taldaram;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_nerubian_device";
-    newscript->pGOHello = &GOHello_go_nerubian_device;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_nerubian_device";
+    pNewScript->pGOUse = &GOUse_go_nerubian_device;
+    pNewScript->RegisterSelf();
 }

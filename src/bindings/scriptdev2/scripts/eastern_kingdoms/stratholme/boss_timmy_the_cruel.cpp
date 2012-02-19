@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -62,9 +62,10 @@ CreatureAI* GetAI_boss_timmy_the_cruel(Creature* pCreature)
 
 void AddSC_boss_timmy_the_cruel()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_timmy_the_cruel";
-    newscript->GetAI = &GetAI_boss_timmy_the_cruel;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_timmy_the_cruel";
+    pNewScript->GetAI = &GetAI_boss_timmy_the_cruel;
+    pNewScript->RegisterSelf();
 }

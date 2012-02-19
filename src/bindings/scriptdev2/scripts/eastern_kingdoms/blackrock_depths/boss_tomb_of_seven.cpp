@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -55,7 +55,7 @@ bool GossipHello_boss_gloomrel(Player* pPlayer, Creature* pCreature)
                 pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_TRIBUTE, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
         }
     }
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
     return true;
 }
 
@@ -65,7 +65,7 @@ bool GossipSelect_boss_gloomrel(Player* pPlayer, Creature* pCreature, uint32 uiS
     {
         case GOSSIP_ACTION_INFO_DEF+1:
             pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_TEACH_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 11);
-            pPlayer->SEND_GOSSIP_MENU(2606, pCreature->GetGUID());
+            pPlayer->SEND_GOSSIP_MENU(2606, pCreature->GetObjectGuid());
             break;
         case GOSSIP_ACTION_INFO_DEF+11:
             pPlayer->CLOSE_GOSSIP_MENU();
@@ -73,14 +73,14 @@ bool GossipSelect_boss_gloomrel(Player* pPlayer, Creature* pCreature, uint32 uiS
             break;
         case GOSSIP_ACTION_INFO_DEF+2:
             pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "[PH] Continue...", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 22);
-            pPlayer->SEND_GOSSIP_MENU(2604, pCreature->GetGUID());
+            pPlayer->SEND_GOSSIP_MENU(2604, pCreature->GetObjectGuid());
             break;
         case GOSSIP_ACTION_INFO_DEF+22:
             pPlayer->CLOSE_GOSSIP_MENU();
             if (ScriptedInstance* pInstance = (ScriptedInstance*)pCreature->GetInstanceData())
             {
                 //are 5 minutes expected? go template may have data to despawn when used at quest
-                pInstance->DoRespawnGameObject(pInstance->GetData64(DATA_GO_CHALICE),MINUTE*5);
+                pInstance->DoRespawnGameObject(GO_SPECTRAL_CHALICE, MINUTE*5);
             }
             break;
     }
@@ -145,7 +145,7 @@ struct MANGOS_DLL_DECL boss_doomrelAI : public ScriptedAI
 
     void JustSummoned(Creature* pSummoned)
     {
-        if (Unit* pTarget = SelectUnit(SELECT_TARGET_RANDOM,0))
+        if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
             pSummoned->AI()->AttackStart(pTarget);
     }
 
@@ -154,17 +154,17 @@ struct MANGOS_DLL_DECL boss_doomrelAI : public ScriptedAI
         switch(uiPhase)
         {
             case 0:
-                return m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_ANGERREL));
+                return m_pInstance->GetSingleCreatureFromStorage(NPC_ANGERREL);
             case 1:
-                return m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_SEETHREL));
+                return m_pInstance->GetSingleCreatureFromStorage(NPC_SEETHREL);
             case 2:
-                return m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_DOPEREL));
+                return m_pInstance->GetSingleCreatureFromStorage(NPC_DOPEREL);
             case 3:
-                return m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_GLOOMREL));
+                return m_pInstance->GetSingleCreatureFromStorage(NPC_GLOOMREL);
             case 4:
-                return m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_VILEREL));
+                return m_pInstance->GetSingleCreatureFromStorage(NPC_VILEREL);
             case 5:
-                return m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_HATEREL));
+                return m_pInstance->GetSingleCreatureFromStorage(NPC_HATEREL);
             case 6:
                 return m_creature;
         }
@@ -236,7 +236,7 @@ struct MANGOS_DLL_DECL boss_doomrelAI : public ScriptedAI
         //Immolate_Timer
         if (m_uiImmolate_Timer < diff)
         {
-            if (Unit* target = SelectUnit(SELECT_TARGET_RANDOM,0))
+            if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
                 DoCastSpellIfCan(target,SPELL_IMMOLATE);
 
             m_uiImmolate_Timer = 25000;
@@ -286,7 +286,7 @@ bool GossipHello_boss_doomrel(Player* pPlayer, Creature* pCreature)
             pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_CHALLENGE, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
     }
 
-    pPlayer->SEND_GOSSIP_MENU(2601, pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(2601, pCreature->GetObjectGuid());
     return true;
 }
 
@@ -308,18 +308,18 @@ bool GossipSelect_boss_doomrel(Player* pPlayer, Creature* pCreature, uint32 uiSe
 
 void AddSC_boss_tomb_of_seven()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_gloomrel";
-    newscript->pGossipHello = &GossipHello_boss_gloomrel;
-    newscript->pGossipSelect = &GossipSelect_boss_gloomrel;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_gloomrel";
+    pNewScript->pGossipHello = &GossipHello_boss_gloomrel;
+    pNewScript->pGossipSelect = &GossipSelect_boss_gloomrel;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_doomrel";
-    newscript->GetAI = &GetAI_boss_doomrel;
-    newscript->pGossipHello = &GossipHello_boss_doomrel;
-    newscript->pGossipSelect = &GossipSelect_boss_doomrel;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_doomrel";
+    pNewScript->GetAI = &GetAI_boss_doomrel;
+    pNewScript->pGossipHello = &GossipHello_boss_doomrel;
+    pNewScript->pGossipSelect = &GossipSelect_boss_doomrel;
+    pNewScript->RegisterSelf();
 }

@@ -174,7 +174,7 @@ struct MANGOS_DLL_DECL boss_thrallAI : public ScriptedAI
         //spell timer generale, 1 spell ogni 5 secondi, a rotazione tra quelle definite
         if (spell_timer < diff)
         {
-			target2 = SelectUnit(SELECT_TARGET_RANDOM,0);
+			target2 = m_creature->SelectRandomUnfriendlyTarget();
             switch(spell)
 			{
 			case 0:
@@ -217,7 +217,7 @@ struct MANGOS_DLL_DECL boss_thrallAI : public ScriptedAI
 
             for(int i = 0; i <= 3; i++)
 			{
-				target = SelectUnit(SELECT_TARGET_RANDOM,0);
+				target = m_creature->SelectRandomUnfriendlyTarget();
 				if(target)
 				{
 				switch(rand()%2)
@@ -253,7 +253,7 @@ struct MANGOS_DLL_DECL boss_thrallAI : public ScriptedAI
 
 };
 
-CreatureAI* GetAI_boss_thrall(Creature *_Creature)
+CreatureAI* GetAI_boss_thrall_azsc(Creature *_Creature)
 {
     return new boss_thrallAI (_Creature);
 }
@@ -264,6 +264,6 @@ void AddSC_boss_thrall_azsc()
     Script *newscript;
     newscript = new Script;
     newscript->Name="boss_thrall_azsc";
-    newscript->GetAI = GetAI_boss_thrall;
+    newscript->GetAI = GetAI_boss_thrall_azsc;
     newscript->RegisterSelf();
 }

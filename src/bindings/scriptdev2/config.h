@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,10 +21,11 @@
 
 #include "Platform/CompilerDefs.h"
 #include "revision.h"
+#include "sd2_revision_nr.h"
 
 // Format is YYYYMMDDRR where RR is the change in the conf file
 // for that day.
-#define SD2_CONF_VERSION    2009040501
+#define SD2_CONF_VERSION    2010062001
 
 #ifdef WIN32
   #define MANGOS_DLL_EXPORT extern "C" __declspec(dllexport)
@@ -35,7 +36,7 @@
 #endif
 
 #ifndef _VERSION
-  #define _VERSION "Revision [" REVISION_ID "] " REVISION_DATE " " REVISION_TIME
+  #define _VERSION "Revision [" SD2_REVISION_NR "] (" REVISION_ID ") " REVISION_DATE " " REVISION_TIME
 #endif
 
 // The path to config files

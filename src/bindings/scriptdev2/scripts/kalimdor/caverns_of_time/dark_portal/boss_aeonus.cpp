@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2012 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -38,7 +38,7 @@ enum
     SPELL_TIME_STOP         = 31422,
     SPELL_ENRAGE            = 37605,
     SPELL_SAND_BREATH       = 31473,
-    H_SPELL_SAND_BREATH     = 39049
+    SPELL_SAND_BREATH_H     = 39049
 };
 
 struct MANGOS_DLL_DECL boss_aeonusAI : public ScriptedAI
@@ -106,7 +106,7 @@ struct MANGOS_DLL_DECL boss_aeonusAI : public ScriptedAI
         //Sand Breath
         if (SandBreath_Timer < diff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(), m_bIsRegularMode ? SPELL_SAND_BREATH : H_SPELL_SAND_BREATH);
+            DoCastSpellIfCan(m_creature->getVictim(), m_bIsRegularMode ? SPELL_SAND_BREATH : SPELL_SAND_BREATH_H);
             SandBreath_Timer = urand(15000, 25000);
         }else SandBreath_Timer -= diff;
 
@@ -136,9 +136,10 @@ CreatureAI* GetAI_boss_aeonus(Creature* pCreature)
 
 void AddSC_boss_aeonus()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_aeonus";
-    newscript->GetAI = &GetAI_boss_aeonus;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_aeonus";
+    pNewScript->GetAI = &GetAI_boss_aeonus;
+    pNewScript->RegisterSelf();
 }

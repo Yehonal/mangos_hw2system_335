@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -73,7 +73,7 @@ CanCastResult CreatureAI::CanCastSpell(Unit* pTarget, const SpellEntry *pSpell, 
         return CAST_FAIL_OTHER;
 }
 
-CanCastResult CreatureAI::DoCastSpellIfCan(Unit* pTarget, uint32 uiSpell, uint32 uiCastFlags, uint64 uiOriginalCasterGUID)
+CanCastResult CreatureAI::DoCastSpellIfCan(Unit* pTarget, uint32 uiSpell, uint32 uiCastFlags, ObjectGuid uiOriginalCasterGUID)
 {
     Unit* pCaster = m_creature;
 
@@ -116,4 +116,9 @@ CanCastResult CreatureAI::DoCastSpellIfCan(Unit* pTarget, uint32 uiSpell, uint32
     }
     else
         return CAST_FAIL_IS_CASTING;
+}
+
+bool CreatureAI::DoMeleeAttackIfReady()
+{
+    return m_creature->UpdateMeleeAttackingState();
 }

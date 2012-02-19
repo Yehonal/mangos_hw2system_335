@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -154,6 +154,7 @@ enum EYBattleGroundObjectTypes
 
 #define BG_EY_NotEYWeekendHonorTicks    330
 #define BG_EY_EYWeekendHonorTicks       200
+#define BG_EY_EVENT_START_BATTLE        13180
 
 enum BG_EY_Score
 {
@@ -263,7 +264,6 @@ class BattleGroundEY : public BattleGround
         void RespawnFlagAfterDrop();
 
         void RemovePlayer(Player *plr, ObjectGuid guid);
-        void HandleBuffUse(uint64 const& buff_guid);
         void HandleAreaTrigger(Player *Source, uint32 Trigger);
         void HandleKillPlayer(Player *player, Player *killer);
         virtual WorldSafeLocsEntry const* GetClosestGraveYard(Player* player);

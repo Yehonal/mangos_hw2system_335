@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -47,12 +47,12 @@ VisibleNotifier::Notify()
     {
         for(Transport::PlayerSet::const_iterator itr = transport->GetPassengers().begin();itr!=transport->GetPassengers().end();++itr)
         {
-            if (i_clientGUIDs.find((*itr)->GetGUID()) != i_clientGUIDs.end())
+            if (i_clientGUIDs.find((*itr)->GetObjectGuid()) != i_clientGUIDs.end())
             {
                 // ignore far sight case
                 (*itr)->UpdateVisibilityOf(*itr, &player);
                 player.UpdateVisibilityOf(&player, *itr, i_data, i_visibleNow);
-                i_clientGUIDs.erase((*itr)->GetGUID());
+                i_clientGUIDs.erase((*itr)->GetObjectGuid());
             }
         }
     }
@@ -94,10 +94,6 @@ VisibleNotifier::Notify()
         // target aura duration for caster show only if target exist at caster client
         if ((*vItr) != &player && (*vItr)->isType(TYPEMASK_UNIT))
             player.SendAurasForTarget((Unit*)(*vItr));
-
-        // non finished movements show to player
-        if ((*vItr)->GetTypeId()==TYPEID_UNIT && ((Creature*)(*vItr))->isAlive())
-            ((Creature*)(*vItr))->SendMonsterMoveWithSpeedToCurrentDestination(&player);
     }
 }
 
@@ -216,7 +212,7 @@ void MaNGOS::RespawnDo::operator()( Creature* u ) const
     Map* map = u->GetMap();
     if (map->IsBattleGroundOrArena())
     {
-        BattleGroundEventIdx eventId = sBattleGroundMgr.GetCreatureEventIndex(u->GetDBTableGUIDLow());
+        BattleGroundEventIdx eventId = sBattleGroundMgr.GetCreatureEventIndex(u->GetGUIDLow());
         if (!((BattleGroundMap*)map)->GetBG()->IsActiveEvent(eventId.event1, eventId.event2))
             return;
     }
@@ -230,7 +226,7 @@ void MaNGOS::RespawnDo::operator()( GameObject* u ) const
     Map* map = u->GetMap();
     if (map->IsBattleGroundOrArena())
     {
-        BattleGroundEventIdx eventId = sBattleGroundMgr.GetGameObjectEventIndex(u->GetDBTableGUIDLow());
+        BattleGroundEventIdx eventId = sBattleGroundMgr.GetGameObjectEventIndex(u->GetGUIDLow());
         if (!((BattleGroundMap*)map)->GetBG()->IsActiveEvent(eventId.event1, eventId.event2))
             return;
     }

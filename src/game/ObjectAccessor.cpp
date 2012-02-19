@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,10 +20,6 @@
 #include "ObjectMgr.h"
 #include "Policies/SingletonImp.h"
 #include "Player.h"
-#include "Creature.h"
-#include "GameObject.h"
-#include "DynamicObject.h"
-#include "Vehicle.h"
 #include "WorldPacket.h"
 #include "Item.h"
 #include "Corpse.h"
@@ -32,7 +28,6 @@
 #include "Map.h"
 #include "CellImpl.h"
 #include "GridNotifiersImpl.h"
-#include "Opcodes.h"
 #include "ObjectGuid.h"
 #include "World.h"
 
@@ -55,10 +50,10 @@ ObjectAccessor::~ObjectAccessor()
 Unit*
 ObjectAccessor::GetUnit(WorldObject const &u, ObjectGuid guid)
 {
-    if(guid.IsEmpty())
+    if (!guid)
         return NULL;
 
-    if(guid.IsPlayer())
+    if (guid.IsPlayer())
         return FindPlayer(guid);
 
     if (!u.IsInWorld())
@@ -70,31 +65,32 @@ ObjectAccessor::GetUnit(WorldObject const &u, ObjectGuid guid)
 Corpse* ObjectAccessor::GetCorpseInMap(ObjectGuid guid, uint32 mapid)
 {
     Corpse * ret = HashMapHolder<Corpse>::Find(guid);
-    if(!ret)
+    if (!ret)
         return NULL;
-    if(ret->GetMapId() != mapid)
+    if (ret->GetMapId() != mapid)
         return NULL;
 
     return ret;
 }
 
-Player*
-ObjectAccessor::FindPlayer(ObjectGuid guid)
+Player* ObjectAccessor::FindPlayer(ObjectGuid guid, bool inWorld /*= true*/)
 {
-    Player * plr = HashMapHolder<Player>::Find(guid);;
-    if(!plr || !plr->IsInWorld())
+    if (!guid)
+        return NULL;
+
+    Player* plr = HashMapHolder<Player>::Find(guid);;
+    if (!plr || (!plr->IsInWorld() && inWorld))
         return NULL;
 
     return plr;
 }
 
-Player*
-ObjectAccessor::FindPlayerByName(const char *name)
+Player* ObjectAccessor::FindPlayerByName(const char *name)
 {
     HashMapHolder<Player>::ReadGuard g(HashMapHolder<Player>::GetLock());
     HashMapHolder<Player>::MapType& m = sObjectAccessor.GetPlayers();
-    for(HashMapHolder<Player>::MapType::iterator iter = m.begin(); iter != m.end(); ++iter)
-        if(iter->second->IsInWorld() && ( ::strcmp(name, iter->second->GetName()) == 0 ))
+    for (HashMapHolder<Player>::MapType::iterator iter = m.begin(); iter != m.end(); ++iter)
+        if (iter->second->IsInWorld() && ( ::strcmp(name, iter->second->GetName()) == 0 ))
             return iter->second;
 
     return NULL;
@@ -105,7 +101,7 @@ ObjectAccessor::SaveAllPlayers()
 {
     HashMapHolder<Player>::ReadGuard g(HashMapHolder<Player>::GetLock());
     HashMapHolder<Player>::MapType& m = sObjectAccessor.GetPlayers();
-    for(HashMapHolder<Player>::MapType::iterator itr = m.begin(); itr != m.end(); ++itr)
+    for (HashMapHolder<Player>::MapType::iterator itr = m.begin(); itr != m.end(); ++itr)
         itr->second->SaveToDB();
 }
 
@@ -275,13 +271,10 @@ void ObjectAccessor::RemoveOldCorpses()
 
 /// Define the static member of HashMapHolder
 
-template <class T> UNORDERED_MAP< uint64, T* > HashMapHolder<T>::m_objectMap;
+template <class T> typename HashMapHolder<T>::MapType HashMapHolder<T>::m_objectMap;
 template <class T> ACE_RW_Thread_Mutex HashMapHolder<T>::i_lock;
 
 /// Global definitions for the hashmap storage
 
 template class HashMapHolder<Player>;
 template class HashMapHolder<Corpse>;
-
-/// Define the static member of ObjectAccessor
-std::list<Map*> ObjectAccessor::i_mapList;

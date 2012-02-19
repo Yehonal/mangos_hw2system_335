@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,8 @@
 #include "WaypointManager.h"
 #include "World.h"
 
+#include "revision_nr.h"
+
 ScriptMapMap sQuestEndScripts;
 ScriptMapMap sQuestStartScripts;
 ScriptMapMap sSpellScripts;
@@ -34,17 +36,50 @@ ScriptMapMap sCreatureMovementScripts;
 
 INSTANTIATE_SINGLETON_1(ScriptMgr);
 
-ScriptMgr::ScriptMgr()
+ScriptMgr::ScriptMgr() :
+    m_hScriptLib(NULL),
+
+    m_pOnInitScriptLibrary(NULL),
+    m_pOnFreeScriptLibrary(NULL),
+    m_pGetScriptLibraryVersion(NULL),
+
+    m_pGetCreatureAI(NULL),
+    m_pCreateInstanceData(NULL),
+
+    m_pOnGossipHello(NULL),
+    m_pOnGOGossipHello(NULL),
+    m_pOnGossipSelect(NULL),
+    m_pOnGOGossipSelect(NULL),
+    m_pOnGossipSelectWithCode(NULL),
+    m_pOnGOGossipSelectWithCode(NULL),
+    m_pOnQuestAccept(NULL),
+    m_pOnGOQuestAccept(NULL),
+    m_pOnItemQuestAccept(NULL),
+    m_pOnQuestRewarded(NULL),
+    m_pOnGOQuestRewarded(NULL),
+    m_pGetNPCDialogStatus(NULL),
+    m_pGetGODialogStatus(NULL),
+    m_pOnGOUse(NULL),
+    m_pOnItemUse(NULL),
+    m_pOnAreaTrigger(NULL),
+    m_pOnProcessEvent(NULL),
+    m_pOnEffectDummyCreature(NULL),
+    m_pOnEffectDummyGO(NULL),
+    m_pOnEffectDummyItem(NULL),
+    m_pOnAuraDummy(NULL),
+
+    m_scheduledScripts(0)
 {
 }
 
 ScriptMgr::~ScriptMgr()
 {
+    UnloadScriptLibrary();
 }
 
 void ScriptMgr::LoadScripts(ScriptMapMap& scripts, const char* tablename)
 {
-    if (sWorld.IsScriptScheduled())                         // function don't must be called in time scripts use.
+    if (IsScriptScheduled())                                // function don't must be called in time scripts use.
         return;
 
     sLog.outString("%s :", tablename);
@@ -57,7 +92,7 @@ void ScriptMgr::LoadScripts(ScriptMapMap& scripts, const char* tablename)
 
     if (!result)
     {
-        barGoLink bar(1);
+        BarGoLink bar(1);
         bar.step();
 
         sLog.outString();
@@ -65,7 +100,7 @@ void ScriptMgr::LoadScripts(ScriptMapMap& scripts, const char* tablename)
         return;
     }
 
-    barGoLink bar((int)result->GetRowCount());
+    BarGoLink bar(result->GetRowCount());
 
     do
     {
@@ -138,6 +173,16 @@ void ScriptMgr::LoadScripts(ScriptMapMap& scripts, const char* tablename)
                 if (!sEmotesStore.LookupEntry(tmp.emote.emoteId))
                 {
                     sLog.outErrorDb("Table `%s` has invalid emote id (datalong = %u) in SCRIPT_COMMAND_EMOTE for script id %u", tablename, tmp.emote.emoteId, tmp.id);
+                    continue;
+                }
+                if (tmp.emote.creatureEntry && !ObjectMgr::GetCreatureTemplate(tmp.emote.creatureEntry))
+                {
+                    sLog.outErrorDb("Table `%s` has datalong2 = %u in SCRIPT_COMMAND_EMOTE for script id %u, but this creature_template does not exist.", tablename, tmp.emote.creatureEntry, tmp.id);
+                    continue;
+                }
+                if (tmp.emote.creatureEntry && !tmp.emote.searchRadius)
+                {
+                    sLog.outErrorDb("Table `%s` has datalong2 = %u in SCRIPT_COMMAND_EMOTE for script id %u, but search radius is too small (datalong3 = %u).", tablename, tmp.emote.creatureEntry, tmp.id, tmp.emote.searchRadius);
                     continue;
                 }
                 break;
@@ -299,7 +344,7 @@ void ScriptMgr::LoadScripts(ScriptMapMap& scripts, const char* tablename)
                         tablename, tmp.castSpell.spellId, tmp.id);
                     continue;
                 }
-                if (tmp.castSpell.flags & ~0x3)             // 2 bits
+                if (tmp.castSpell.flags & ~0x7)             // 3 bits
                 {
                     sLog.outErrorDb("Table `%s` using unknown flags in datalong2 (%u)i n SCRIPT_COMMAND_CAST_SPELL for script id %u",
                         tablename, tmp.castSpell.flags, tmp.id);
@@ -376,9 +421,9 @@ void ScriptMgr::LoadScripts(ScriptMapMap& scripts, const char* tablename)
             }
             case SCRIPT_COMMAND_SET_FACTION:
             {
-                if (tmp.faction.factionId && !sFactionStore.LookupEntry(tmp.faction.factionId))
+                if (tmp.faction.factionId && !sFactionTemplateStore.LookupEntry(tmp.faction.factionId))
                 {
-                    sLog.outErrorDb("Table `%s` has datalong2 = %u in SCRIPT_COMMAND_SET_FACTION for script id %u, but this faction does not exist.", tablename, tmp.faction.factionId, tmp.id);
+                    sLog.outErrorDb("Table `%s` has datalong = %u in SCRIPT_COMMAND_SET_FACTION for script id %u, but this faction-template does not exist.", tablename, tmp.faction.factionId, tmp.id);
                     continue;
                 }
 
@@ -469,6 +514,80 @@ void ScriptMgr::LoadScripts(ScriptMapMap& scripts, const char* tablename)
                 if (tmp.run.creatureEntry && !tmp.run.searchRadius)
                 {
                     sLog.outErrorDb("Table `%s` has datalong2 = %u in SCRIPT_COMMAND_SET_RUN for script id %u, but search radius is too small (datalong3 = %u).", tablename, tmp.run.creatureEntry, tmp.id, tmp.run.searchRadius);
+                    continue;
+                }
+
+                break;
+            }
+            case SCRIPT_COMMAND_ATTACK_START:
+            {
+                if (tmp.attack.creatureEntry && !ObjectMgr::GetCreatureTemplate(tmp.attack.creatureEntry))
+                {
+                    sLog.outErrorDb("Table `%s` has datalong2 = %u in SCRIPT_COMMAND_ATTACK_START for script id %u, but this creature_template does not exist.", tablename, tmp.attack.creatureEntry, tmp.id);
+                    continue;
+                }
+                if (tmp.attack.creatureEntry && !tmp.attack.searchRadius)
+                {
+                    sLog.outErrorDb("Table `%s` has datalong2 = %u in SCRIPT_COMMAND_ATTACK_START for script id %u, but search radius is too small (datalong3 = %u).", tablename, tmp.attack.creatureEntry, tmp.id, tmp.attack.searchRadius);
+                    continue;
+                }
+                break;
+            }
+            case SCRIPT_COMMAND_GO_LOCK_STATE:
+            {
+                if (!ObjectMgr::GetGameObjectInfo(tmp.goLockState.goEntry))
+                {
+                    sLog.outErrorDb("Table `%s` has datalong2 = %u in SCRIPT_COMMAND_GO_LOCK_STATE for script id %u, but this gameobject_template does not exist.", tablename, tmp.goLockState.goEntry, tmp.id);
+                    continue;
+                }
+                if (!tmp.goLockState.searchRadius)
+                {
+                    sLog.outErrorDb("Table `%s` has invalid search radius (datalong3 = %u) in SCRIPT_COMMAND_GO_LOCK_STATE for script id %u.", tablename, tmp.goLockState.searchRadius, tmp.id);
+                    continue;
+                }
+                if (// lock(0x01) and unlock(0x02) together
+                    ((tmp.goLockState.lockState & 0x01) && (tmp.goLockState.lockState & 0x02)) ||
+                    // non-interact (0x4) and interact (0x08) together
+                    ((tmp.goLockState.lockState & 0x04) && (tmp.goLockState.lockState & 0x08)) ||
+                    // no setting
+                    !tmp.goLockState.lockState ||
+                    // invalid number
+                    tmp.goLockState.lockState >= 0x10)
+                {
+                    sLog.outErrorDb("Table `%s` has invalid lock state (datalong = %u) in SCRIPT_COMMAND_GO_LOCK_STATE for script id %u.", tablename, tmp.goLockState.lockState, tmp.id);
+                    continue;
+                }
+                break;
+            }
+            case SCRIPT_COMMAND_STAND_STATE:
+            {
+                if (tmp.standState.stand_state >= MAX_UNIT_STAND_STATE)
+                {
+                    sLog.outErrorDb("Table `%s` has invalid stand state (datalong = %u) in SCRIPT_COMMAND_STAND_STATE for script id %u", tablename, tmp.standState.stand_state, tmp.id);
+                    continue;
+                }
+                if (tmp.standState.creatureEntry && !ObjectMgr::GetCreatureTemplate(tmp.standState.creatureEntry))
+                {
+                    sLog.outErrorDb("Table `%s` has datalong2 = %u in SCRIPT_COMMAND_STAND_STATE for script id %u, but this creature_template does not exist.", tablename, tmp.standState.creatureEntry, tmp.id);
+                    continue;
+                }
+                if (tmp.standState.creatureEntry && !tmp.standState.searchRadius)
+                {
+                    sLog.outErrorDb("Table `%s` has datalong2 = %u in SCRIPT_COMMAND_STAND_STATE for script id %u, but search radius is too small (datalong3 = %u).", tablename, tmp.standState.creatureEntry, tmp.id, tmp.standState.searchRadius);
+                    continue;
+                }
+                break;
+            }
+            case SCRIPT_COMMAND_MODIFY_NPC_FLAGS:
+            {
+                if (tmp.npcFlag.creatureEntry && !ObjectMgr::GetCreatureTemplate(tmp.npcFlag.creatureEntry))
+                {
+                    sLog.outErrorDb("Table `%s` has datalong3 = %u in SCRIPT_COMMAND_MODIFY_NPC_FLAGS for script id %u, but this creature_template does not exist.", tablename, tmp.run.creatureEntry, tmp.id);
+                    continue;
+                }
+                if (tmp.npcFlag.creatureEntry && !tmp.npcFlag.searchRadius)
+                {
+                    sLog.outErrorDb("Table `%s` has datalong3 = %u in SCRIPT_COMMAND_MODIFY_NPC_FLAGS for script id %u, but search radius is too small (datalong4 = %u).", tablename, tmp.run.creatureEntry, tmp.id, tmp.run.searchRadius);
                     continue;
                 }
 
@@ -571,9 +690,25 @@ void ScriptMgr::LoadEventScripts()
 
     // Load all possible script entries from gameobjects
     for(uint32 i = 1; i < sGOStorage.MaxEntry; ++i)
+    {
         if (GameObjectInfo const* goInfo = sGOStorage.LookupEntry<GameObjectInfo>(i))
+        {
             if (uint32 eventId = goInfo->GetEventScriptId())
                 evt_scripts.insert(eventId);
+
+            if (goInfo->type == GAMEOBJECT_TYPE_CAPTURE_POINT)
+            {
+                evt_scripts.insert(goInfo->capturePoint.neutralEventID1);
+                evt_scripts.insert(goInfo->capturePoint.neutralEventID2);
+                evt_scripts.insert(goInfo->capturePoint.contestedEventID1);
+                evt_scripts.insert(goInfo->capturePoint.contestedEventID2);
+                evt_scripts.insert(goInfo->capturePoint.progressEventID1);
+                evt_scripts.insert(goInfo->capturePoint.progressEventID2);
+                evt_scripts.insert(goInfo->capturePoint.winEventID1);
+                evt_scripts.insert(goInfo->capturePoint.winEventID2);
+            }
+        }
+    }
 
     // Load all possible script entries from spells
     for(uint32 i = 1; i < sSpellStore.GetNumRows(); ++i)
@@ -611,7 +746,7 @@ void ScriptMgr::LoadEventScripts()
     {
         std::set<uint32>::const_iterator itr2 = evt_scripts.find(itr->first);
         if (itr2 == evt_scripts.end())
-            sLog.outErrorDb("Table `event_scripts` has script (Id: %u) not referring to any gameobject_template type 10 data2 field, type 3 data6 field, type 13 data 2 field or any spell effect %u or path taxi node data",
+            sLog.outErrorDb("Table `event_scripts` has script (Id: %u) not referring to any gameobject_template type 10 data2 field, type 3 data6 field, type 13 data 2 field, type 29 or any spell effect %u or path taxi node data",
                 itr->first, SPELL_EFFECT_SEND_EVENT);
     }
 }
@@ -620,7 +755,7 @@ void ScriptMgr::LoadGossipScripts()
 {
     LoadScripts(sGossipScripts, "gossip_scripts");
 
-    // checks are done in LoadGossipMenuItems
+    // checks are done in LoadGossipMenuItems and LoadGossipMenu
 }
 
 void ScriptMgr::LoadCreatureMovementScripts()
@@ -684,7 +819,7 @@ void ScriptMgr::LoadAreaTriggerScripts()
 
     if (!result)
     {
-        barGoLink bar(1);
+        BarGoLink bar(1);
         bar.step();
 
         sLog.outString();
@@ -692,7 +827,7 @@ void ScriptMgr::LoadAreaTriggerScripts()
         return;
     }
 
-    barGoLink bar((int)result->GetRowCount());
+    BarGoLink bar(result->GetRowCount());
 
     do
     {
@@ -728,7 +863,7 @@ void ScriptMgr::LoadEventIdScripts()
 
     if (!result)
     {
-        barGoLink bar(1);
+        BarGoLink bar(1);
         bar.step();
 
         sLog.outString();
@@ -736,16 +871,32 @@ void ScriptMgr::LoadEventIdScripts()
         return;
     }
 
-    barGoLink bar((int)result->GetRowCount());
+    BarGoLink bar(result->GetRowCount());
 
     // TODO: remove duplicate code below, same way to collect event id's used in LoadEventScripts()
     std::set<uint32> evt_scripts;
 
     // Load all possible event entries from gameobjects
-    for(uint32 i = 1; i < sGOStorage.MaxEntry; ++i)
+    for (uint32 i = 1; i < sGOStorage.MaxEntry; ++i)
+    {
         if (GameObjectInfo const* goInfo = sGOStorage.LookupEntry<GameObjectInfo>(i))
+        {
             if (uint32 eventId = goInfo->GetEventScriptId())
                 evt_scripts.insert(eventId);
+
+            if (goInfo->type == GAMEOBJECT_TYPE_CAPTURE_POINT)
+            {
+                evt_scripts.insert(goInfo->capturePoint.neutralEventID1);
+                evt_scripts.insert(goInfo->capturePoint.neutralEventID2);
+                evt_scripts.insert(goInfo->capturePoint.contestedEventID1);
+                evt_scripts.insert(goInfo->capturePoint.contestedEventID2);
+                evt_scripts.insert(goInfo->capturePoint.progressEventID1);
+                evt_scripts.insert(goInfo->capturePoint.progressEventID2);
+                evt_scripts.insert(goInfo->capturePoint.winEventID1);
+                evt_scripts.insert(goInfo->capturePoint.winEventID2);
+            }
+        }
+    }
 
     // Load all possible event entries from spells
     for(uint32 i = 1; i < sSpellStore.GetNumRows(); ++i)
@@ -791,7 +942,7 @@ void ScriptMgr::LoadEventIdScripts()
 
         std::set<uint32>::const_iterator itr = evt_scripts.find(eventId);
         if (itr == evt_scripts.end())
-            sLog.outErrorDb("Table `scripted_event_id` has id %u not referring to any gameobject_template type 10 data2 field, type 3 data6 field, type 13 data 2 field or any spell effect %u or path taxi node data",
+            sLog.outErrorDb("Table `scripted_event_id` has id %u not referring to any gameobject_template type 10 data2 field, type 3 data6 field, type 13 data 2 field, type 29 or any spell effect %u or path taxi node data",
                 eventId, SPELL_EFFECT_SEND_EVENT);
 
         m_EventIdScripts[eventId] = GetScriptId(scriptName);
@@ -817,18 +968,20 @@ void ScriptMgr::LoadScriptNames()
       "UNION "
       "SELECT DISTINCT(ScriptName) FROM scripted_event_id WHERE ScriptName <> '' "
       "UNION "
-      "SELECT DISTINCT(ScriptName) FROM instance_template WHERE ScriptName <> ''");
+      "SELECT DISTINCT(ScriptName) FROM instance_template WHERE ScriptName <> '' "
+      "UNION "
+      "SELECT DISTINCT(ScriptName) FROM world_template WHERE ScriptName <> ''");
 
     if (!result)
     {
-        barGoLink bar(1);
+        BarGoLink bar(1);
         bar.step();
         sLog.outString();
         sLog.outErrorDb(">> Loaded empty set of Script Names!");
         return;
     }
 
-    barGoLink bar((int)result->GetRowCount());
+    BarGoLink bar(result->GetRowCount());
     uint32 count = 0;
 
     do
@@ -841,7 +994,7 @@ void ScriptMgr::LoadScriptNames()
 
     std::sort(m_scriptNames.begin(), m_scriptNames.end());
     sLog.outString();
-    sLog.outString( ">> Loaded %d Script Names", count );
+    sLog.outString(">> Loaded %d Script Names", count);
 }
 
 uint32 ScriptMgr::GetScriptId(const char *name) const
@@ -878,6 +1031,247 @@ uint32 ScriptMgr::GetEventIdScriptId(uint32 eventId) const
     return 0;
 }
 
+char const* ScriptMgr::GetScriptLibraryVersion() const
+{
+    if (!m_pGetScriptLibraryVersion)
+        return "";
+
+    return m_pGetScriptLibraryVersion();
+}
+
+CreatureAI* ScriptMgr::GetCreatureAI(Creature* pCreature)
+{
+    if (!m_pGetCreatureAI)
+        return NULL;
+
+    return m_pGetCreatureAI(pCreature);
+}
+
+InstanceData* ScriptMgr::CreateInstanceData(Map* pMap)
+{
+    if (!m_pCreateInstanceData)
+        return NULL;
+
+    return m_pCreateInstanceData(pMap);
+}
+
+bool ScriptMgr::OnGossipHello(Player* pPlayer, Creature* pCreature)
+{
+    return m_pOnGossipHello != NULL && m_pOnGossipHello(pPlayer, pCreature);
+}
+
+bool ScriptMgr::OnGossipHello(Player* pPlayer, GameObject* pGameObject)
+{
+    return m_pOnGOGossipHello != NULL && m_pOnGOGossipHello(pPlayer, pGameObject);
+}
+
+bool ScriptMgr::OnGossipSelect(Player* pPlayer, Creature* pCreature, uint32 sender, uint32 action, const char* code)
+{
+    if (code)
+        return m_pOnGossipSelectWithCode != NULL && m_pOnGossipSelectWithCode(pPlayer, pCreature, sender, action, code);
+    else
+        return m_pOnGossipSelect != NULL && m_pOnGossipSelect(pPlayer, pCreature, sender, action);
+}
+
+bool ScriptMgr::OnGossipSelect(Player* pPlayer, GameObject* pGameObject, uint32 sender, uint32 action, const char* code)
+{
+    if (code)
+        return m_pOnGOGossipSelectWithCode != NULL && m_pOnGOGossipSelectWithCode(pPlayer, pGameObject, sender, action, code);
+    else
+        return m_pOnGOGossipSelect != NULL && m_pOnGOGossipSelect(pPlayer, pGameObject, sender, action);
+}
+
+bool ScriptMgr::OnQuestAccept(Player* pPlayer, Creature* pCreature, Quest const* pQuest)
+{
+    return m_pOnQuestAccept != NULL && m_pOnQuestAccept(pPlayer, pCreature, pQuest);
+}
+
+bool ScriptMgr::OnQuestAccept(Player* pPlayer, GameObject* pGameObject, Quest const* pQuest)
+{
+    return m_pOnGOQuestAccept != NULL && m_pOnGOQuestAccept(pPlayer, pGameObject, pQuest);
+}
+
+bool ScriptMgr::OnQuestAccept(Player* pPlayer, Item* pItem, Quest const* pQuest)
+{
+    return m_pOnItemQuestAccept != NULL && m_pOnItemQuestAccept(pPlayer, pItem, pQuest);
+}
+
+bool ScriptMgr::OnQuestRewarded(Player* pPlayer, Creature* pCreature, Quest const* pQuest)
+{
+    return m_pOnQuestRewarded != NULL && m_pOnQuestRewarded(pPlayer, pCreature, pQuest);
+}
+
+bool ScriptMgr::OnQuestRewarded(Player* pPlayer, GameObject* pGameObject, Quest const* pQuest)
+{
+    return m_pOnGOQuestRewarded != NULL && m_pOnGOQuestRewarded(pPlayer, pGameObject, pQuest);
+}
+
+uint32 ScriptMgr::GetDialogStatus(Player* pPlayer, Creature* pCreature)
+{
+    if (!m_pGetNPCDialogStatus)
+        return 100;
+
+    return m_pGetNPCDialogStatus(pPlayer, pCreature);
+}
+
+uint32 ScriptMgr::GetDialogStatus(Player* pPlayer, GameObject* pGameObject)
+{
+    if (!m_pGetGODialogStatus)
+        return 100;
+
+    return m_pGetGODialogStatus(pPlayer, pGameObject);
+}
+
+bool ScriptMgr::OnGameObjectUse(Player* pPlayer, GameObject* pGameObject)
+{
+    return m_pOnGOUse != NULL && m_pOnGOUse(pPlayer, pGameObject);
+}
+
+bool ScriptMgr::OnItemUse(Player* pPlayer, Item* pItem, SpellCastTargets const& targets)
+{
+    return m_pOnItemUse != NULL && m_pOnItemUse(pPlayer, pItem, targets);
+}
+
+bool ScriptMgr::OnAreaTrigger(Player* pPlayer, AreaTriggerEntry const* atEntry)
+{
+    return m_pOnAreaTrigger != NULL && m_pOnAreaTrigger(pPlayer, atEntry);
+}
+
+bool ScriptMgr::OnProcessEvent(uint32 eventId, Object* pSource, Object* pTarget, bool isStart)
+{
+    return m_pOnProcessEvent != NULL && m_pOnProcessEvent(eventId, pSource, pTarget, isStart);
+}
+
+bool ScriptMgr::OnEffectDummy(Unit* pCaster, uint32 spellId, SpellEffectIndex effIndex, Creature* pTarget)
+{
+    return m_pOnEffectDummyCreature != NULL && m_pOnEffectDummyCreature(pCaster, spellId, effIndex, pTarget);
+}
+
+bool ScriptMgr::OnEffectDummy(Unit* pCaster, uint32 spellId, SpellEffectIndex effIndex, GameObject* pTarget)
+{
+    return m_pOnEffectDummyGO != NULL && m_pOnEffectDummyGO(pCaster, spellId, effIndex, pTarget);
+}
+
+bool ScriptMgr::OnEffectDummy(Unit* pCaster, uint32 spellId, SpellEffectIndex effIndex, Item* pTarget)
+{
+    return m_pOnEffectDummyItem != NULL && m_pOnEffectDummyItem(pCaster, spellId, effIndex, pTarget);
+}
+
+bool ScriptMgr::OnAuraDummy(Aura const* pAura, bool apply)
+{
+    return m_pOnAuraDummy != NULL && m_pOnAuraDummy(pAura, apply);
+}
+
+ScriptLoadResult ScriptMgr::LoadScriptLibrary(const char* libName)
+{
+    UnloadScriptLibrary();
+
+    std::string name = libName;
+    name = MANGOS_SCRIPT_PREFIX + name + MANGOS_SCRIPT_SUFFIX;
+
+    m_hScriptLib = MANGOS_LOAD_LIBRARY(name.c_str());
+
+    if (!m_hScriptLib)
+        return SCRIPT_LOAD_ERR_NOT_FOUND;
+
+#   define GET_SCRIPT_HOOK_PTR(P,N)             \
+        GetScriptHookPtr((P), (N));             \
+        if (!(P))                               \
+        {                                       \
+            /* prevent call before init */      \
+            m_pOnFreeScriptLibrary = NULL;      \
+            UnloadScriptLibrary();              \
+            return SCRIPT_LOAD_ERR_WRONG_API;   \
+        }
+
+    // let check used mangosd revision for build library (unsafe use with different revision because changes in inline functions, define and etc)
+    char const* (MANGOS_IMPORT* pGetMangosRevStr) ();
+
+    GET_SCRIPT_HOOK_PTR(pGetMangosRevStr,              "GetMangosRevStr");
+
+    GET_SCRIPT_HOOK_PTR(m_pOnInitScriptLibrary,        "InitScriptLibrary");
+    GET_SCRIPT_HOOK_PTR(m_pOnFreeScriptLibrary,        "FreeScriptLibrary");
+    GET_SCRIPT_HOOK_PTR(m_pGetScriptLibraryVersion,    "GetScriptLibraryVersion");
+
+    GET_SCRIPT_HOOK_PTR(m_pGetCreatureAI,              "GetCreatureAI");
+    GET_SCRIPT_HOOK_PTR(m_pCreateInstanceData,         "CreateInstanceData");
+
+    GET_SCRIPT_HOOK_PTR(m_pOnGossipHello,              "GossipHello");
+    GET_SCRIPT_HOOK_PTR(m_pOnGOGossipHello,            "GOGossipHello");
+    GET_SCRIPT_HOOK_PTR(m_pOnGossipSelect,             "GossipSelect");
+    GET_SCRIPT_HOOK_PTR(m_pOnGOGossipSelect,           "GOGossipSelect");
+    GET_SCRIPT_HOOK_PTR(m_pOnGossipSelectWithCode,     "GossipSelectWithCode");
+    GET_SCRIPT_HOOK_PTR(m_pOnGOGossipSelectWithCode,   "GOGossipSelectWithCode");
+    GET_SCRIPT_HOOK_PTR(m_pOnQuestAccept,              "QuestAccept");
+    GET_SCRIPT_HOOK_PTR(m_pOnGOQuestAccept,            "GOQuestAccept");
+    GET_SCRIPT_HOOK_PTR(m_pOnItemQuestAccept,          "ItemQuestAccept");
+    GET_SCRIPT_HOOK_PTR(m_pOnQuestRewarded,            "QuestRewarded");
+    GET_SCRIPT_HOOK_PTR(m_pOnGOQuestRewarded,          "GOQuestRewarded");
+    GET_SCRIPT_HOOK_PTR(m_pGetNPCDialogStatus,         "GetNPCDialogStatus");
+    GET_SCRIPT_HOOK_PTR(m_pGetGODialogStatus,          "GetGODialogStatus");
+    GET_SCRIPT_HOOK_PTR(m_pOnGOUse,                    "GOUse");
+    GET_SCRIPT_HOOK_PTR(m_pOnItemUse,                  "ItemUse");
+    GET_SCRIPT_HOOK_PTR(m_pOnAreaTrigger,              "AreaTrigger");
+    GET_SCRIPT_HOOK_PTR(m_pOnProcessEvent,             "ProcessEvent");
+    GET_SCRIPT_HOOK_PTR(m_pOnEffectDummyCreature,      "EffectDummyCreature");
+    GET_SCRIPT_HOOK_PTR(m_pOnEffectDummyGO,            "EffectDummyGameObject");
+    GET_SCRIPT_HOOK_PTR(m_pOnEffectDummyItem,          "EffectDummyItem");
+    GET_SCRIPT_HOOK_PTR(m_pOnAuraDummy,                "AuraDummy");
+
+#   undef GET_SCRIPT_HOOK_PTR
+
+    if (strcmp(pGetMangosRevStr(), REVISION_NR) != 0)
+    {
+        m_pOnFreeScriptLibrary = NULL;                      // prevent call before init
+        UnloadScriptLibrary();
+        return SCRIPT_LOAD_ERR_OUTDATED;
+    }
+
+    m_pOnInitScriptLibrary();
+    return SCRIPT_LOAD_OK;
+}
+
+void ScriptMgr::UnloadScriptLibrary()
+{
+    if (!m_hScriptLib)
+        return;
+
+    if (m_pOnFreeScriptLibrary)
+        m_pOnFreeScriptLibrary();
+
+    MANGOS_CLOSE_LIBRARY(m_hScriptLib);
+    m_hScriptLib = NULL;
+
+    m_pOnInitScriptLibrary      = NULL;
+    m_pOnFreeScriptLibrary      = NULL;
+    m_pGetScriptLibraryVersion  = NULL;
+
+    m_pGetCreatureAI            = NULL;
+    m_pCreateInstanceData       = NULL;
+
+    m_pOnGossipHello            = NULL;
+    m_pOnGOGossipHello          = NULL;
+    m_pOnGossipSelect           = NULL;
+    m_pOnGOGossipSelect         = NULL;
+    m_pOnGossipSelectWithCode   = NULL;
+    m_pOnGOGossipSelectWithCode = NULL;
+    m_pOnQuestAccept            = NULL;
+    m_pOnGOQuestAccept          = NULL;
+    m_pOnItemQuestAccept        = NULL;
+    m_pOnQuestRewarded          = NULL;
+    m_pOnGOQuestRewarded        = NULL;
+    m_pGetNPCDialogStatus       = NULL;
+    m_pGetGODialogStatus        = NULL;
+    m_pOnGOUse                  = NULL;
+    m_pOnItemUse                = NULL;
+    m_pOnAreaTrigger            = NULL;
+    m_pOnProcessEvent           = NULL;
+    m_pOnEffectDummyCreature    = NULL;
+    m_pOnEffectDummyGO          = NULL;
+    m_pOnEffectDummyItem        = NULL;
+    m_pOnAuraDummy              = NULL;
+}
+
 uint32 GetAreaTriggerScriptId(uint32 triggerId)
 {
     return sScriptMgr.GetAreaTriggerScriptId(triggerId);
@@ -893,7 +1287,13 @@ uint32 GetScriptId(const char *name)
     return sScriptMgr.GetScriptId(name);
 }
 
-ScriptMgr::ScriptNameMap const& GetScriptNames()
+char const* GetScriptName(uint32 id)
 {
-    return sScriptMgr.GetScriptNames();
+    return sScriptMgr.GetScriptName(id);
 }
+
+uint32 GetScriptIdsCount()
+{
+    return sScriptMgr.GetScriptIdsCount();
+}
+

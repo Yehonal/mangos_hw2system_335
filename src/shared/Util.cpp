@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 typedef ACE_TSS<MTRand> MTRandTSS;
 static MTRandTSS mtRand;
 
-static uint64 g_SystemTickTime = ACE_OS::gettimeofday().get_msec();
+static ACE_Time_Value g_SystemTickTime = ACE_OS::gettimeofday();
 
 uint32 WorldTimer::m_iTime = 0;
 uint32 WorldTimer::m_iPrevTime = 0;
@@ -55,28 +55,15 @@ uint32 WorldTimer::getMSTime()
 uint32 WorldTimer::getMSTime_internal(bool savetime /*= false*/)
 {
     //get current time
-    const uint64 currTime = ACE_OS::gettimeofday().get_msec();
+    const ACE_Time_Value currTime = ACE_OS::gettimeofday();
     //calculate time diff between two world ticks
     //special case: curr_time < old_time - we suppose that our time has not ticked at all
     //this should be constant value otherwise it is possible that our time can start ticking backwards until next world tick!!!
-    uint32 diff = 0;
-    //regular case: curr_time >= old_time
-    if(currTime >= g_SystemTickTime)
-        diff = uint32(currTime - g_SystemTickTime);
-
-    //reset last system time value
-    if(savetime)
-        g_SystemTickTime = currTime;
+    uint64 diff = 0;
+    (currTime - g_SystemTickTime).msec(diff);
 
     //lets calculate current world time
-    uint32 iRes = m_iTime;
-    //normalize world time
-    const uint32 tmp = uint32(0xFFFFFFFF) - iRes;
-    if(tmp < diff)
-        iRes = diff - tmp;
-    else
-        iRes += diff;
-
+    uint32 iRes = uint32(diff % UI64LIT(0x00000000FFFFFFFF));
     return iRes;
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,13 +17,12 @@
  */
 
 #include "MapManager.h"
-#include "InstanceSaveMgr.h"
+#include "MapPersistentStateMgr.h"
 #include "Policies/SingletonImp.h"
 #include "Database/DatabaseEnv.h"
 #include "Log.h"
 #include "Transports.h"
 #include "GridDefines.h"
-#include "DestinationHolderImp.h"
 #include "World.h"
 #include "CellImpl.h"
 #include "Corpse.h"
@@ -92,7 +91,7 @@ Map* MapManager::CreateMap(uint32 id, const WorldObject* obj)
     MANGOS_ASSERT(obj);
     //if(!obj->IsInWorld()) sLog.outError("GetMap: called for map %d with object (typeid %d, guid %d, mapid %d, instanceid %d) who is not in world!", id, obj->GetTypeId(), obj->GetGUIDLow(), obj->GetMapId(), obj->GetInstanceId());
     Guard _guard(*this);
-    
+
     Map * m = NULL;
 
     const MapEntry* entry = sMapStore.LookupEntry(id);
@@ -102,19 +101,22 @@ Map* MapManager::CreateMap(uint32 id, const WorldObject* obj)
     if(entry->Instanceable())
     {
         MANGOS_ASSERT(obj->GetTypeId() == TYPEID_PLAYER);
-        //create InstanceMap object
+        //create DungeonMap object
         if(obj->GetTypeId() == TYPEID_PLAYER)
             m = CreateInstance(id, (Player*)obj);
     }
     else
     {
-        //create regular Continent map
+        //create regular non-instanceable map
         m = FindMap(id);
         if( m == NULL )
         {
-            m = new Map(id, i_gridCleanUpDelay, 0, REGULAR_DIFFICULTY);
+            m = new WorldMap(id, i_gridCleanUpDelay);
             //add map into container
             i_maps[MapID(id)] = m;
+
+            // non-instanceable maps always expected have saved state
+            m->CreateInstanceData(true);
         }
     }
 
@@ -126,7 +128,7 @@ Map* MapManager::CreateBgMap(uint32 mapid, BattleGround* bg)
     TerrainInfo * pData = sTerrainMgr.LoadTerrain(mapid);
 
     Guard _guard(*this);
-    return CreateBattleGroundMap(mapid, sObjectMgr.GenerateLowGuid(HIGHGUID_INSTANCE), bg);
+    return CreateBattleGroundMap(mapid, sObjectMgr.GenerateInstanceLowGuid(), bg);
 }
 
 Map* MapManager::FindMap(uint32 mapid, uint32 instanceId) const
@@ -136,7 +138,7 @@ Map* MapManager::FindMap(uint32 mapid, uint32 instanceId) const
     MapMapType::const_iterator iter = i_maps.find(MapID(mapid, instanceId));
     if(iter == i_maps.end())
         return NULL;
-    
+
     //this is a small workaround for transports
     if(instanceId == 0 && iter->second->Instanceable())
     {
@@ -154,12 +156,14 @@ Map* MapManager::FindMap(uint32 mapid, uint32 instanceId) const
 bool MapManager::CanPlayerEnter(uint32 mapid, Player* player)
 {
     const MapEntry *entry = sMapStore.LookupEntry(mapid);
-    if(!entry) return false;
+    if(!entry)
+        return false;
+
     const char *mapName = entry->name[player->GetSession()->GetSessionDbcLocale()];
 
-    if(entry->map_type == MAP_INSTANCE || entry->map_type == MAP_RAID)
+    if(entry->IsDungeon())
     {
-        if (entry->map_type == MAP_RAID)
+        if (entry->IsRaid())
         {
             // GMs can avoid raid limitations
             if(!player->isGameMaster() && !sWorld.getConfig(CONFIG_BOOL_INSTANCE_IGNORE_RAID))
@@ -189,38 +193,6 @@ bool MapManager::CanPlayerEnter(uint32 mapid, Player* player)
             return false;
         }
 
-        if (!player->isAlive())
-        {
-            if(Corpse *corpse = player->GetCorpse())
-            {
-                // let enter in ghost mode in instance that connected to inner instance with corpse
-                uint32 instance_map = corpse->GetMapId();
-                do
-                {
-                    if(instance_map==mapid)
-                        break;
-
-                    InstanceTemplate const* instance = ObjectMgr::GetInstanceTemplate(instance_map);
-                    instance_map = instance ? instance->parent : 0;
-                }
-                while (instance_map);
-
-                if (!instance_map)
-                {
-                    WorldPacket data(SMSG_CORPSE_IS_NOT_IN_INSTANCE);
-                    player->GetSession()->SendPacket(&data);
-
-                    DEBUG_LOG("MAP: Player '%s' doesn't has a corpse in instance '%s' and can't enter", player->GetName(), mapName);
-                    return false;
-                }
-                DEBUG_LOG("MAP: Player '%s' has corpse in instance '%s' and can enter", player->GetName(), mapName);
-            }
-            else
-            {
-                DEBUG_LOG("Map::CanEnter - player '%s' is dead but doesn't have a corpse!", player->GetName());
-            }
-        }
-
         // TODO: move this to a map dependent location
         /*if(i_data && i_data->IsEncounterInProgress())
         {
@@ -228,10 +200,9 @@ bool MapManager::CanPlayerEnter(uint32 mapid, Player* player)
             player->SendTransferAborted(GetId(), TRANSFER_ABORT_ZONE_IN_COMBAT);
             return(false);
         }*/
-        return true;
     }
-    else
-        return true;
+
+    return true;
 }
 
 void MapManager::DeleteInstance(uint32 mapid, uint32 instanceId)
@@ -378,23 +349,23 @@ Map* MapManager::CreateInstance(uint32 id, Player * player)
         map = FindMap(id, NewInstanceId);
         MANGOS_ASSERT(map);
     }
-    else if (InstanceSave* pSave = player->GetBoundInstanceSaveForSelfOrGroup(id))
+    else if (DungeonPersistentState* pSave = player->GetBoundInstanceSaveForSelfOrGroup(id))
     {
         // solo/perm/group
         NewInstanceId = pSave->GetInstanceId();
         map = FindMap(id, NewInstanceId);
         // it is possible that the save exists but the map doesn't
         if (!map)
-            pNewMap = CreateInstanceMap(id, NewInstanceId, pSave->GetDifficulty(), pSave);
+            pNewMap = CreateDungeonMap(id, NewInstanceId, pSave->GetDifficulty(), pSave);
     }
     else
     {
         // if no instanceId via group members or instance saves is found
         // the instance will be created for the first time
-        NewInstanceId = sObjectMgr.GenerateLowGuid(HIGHGUID_INSTANCE);
+        NewInstanceId = sObjectMgr.GenerateInstanceLowGuid();
 
         Difficulty diff = player->GetGroup() ? player->GetGroup()->GetDifficulty(entry->IsRaid()) : player->GetDifficulty(entry->IsRaid());
-        pNewMap = CreateInstanceMap(id, NewInstanceId, diff);
+        pNewMap = CreateDungeonMap(id, NewInstanceId, diff);
     }
 
     //add a new map object into the registry
@@ -407,17 +378,17 @@ Map* MapManager::CreateInstance(uint32 id, Player * player)
     return map;
 }
 
-InstanceMap* MapManager::CreateInstanceMap(uint32 id, uint32 InstanceId, Difficulty difficulty, InstanceSave *save)
+DungeonMap* MapManager::CreateDungeonMap(uint32 id, uint32 InstanceId, Difficulty difficulty, DungeonPersistentState *save)
 {
     // make sure we have a valid map id
     if (!sMapStore.LookupEntry(id))
     {
-        sLog.outError("CreateInstanceMap: no entry for map %d", id);
+        sLog.outError("CreateDungeonMap: no entry for map %d", id);
         MANGOS_ASSERT(false);
     }
     if (!ObjectMgr::GetInstanceTemplate(id))
     {
-        sLog.outError("CreateInstanceMap: no instance template for map %d", id);
+        sLog.outError("CreateDungeonMap: no instance template for map %d", id);
         MANGOS_ASSERT(false);
     }
 
@@ -425,11 +396,11 @@ InstanceMap* MapManager::CreateInstanceMap(uint32 id, uint32 InstanceId, Difficu
     if (!GetMapDifficultyData(id, difficulty))
         difficulty = DUNGEON_DIFFICULTY_NORMAL;
 
-    DEBUG_LOG("MapInstanced::CreateInstanceMap: %s map instance %d for %d created with difficulty %d", save?"":"new ", InstanceId, id, difficulty);
+    DEBUG_LOG("MapInstanced::CreateDungeonMap: %s map instance %d for %d created with difficulty %d", save?"":"new ", InstanceId, id, difficulty);
 
-    InstanceMap *map = new InstanceMap(id, i_gridCleanUpDelay, InstanceId, difficulty);
-    MANGOS_ASSERT(map->IsDungeon());
+    DungeonMap *map = new DungeonMap(id, i_gridCleanUpDelay, InstanceId, difficulty);
 
+    // Dungeons can have saved instance data
     bool load_data = save != NULL;
     map->CreateInstanceData(load_data);
 
@@ -451,6 +422,9 @@ BattleGroundMap* MapManager::CreateBattleGroundMap(uint32 id, uint32 InstanceId,
 
     //add map into map container
     i_maps[MapID(id, InstanceId)] = map;
+
+    // BGs/Arenas not have saved instance data
+    map->CreateInstanceData(false);
 
     return map;
 }

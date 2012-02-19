@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,6 @@
 #include "UpdateMask.h"
 #include "Path.h"
 #include "WaypointMovementGenerator.h"
-#include "DestinationHolderImp.h"
 
 void WorldSession::HandleTaxiNodeStatusQueryOpcode( WorldPacket & recv_data )
 {
@@ -132,18 +131,18 @@ bool WorldSession::SendLearnNewTaxiNode( Creature* unit )
     // find current node
     uint32 curloc = sObjectMgr.GetNearestTaxiNode(unit->GetPositionX(),unit->GetPositionY(),unit->GetPositionZ(),unit->GetMapId(),GetPlayer( )->GetTeam());
 
-    if ( curloc == 0 )
+    if (curloc == 0)
         return true;                                        // `true` send to avoid WorldSession::SendTaxiMenu call with one more curlock seartch with same false result.
 
-    if( GetPlayer()->m_taxi.SetTaximaskNode(curloc) )
+    if (GetPlayer()->m_taxi.SetTaximaskNode(curloc))
     {
         WorldPacket msg(SMSG_NEW_TAXI_PATH, 0);
-        SendPacket( &msg );
+        SendPacket(&msg);
 
-        WorldPacket update( SMSG_TAXINODE_STATUS, 9 );
-        update << uint64( unit->GetGUID() );
-        update << uint8( 1 );
-        SendPacket( &update );
+        WorldPacket update(SMSG_TAXINODE_STATUS, 9);
+        update << ObjectGuid(unit->GetObjectGuid());
+        update << uint8(1);
+        SendPacket(&update);
 
         return true;
     }

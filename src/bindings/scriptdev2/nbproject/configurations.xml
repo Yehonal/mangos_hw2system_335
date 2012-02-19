@@ -1,0 +1,778 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configurationDescriptor version="79">
+  <logicalFolder name="root" displayName="root" projectFiles="true" kind="ROOT">
+    <df name="scriptdev2" root=".">
+      <df name="base">
+        <in>escort_ai.cpp</in>
+        <in>escort_ai.h</in>
+        <in>follower_ai.cpp</in>
+        <in>follower_ai.h</in>
+        <in>guard_ai.cpp</in>
+        <in>guard_ai.h</in>
+        <in>simple_ai.cpp</in>
+        <in>simple_ai.h</in>
+      </df>
+      <df name="docs">
+      </df>
+      <df name="include">
+        <in>precompiled.cpp</in>
+        <in>precompiled.h</in>
+        <in>sc_creature.cpp</in>
+        <in>sc_creature.h</in>
+        <in>sc_gossip.h</in>
+        <in>sc_grid_searchers.cpp</in>
+        <in>sc_grid_searchers.h</in>
+        <in>sc_instance.cpp</in>
+        <in>sc_instance.h</in>
+      </df>
+      <df name="patches">
+        <df name="custom">
+        </df>
+      </df>
+      <df name="scripts">
+        <df name="azerothscripts">
+          <df name="OLD">
+            <in>(ahnquiraj)boss_aqraj.cpp</in>
+            <in>(ahnquiraj)boss_kri.cpp</in>
+            <in>(ahnquiraj)boss_yauj.cpp</in>
+            <in>(arcatraz)bosses_arcatraz.cpp</in>
+            <in>(botanica)bosses_botanica.cpp</in>
+            <in>(coilfang)bosses_coilfang.cpp</in>
+            <in>(karazhan)boss_moroes.cpp</in>
+            <in>(karazhan)boss_netherspite.cpp</in>
+            <in>(karazhan)boss_nightbane.cpp</in>
+            <in>(mechanar)bosses_mechanar.cpp</in>
+            <in>(nagrand)mob_lump2.cpp</in>
+            <in>(naxxaramas)boss_naxx.cpp</in>
+            <in>(serpent_shrine cavern)simple_fathom.cpp</in>
+            <in>(serpent_shrine cavern)simple_leotheras.cpp</in>
+            <in>(the Eye)boss_al'ar.cpp</in>
+            <in>ZZ-AzerothScripts.cpp</in>
+            <in>ZZ-AzerothScripts2.cpp</in>
+            <in>ZZ-azeroth_teleports.cpp</in>
+            <in>azerothscripts.h</in>
+            <in>boss_ quagmirran.cpp</in>
+            <in>boss_mennu.cpp</in>
+            <in>boss_the_lurker_below.cpp</in>
+            <in>leaders.cpp</in>
+            <in>nagrand_mob_lump2.cpp</in>
+            <in>npcs_blacksmithing.cpp</in>
+          </df>
+          <in>ZZ-AzerothScripts.cpp</in>
+          <in>ZZ-azeroth_teleports.cpp</in>
+          <in>arcatraz_bosses_arcatraz-M-Sa.cpp</in>
+          <in>botanica_bosses_botanica-M-Sa.cpp</in>
+          <in>coilfang_wings_bosses_coilfang-M-Sa.cpp</in>
+          <in>guardian.cpp</in>
+          <in>hellfire_citadel_mob_hellfirecitadel-M-Sa.cpp</in>
+          <in>karazhan_boss_netherspite.cpp</in>
+          <in>karazhan_boss_nightbane.cpp</in>
+          <in>leaders.cpp</in>
+          <in>mechanar_bosses_mechanar-M-Sa.cpp</in>
+          <in>naxxramas_boss_naxx-M-Sa.cpp</in>
+          <in>npcs_blacksmithing.cpp</in>
+          <in>orgrimmar_boss_thrall.cpp</in>
+          <in>serpent_shrine_boss_the_lurker_below.cpp</in>
+          <in>serpent_shrine_simple_fathom-Sa.cpp</in>
+          <in>serpent_shrine_simple_leotheras-Sa.cpp</in>
+          <in>slave_pens_boss_mennu.cpp</in>
+          <in>slave_pens_boss_quagmirran.cpp</in>
+          <in>temple_aqraj_boss_aqraj-M-Sa.cpp</in>
+          <in>the_eye_boss_High_Astromancer_Solarian-M.cpp</in>
+          <in>the_eye_boss_alar.cpp</in>
+          <in>zulaman_boss_halazzi.cpp</in>
+          <in>zulaman_boss_malacrass.cpp</in>
+          <in>zulaman_boss_zuljin-M.cpp</in>
+        </df>
+        <df name="battlegrounds">
+          <in>battleground.cpp</in>
+        </df>
+        <df name="eastern_kingdoms">
+          <df name="blackrock_depths">
+            <in>blackrock_depths.cpp</in>
+            <in>blackrock_depths.h</in>
+            <in>boss_ambassador_flamelash.cpp</in>
+            <in>boss_anubshiah.cpp</in>
+            <in>boss_emperor_dagran_thaurissan.cpp</in>
+            <in>boss_general_angerforge.cpp</in>
+            <in>boss_gorosh_the_dervish.cpp</in>
+            <in>boss_grizzle.cpp</in>
+            <in>boss_high_interrogator_gerstahn.cpp</in>
+            <in>boss_magmus.cpp</in>
+            <in>boss_tomb_of_seven.cpp</in>
+            <in>instance_blackrock_depths.cpp</in>
+          </df>
+          <df name="blackrock_spire">
+            <in>boss_drakkisath.cpp</in>
+            <in>boss_gyth.cpp</in>
+            <in>boss_halycon.cpp</in>
+            <in>boss_highlord_omokk.cpp</in>
+            <in>boss_mother_smolderweb.cpp</in>
+            <in>boss_overlord_wyrmthalak.cpp</in>
+            <in>boss_pyroguard_emberseer.cpp</in>
+            <in>boss_quartermaster_zigris.cpp</in>
+            <in>boss_rend_blackhand.cpp</in>
+            <in>boss_shadow_hunter_voshgajin.cpp</in>
+            <in>boss_the_beast.cpp</in>
+            <in>boss_warmaster_voone.cpp</in>
+          </df>
+          <df name="blackwing_lair">
+            <in>boss_broodlord_lashlayer.cpp</in>
+            <in>boss_chromaggus.cpp</in>
+            <in>boss_ebonroc.cpp</in>
+            <in>boss_firemaw.cpp</in>
+            <in>boss_flamegor.cpp</in>
+            <in>boss_nefarian.cpp</in>
+            <in>boss_razorgore.cpp</in>
+            <in>boss_vaelastrasz.cpp</in>
+            <in>boss_victor_nefarius.cpp</in>
+            <in>instance_blackwing_lair.cpp</in>
+          </df>
+          <df name="deadmines">
+            <in>deadmines.cpp</in>
+            <in>deadmines.h</in>
+            <in>instance_deadmines.cpp</in>
+          </df>
+          <df name="karazhan">
+            <in>boss_curator.cpp</in>
+            <in>boss_maiden_of_virtue.cpp</in>
+            <in>boss_midnight.cpp</in>
+            <in>boss_moroes.cpp</in>
+            <in>boss_netherspite.cpp</in>
+            <in>boss_nightbane.cpp</in>
+            <in>boss_prince_malchezaar.cpp</in>
+            <in>boss_shade_of_aran.cpp</in>
+            <in>boss_terestian_illhoof.cpp</in>
+            <in>bosses_opera.cpp</in>
+            <in>instance_karazhan.cpp</in>
+            <in>karazhan.cpp</in>
+            <in>karazhan.h</in>
+          </df>
+          <df name="magisters_terrace">
+            <in>boss_felblood_kaelthas.cpp</in>
+            <in>boss_priestess_delrissa.cpp</in>
+            <in>boss_selin_fireheart.cpp</in>
+            <in>boss_vexallus.cpp</in>
+            <in>instance_magisters_terrace.cpp</in>
+            <in>magisters_terrace.cpp</in>
+            <in>magisters_terrace.h</in>
+          </df>
+          <df name="molten_core">
+            <in>boss_baron_geddon.cpp</in>
+            <in>boss_garr.cpp</in>
+            <in>boss_gehennas.cpp</in>
+            <in>boss_golemagg.cpp</in>
+            <in>boss_lucifron.cpp</in>
+            <in>boss_magmadar.cpp</in>
+            <in>boss_majordomo_executus.cpp</in>
+            <in>boss_ragnaros.cpp</in>
+            <in>boss_shazzrah.cpp</in>
+            <in>boss_sulfuron_harbinger.cpp</in>
+            <in>instance_molten_core.cpp</in>
+            <in>molten_core.cpp</in>
+            <in>molten_core.h</in>
+          </df>
+          <df name="scarlet_enclave">
+            <in>ebon_hold.cpp</in>
+          </df>
+          <df name="scarlet_monastery">
+            <in>boss_arcanist_doan.cpp</in>
+            <in>boss_azshir_the_sleepless.cpp</in>
+            <in>boss_bloodmage_thalnos.cpp</in>
+            <in>boss_headless_horseman.cpp</in>
+            <in>boss_herod.cpp</in>
+            <in>boss_high_inquisitor_fairbanks.cpp</in>
+            <in>boss_houndmaster_loksey.cpp</in>
+            <in>boss_interrogator_vishas.cpp</in>
+            <in>boss_mograine_and_whitemane.cpp</in>
+            <in>boss_scorn.cpp</in>
+            <in>instance_scarlet_monastery.cpp</in>
+            <in>scarlet_monastery.h</in>
+          </df>
+          <df name="scholomance">
+            <in>boss_darkmaster_gandling.cpp</in>
+            <in>boss_death_knight_darkreaver.cpp</in>
+            <in>boss_doctor_theolen_krastinov.cpp</in>
+            <in>boss_illucia_barov.cpp</in>
+            <in>boss_instructor_malicia.cpp</in>
+            <in>boss_jandice_barov.cpp</in>
+            <in>boss_kormok.cpp</in>
+            <in>boss_lord_alexei_barov.cpp</in>
+            <in>boss_lorekeeper_polkelt.cpp</in>
+            <in>boss_ras_frostwhisper.cpp</in>
+            <in>boss_the_ravenian.cpp</in>
+            <in>boss_vectus.cpp</in>
+            <in>instance_scholomance.cpp</in>
+            <in>scholomance.h</in>
+          </df>
+          <df name="shadowfang_keep">
+            <in>instance_shadowfang_keep.cpp</in>
+            <in>shadowfang_keep.cpp</in>
+            <in>shadowfang_keep.h</in>
+          </df>
+          <df name="stratholme">
+            <in>boss_baron_rivendare.cpp</in>
+            <in>boss_baroness_anastari.cpp</in>
+            <in>boss_cannon_master_willey.cpp</in>
+            <in>boss_dathrohan_balnazzar.cpp</in>
+            <in>boss_magistrate_barthilas.cpp</in>
+            <in>boss_maleki_the_pallid.cpp</in>
+            <in>boss_nerubenkan.cpp</in>
+            <in>boss_order_of_silver_hand.cpp</in>
+            <in>boss_postmaster_malown.cpp</in>
+            <in>boss_ramstein_the_gorger.cpp</in>
+            <in>boss_timmy_the_cruel.cpp</in>
+            <in>instance_stratholme.cpp</in>
+            <in>stratholme.cpp</in>
+            <in>stratholme.h</in>
+          </df>
+          <df name="sunken_temple">
+            <in>instance_sunken_temple.cpp</in>
+            <in>sunken_temple.cpp</in>
+            <in>sunken_temple.h</in>
+          </df>
+          <df name="sunwell_plateau">
+            <in>boss_brutallus.cpp</in>
+            <in>boss_kalecgos.cpp</in>
+            <in>instance_sunwell_plateau.cpp</in>
+            <in>sunwell_plateau.h</in>
+          </df>
+          <df name="uldaman">
+            <in>boss_ironaya.cpp</in>
+            <in>uldaman.cpp</in>
+          </df>
+          <df name="zulaman">
+            <in>boss_akilzon.cpp</in>
+            <in>boss_halazzi.cpp</in>
+            <in>boss_janalai.cpp</in>
+            <in>boss_malacrass.cpp</in>
+            <in>boss_nalorakk.cpp</in>
+            <in>boss_zuljin.cpp</in>
+            <in>instance_zulaman.cpp</in>
+            <in>zulaman.cpp</in>
+            <in>zulaman.h</in>
+          </df>
+          <df name="zulgurub">
+            <in>boss_arlokk.cpp</in>
+            <in>boss_gahzranka.cpp</in>
+            <in>boss_grilek.cpp</in>
+            <in>boss_hakkar.cpp</in>
+            <in>boss_hazzarah.cpp</in>
+            <in>boss_jeklik.cpp</in>
+            <in>boss_jindo.cpp</in>
+            <in>boss_mandokir.cpp</in>
+            <in>boss_marli.cpp</in>
+            <in>boss_renataki.cpp</in>
+            <in>boss_thekal.cpp</in>
+            <in>boss_venoxis.cpp</in>
+            <in>boss_wushoolay.cpp</in>
+            <in>instance_zulgurub.cpp</in>
+            <in>zulgurub.h</in>
+          </df>
+          <in>alterac_mountains.cpp</in>
+          <in>arathi_highlands.cpp</in>
+          <in>blasted_lands.cpp</in>
+          <in>boss_kruul.cpp</in>
+          <in>burning_steppes.cpp</in>
+          <in>dun_morogh.cpp</in>
+          <in>eastern_plaguelands.cpp</in>
+          <in>elwynn_forest.cpp</in>
+          <in>eversong_woods.cpp</in>
+          <in>ghostlands.cpp</in>
+          <in>hinterlands.cpp</in>
+          <in>ironforge.cpp</in>
+          <in>isle_of_queldanas.cpp</in>
+          <in>loch_modan.cpp</in>
+          <in>redridge_mountains.cpp</in>
+          <in>searing_gorge.cpp</in>
+          <in>silvermoon_city.cpp</in>
+          <in>silverpine_forest.cpp</in>
+          <in>stormwind_city.cpp</in>
+          <in>stranglethorn_vale.cpp</in>
+          <in>tirisfal_glades.cpp</in>
+          <in>undercity.cpp</in>
+          <in>western_plaguelands.cpp</in>
+          <in>westfall.cpp</in>
+          <in>wetlands.cpp</in>
+        </df>
+        <df name="examples">
+          <in>example_creature.cpp</in>
+          <in>example_escort.cpp</in>
+          <in>example_gossip_codebox.cpp</in>
+          <in>example_misc.cpp</in>
+        </df>
+        <df name="kalimdor">
+          <df name="blackfathom_deeps">
+            <in>blackfathom_deeps.h</in>
+            <in>instance_blackfathom_deeps.cpp</in>
+          </df>
+          <df name="caverns_of_time">
+            <df name="dark_portal">
+              <in>boss_aeonus.cpp</in>
+              <in>boss_chrono_lord_deja.cpp</in>
+              <in>boss_temporus.cpp</in>
+              <in>dark_portal.cpp</in>
+              <in>dark_portal.h</in>
+              <in>instance_dark_portal.cpp</in>
+            </df>
+            <df name="hyjal">
+              <in>boss_archimonde.cpp</in>
+              <in>hyjal.cpp</in>
+              <in>hyjal.h</in>
+              <in>hyjalAI.cpp</in>
+              <in>hyjalAI.h</in>
+              <in>instance_hyjal.cpp</in>
+            </df>
+            <df name="old_hillsbrad">
+              <in>boss_captain_skarloc.cpp</in>
+              <in>boss_epoch_hunter.cpp</in>
+              <in>boss_leutenant_drake.cpp</in>
+              <in>instance_old_hillsbrad.cpp</in>
+              <in>old_hillsbrad.cpp</in>
+              <in>old_hillsbrad.h</in>
+            </df>
+          </df>
+          <df name="maraudon">
+            <in>boss_celebras_the_cursed.cpp</in>
+            <in>boss_landslide.cpp</in>
+            <in>boss_noxxion.cpp</in>
+            <in>boss_princess_theradras.cpp</in>
+          </df>
+          <df name="onyxias_lair">
+            <in>boss_onyxia.cpp</in>
+          </df>
+          <df name="razorfen_downs">
+            <in>boss_amnennar_the_coldbringer.cpp</in>
+            <in>razorfen_downs.cpp</in>
+          </df>
+          <df name="ruins_of_ahnqiraj">
+            <in>boss_ayamiss.cpp</in>
+            <in>boss_buru.cpp</in>
+            <in>boss_kurinnaxx.cpp</in>
+            <in>boss_moam.cpp</in>
+            <in>boss_ossirian.cpp</in>
+            <in>boss_rajaxx.cpp</in>
+            <in>instance_ruins_of_ahnqiraj.cpp</in>
+            <in>ruins_of_ahnqiraj.cpp</in>
+            <in>ruins_of_ahnqiraj.h</in>
+          </df>
+          <df name="temple_of_ahnqiraj">
+            <in>boss_bug_trio.cpp</in>
+            <in>boss_cthun.cpp</in>
+            <in>boss_fankriss.cpp</in>
+            <in>boss_huhuran.cpp</in>
+            <in>boss_ouro.cpp</in>
+            <in>boss_sartura.cpp</in>
+            <in>boss_skeram.cpp</in>
+            <in>boss_twinemperors.cpp</in>
+            <in>boss_viscidus.cpp</in>
+            <in>instance_temple_of_ahnqiraj.cpp</in>
+            <in>mob_anubisath_sentinel.cpp</in>
+            <in>temple_of_ahnqiraj.h</in>
+          </df>
+          <df name="wailing_caverns">
+            <in>instance_wailing_caverns.cpp</in>
+          </df>
+          <df name="zulfarrak">
+            <in>zulfarrak.cpp</in>
+          </df>
+          <in>ashenvale.cpp</in>
+          <in>azshara.cpp</in>
+          <in>azuremyst_isle.cpp</in>
+          <in>bloodmyst_isle.cpp</in>
+          <in>boss_azuregos.cpp</in>
+          <in>darkshore.cpp</in>
+          <in>desolace.cpp</in>
+          <in>dustwallow_marsh.cpp</in>
+          <in>felwood.cpp</in>
+          <in>feralas.cpp</in>
+          <in>moonglade.cpp</in>
+          <in>mulgore.cpp</in>
+          <in>orgrimmar.cpp</in>
+          <in>silithus.cpp</in>
+          <in>stonetalon_mountains.cpp</in>
+          <in>tanaris.cpp</in>
+          <in>teldrassil.cpp</in>
+          <in>the_barrens.cpp</in>
+          <in>thousand_needles.cpp</in>
+          <in>thunder_bluff.cpp</in>
+          <in>ungoro_crater.cpp</in>
+          <in>winterspring.cpp</in>
+        </df>
+        <df name="northrend">
+          <df name="azjol-nerub">
+            <df name="ahnkahet">
+              <in>ahnkahet.h</in>
+              <in>boss_jedoga.cpp</in>
+              <in>boss_nadox.cpp</in>
+              <in>boss_taldaram.cpp</in>
+              <in>boss_volazj.cpp</in>
+              <in>instance_ahnkahet.cpp</in>
+            </df>
+            <df name="azjol-nerub">
+              <in>azjol-nerub.h</in>
+              <in>boss_anubarak.cpp</in>
+              <in>boss_hadronox.cpp</in>
+              <in>boss_krikthir.cpp</in>
+              <in>instance_azjol-nerub.cpp</in>
+            </df>
+          </df>
+          <df name="crusaders_coliseum">
+            <df name="trial_of_the_crusader">
+              <in>boss_anubarak_trial.cpp</in>
+              <in>boss_faction_champions.cpp</in>
+              <in>boss_jaraxxus.cpp</in>
+              <in>boss_northrend_beasts.cpp</in>
+              <in>boss_twin_valkyr.cpp</in>
+              <in>instance_trial_of_the_crusader.cpp</in>
+              <in>trial_of_the_crusader.cpp</in>
+              <in>trial_of_the_crusader.h</in>
+            </df>
+          </df>
+          <df name="draktharon_keep">
+            <in>boss_novos.cpp</in>
+            <in>boss_tharonja.cpp</in>
+            <in>boss_trollgore.cpp</in>
+          </df>
+          <df name="gundrak">
+            <in>boss_colossus.cpp</in>
+            <in>boss_galdarah.cpp</in>
+            <in>boss_moorabi.cpp</in>
+            <in>boss_sladran.cpp</in>
+            <in>gundrak.h</in>
+            <in>instance_gundrak.cpp</in>
+          </df>
+          <df name="icecrown_citadel">
+            <df name="frozen_halls">
+              <df name="forge_of_souls">
+                <in>boss_bronjahm.cpp</in>
+                <in>boss_devourer_of_souls.cpp</in>
+              </df>
+              <df name="halls_of_reflection">
+                <in>boss_falryn.cpp</in>
+                <in>boss_lich_king.cpp</in>
+                <in>boss_marwyn.cpp</in>
+              </df>
+              <df name="pit_of_saron">
+                <in>boss_forgemaster_gafrost.cpp</in>
+                <in>boss_krick_and_ick.cpp</in>
+                <in>boss_scourgelord_tyrannus.cpp</in>
+              </df>
+            </df>
+            <df name="icecrown_citadel">
+              <in>blood_prince_council.cpp</in>
+              <in>boss_blood_queen_lanathel.cpp</in>
+              <in>boss_deathbringer_saurfang.cpp</in>
+              <in>boss_festergut.cpp</in>
+              <in>boss_lady_deathwhisper.cpp</in>
+              <in>boss_lord_marrowgar.cpp</in>
+              <in>boss_proffesor_putricide.cpp</in>
+              <in>boss_rotface.cpp</in>
+              <in>boss_sindragosa.cpp</in>
+              <in>boss_the_lich_king.cpp</in>
+              <in>boss_valithria_dreamwalker.cpp</in>
+              <in>gunship_battle.cpp</in>
+            </df>
+          </df>
+          <df name="naxxramas">
+            <in>boss_anubrekhan.cpp</in>
+            <in>boss_faerlina.cpp</in>
+            <in>boss_four_horsemen.cpp</in>
+            <in>boss_gluth.cpp</in>
+            <in>boss_gothik.cpp</in>
+            <in>boss_grobbulus.cpp</in>
+            <in>boss_heigan.cpp</in>
+            <in>boss_kelthuzad.cpp</in>
+            <in>boss_loatheb.cpp</in>
+            <in>boss_maexxna.cpp</in>
+            <in>boss_noth.cpp</in>
+            <in>boss_patchwerk.cpp</in>
+            <in>boss_razuvious.cpp</in>
+            <in>boss_sapphiron.cpp</in>
+            <in>boss_thaddius.cpp</in>
+            <in>instance_naxxramas.cpp</in>
+            <in>naxxramas.h</in>
+          </df>
+          <df name="nexus">
+            <df name="nexus">
+              <in>boss_anomalus.cpp</in>
+              <in>boss_keristrasza.cpp</in>
+              <in>boss_ormorok.cpp</in>
+              <in>boss_telestra.cpp</in>
+              <in>instance_nexus.cpp</in>
+              <in>nexus.h</in>
+            </df>
+          </df>
+          <df name="obsidian_sanctum">
+            <in>boss_sartharion.cpp</in>
+            <in>instance_obsidian_sanctum.cpp</in>
+            <in>obsidian_sanctum.h</in>
+          </df>
+          <df name="ulduar">
+            <df name="halls_of_lightning">
+              <in>boss_bjarngrim.cpp</in>
+              <in>boss_ionar.cpp</in>
+              <in>boss_loken.cpp</in>
+              <in>boss_volkhan.cpp</in>
+              <in>halls_of_lightning.h</in>
+              <in>instance_halls_of_lightning.cpp</in>
+            </df>
+            <df name="halls_of_stone">
+              <in>boss_maiden_of_grief.cpp</in>
+              <in>boss_sjonnir.cpp</in>
+              <in>halls_of_stone.cpp</in>
+              <in>halls_of_stone.h</in>
+              <in>instance_halls_of_stone.cpp</in>
+            </df>
+            <df name="ulduar">
+              <in>instance_ulduar.cpp</in>
+              <in>ulduar.h</in>
+            </df>
+          </df>
+          <df name="utgarde_keep">
+            <df name="utgarde_keep">
+              <in>boss_ingvar.cpp</in>
+              <in>boss_keleseth.cpp</in>
+              <in>boss_skarvald_and_dalronn.cpp</in>
+              <in>instance_utgarde_keep.cpp</in>
+              <in>utgarde_keep.cpp</in>
+              <in>utgarde_keep.h</in>
+            </df>
+            <df name="utgarde_pinnacle">
+              <in>boss_gortok.cpp</in>
+              <in>boss_skadi.cpp</in>
+              <in>boss_svala.cpp</in>
+              <in>boss_ymiron.cpp</in>
+              <in>instance_utgarde_pinnacle.cpp</in>
+              <in>utgarde_pinnacle.h</in>
+            </df>
+          </df>
+          <df name="violet_hold">
+            <in>instance_violet_hold.cpp</in>
+            <in>violet_hold.cpp</in>
+            <in>violet_hold.h</in>
+          </df>
+          <in>borean_tundra.cpp</in>
+          <in>dalaran.cpp</in>
+          <in>dragonblight.cpp</in>
+          <in>grizzly_hills.cpp</in>
+          <in>howling_fjord.cpp</in>
+          <in>icecrown.cpp</in>
+          <in>sholazar_basin.cpp</in>
+          <in>storm_peaks.cpp</in>
+          <in>zuldrak.cpp</in>
+        </df>
+        <df name="outland">
+          <df name="auchindoun">
+            <df name="auchenai_crypts">
+              <in>boss_exarch_maladaar.cpp</in>
+            </df>
+            <df name="mana_tombs">
+              <in>boss_nexusprince_shaffar.cpp</in>
+              <in>boss_pandemonius.cpp</in>
+            </df>
+            <df name="sethekk_halls">
+              <in>boss_darkweaver_syth.cpp</in>
+              <in>boss_tailonking_ikiss.cpp</in>
+              <in>instance_sethekk_halls.cpp</in>
+              <in>sethekk_halls.h</in>
+            </df>
+            <df name="shadow_labyrinth">
+              <in>boss_ambassador_hellmaw.cpp</in>
+              <in>boss_blackheart_the_inciter.cpp</in>
+              <in>boss_grandmaster_vorpil.cpp</in>
+              <in>boss_murmur.cpp</in>
+              <in>instance_shadow_labyrinth.cpp</in>
+              <in>shadow_labyrinth.h</in>
+            </df>
+          </df>
+          <df name="black_temple">
+            <in>black_temple.cpp</in>
+            <in>black_temple.h</in>
+            <in>boss_bloodboil.cpp</in>
+            <in>boss_illidan.cpp</in>
+            <in>boss_mother_shahraz.cpp</in>
+            <in>boss_reliquary_of_souls.cpp</in>
+            <in>boss_shade_of_akama.cpp</in>
+            <in>boss_supremus.cpp</in>
+            <in>boss_teron_gorefiend.cpp</in>
+            <in>boss_warlord_najentus.cpp</in>
+            <in>illidari_council.cpp</in>
+            <in>instance_black_temple.cpp</in>
+          </df>
+          <df name="coilfang_reservoir">
+            <df name="serpent_shrine">
+              <in>boss_fathomlord_karathress.cpp</in>
+              <in>boss_hydross_the_unstable.cpp</in>
+              <in>boss_lady_vashj.cpp</in>
+              <in>boss_leotheras_the_blind.cpp</in>
+              <in>boss_morogrim_tidewalker.cpp</in>
+              <in>instance_serpent_shrine.cpp</in>
+              <in>serpent_shrine.h</in>
+            </df>
+            <df name="slave_pens">
+              <in>boss_rokmar.cpp</in>
+            </df>
+            <df name="steam_vault">
+              <in>boss_hydromancer_thespia.cpp</in>
+              <in>boss_mekgineer_steamrigger.cpp</in>
+              <in>boss_warlord_kalithresh.cpp</in>
+              <in>instance_steam_vault.cpp</in>
+              <in>steam_vault.h</in>
+            </df>
+            <df name="underbog">
+              <in>boss_ghazan.cpp</in>
+              <in>boss_hungarfen.cpp</in>
+            </df>
+          </df>
+          <df name="gruuls_lair">
+            <in>boss_gruul.cpp</in>
+            <in>boss_high_king_maulgar.cpp</in>
+            <in>gruuls_lair.h</in>
+            <in>instance_gruuls_lair.cpp</in>
+          </df>
+          <df name="hellfire_citadel">
+            <df name="blood_furnace">
+              <in>blood_furnace.h</in>
+              <in>boss_broggok.cpp</in>
+              <in>boss_kelidan_the_breaker.cpp</in>
+              <in>boss_the_maker.cpp</in>
+              <in>instance_blood_furnace.cpp</in>
+            </df>
+            <df name="hellfire_ramparts">
+              <in>boss_nazan_and_vazruden.cpp</in>
+              <in>boss_omor_the_unscarred.cpp</in>
+              <in>boss_watchkeeper_gargolmar.cpp</in>
+              <in>hellfire_ramparts.h</in>
+              <in>instance_hellfire_ramparts.cpp</in>
+            </df>
+            <df name="magtheridons_lair">
+              <in>boss_magtheridon.cpp</in>
+              <in>instance_magtheridons_lair.cpp</in>
+              <in>magtheridons_lair.h</in>
+            </df>
+            <df name="shattered_halls">
+              <in>boss_nethekurse.cpp</in>
+              <in>boss_warbringer_omrogg.cpp</in>
+              <in>boss_warchief_kargath_bladefist.cpp</in>
+              <in>instance_shattered_halls.cpp</in>
+              <in>shattered_halls.h</in>
+            </df>
+          </df>
+          <df name="tempest_keep">
+            <df name="arcatraz">
+              <in>arcatraz.cpp</in>
+              <in>arcatraz.h</in>
+              <in>boss_harbinger_skyriss.cpp</in>
+              <in>instance_arcatraz.cpp</in>
+            </df>
+            <df name="botanica">
+              <in>boss_high_botanist_freywinn.cpp</in>
+              <in>boss_laj.cpp</in>
+              <in>boss_warp_splinter.cpp</in>
+            </df>
+            <df name="the_eye">
+              <in>boss_astromancer.cpp</in>
+              <in>boss_kaelthas.cpp</in>
+              <in>boss_void_reaver.cpp</in>
+              <in>instance_the_eye.cpp</in>
+              <in>the_eye.cpp</in>
+              <in>the_eye.h</in>
+            </df>
+            <df name="the_mechanar">
+              <in>boss_gatewatcher_gyrokill.cpp</in>
+              <in>boss_gatewatcher_ironhand.cpp</in>
+              <in>boss_nethermancer_sepethrea.cpp</in>
+              <in>boss_pathaleon_the_calculator.cpp</in>
+              <in>instance_mechanar.cpp</in>
+              <in>mechanar.h</in>
+            </df>
+          </df>
+          <in>blades_edge_mountains.cpp</in>
+          <in>boss_doomlord_kazzak.cpp</in>
+          <in>boss_doomwalker.cpp</in>
+          <in>hellfire_peninsula.cpp</in>
+          <in>nagrand.cpp</in>
+          <in>netherstorm.cpp</in>
+          <in>shadowmoon_valley.cpp</in>
+          <in>shattrath_city.cpp</in>
+          <in>terokkar_forest.cpp</in>
+          <in>zangarmarsh.cpp</in>
+        </df>
+        <df name="world">
+          <in>areatrigger_scripts.cpp</in>
+          <in>boss_emeriss.cpp</in>
+          <in>boss_lethon.cpp</in>
+          <in>boss_taerar.cpp</in>
+          <in>boss_ysondre.cpp</in>
+          <in>go_scripts.cpp</in>
+          <in>guards.cpp</in>
+          <in>item_scripts.cpp</in>
+          <in>mob_generic_creature.cpp</in>
+          <in>npc_professions.cpp</in>
+          <in>npcs_special.cpp</in>
+          <in>spell_scripts.cpp</in>
+        </df>
+      </df>
+      <df name="sql">
+        <df name="old">
+        </df>
+        <df name="optional">
+        </df>
+        <df name="Updates">
+          <df name="0.0.1">
+          </df>
+          <df name="0.0.2">
+          </df>
+          <df name="0.0.3">
+          </df>
+          <df name="0.0.4">
+          </df>
+        </df>
+      </df>
+      <df name="system">
+        <in>ScriptLoader.cpp</in>
+        <in>ScriptLoader.h</in>
+        <in>system.cpp</in>
+        <in>system.h</in>
+      </df>
+      <df name="tool">
+      </df>
+      <df name="VC80">
+      </df>
+      <df name="VC90">
+      </df>
+      <in>ScriptMgr.cpp</in>
+      <in>ScriptMgr.h</in>
+      <in>config.h</in>
+      <in>revision.h</in>
+    </df>
+    <logicalFolder name="ExternalFiles"
+                   displayName="Important Files"
+                   projectFiles="false"
+                   kind="IMPORTANT_FILES_FOLDER">
+      <itemPath>Makefile.am</itemPath>
+    </logicalFolder>
+  </logicalFolder>
+  <sourceFolderFilter>^(nbproject)$</sourceFolderFilter>
+  <sourceRootList>
+    <Elem>.</Elem>
+  </sourceRootList>
+  <projectmakefile>Makefile.am</projectmakefile>
+  <confs>
+    <conf name="Default" type="0">
+      <toolsSet>
+        <remote-sources-mode>LOCAL_SOURCES</remote-sources-mode>
+        <compilerSet>default</compilerSet>
+      </toolsSet>
+      <makefileType>
+        <makeTool>
+          <buildCommandWorkingDir>.</buildCommandWorkingDir>
+          <buildCommand>${MAKE} -f Makefile.am</buildCommand>
+          <cleanCommand>${MAKE} -f Makefile.am clean</cleanCommand>
+          <executablePath></executablePath>
+        </makeTool>
+      </makefileType>
+    </conf>
+  </confs>
+</configurationDescriptor>

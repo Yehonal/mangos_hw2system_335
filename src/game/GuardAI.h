@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 #define MANGOS_GUARDAI_H
 
 #include "CreatureAI.h"
+#include "ObjectGuid.h"
 #include "Timer.h"
 
 class Creature;
@@ -46,7 +47,7 @@ class MANGOS_DLL_DECL GuardAI : public CreatureAI
         static int Permissible(const Creature *);
 
     private:
-        uint64 i_victimGuid;
+        ObjectGuid i_victimGuid;
         GuardState i_state;
         TimeTracker i_tracker;
 };

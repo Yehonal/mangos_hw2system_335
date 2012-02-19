@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 
 #include "ItemEnchantmentMgr.h"
 #include "ByteBuffer.h"
+#include "ObjectGuid.h"
 #include "Utilities/LinkedReference/RefManager.h"
 
 #include <map>
@@ -36,7 +37,8 @@ enum PermissionTypes
     ALL_PERMISSION    = 0,
     GROUP_PERMISSION  = 1,
     MASTER_PERMISSION = 2,
-    NONE_PERMISSION   = 3
+    OWNER_PERMISSION  = 3,                                  // for single player only loots
+    NONE_PERMISSION   = 4
 };
 
 enum LootType
@@ -51,8 +53,21 @@ enum LootType
     LOOT_MILLING                = 8,
 
     LOOT_FISHINGHOLE            = 20,                       // unsupported by client, sending LOOT_FISHING instead
-    LOOT_INSIGNIA               = 21                        // unsupported by client, sending LOOT_CORPSE instead
+    LOOT_FISHING_FAIL           = 21,                       // unsupported by client, sending LOOT_FISHING instead
+    LOOT_INSIGNIA               = 22                        // unsupported by client, sending LOOT_CORPSE instead
 };
+
+enum LootSlotType
+{
+    LOOT_SLOT_NORMAL  = 0,                                  // can be looted
+    LOOT_SLOT_VIEW    = 1,                                  // can be only view (ignore any loot attempts)
+    LOOT_SLOT_MASTER  = 2,                                  // can be looted only master (error message)
+    LOOT_SLOT_REQS    = 3,                                  // can't be looted (error message about missing reqs)
+    LOOT_SLOT_OWNER   = 4,                                  // ignore binding confirmation and etc, for single player looting
+    MAX_LOOT_SLOT_TYPE                                      // custom, use for mark skipped from show items
+};
+
+
 
 class Player;
 class LootStore;
@@ -101,6 +116,7 @@ struct LootItem
 
     // Basic checks for player/item compatibility - if false no chance to see the item in the loot
     bool AllowedForPlayer(Player const * player) const;
+    LootSlotType GetSlotTypeForSharedLoot(PermissionTypes permission, Player* viewer, bool condition_ok = false) const;
 };
 
 typedef std::vector<LootItem> LootItemList;
@@ -220,9 +236,9 @@ struct Loot
 {
     friend ByteBuffer& operator<<(ByteBuffer& b, LootView const& lv);
 
-    QuestItemMap const& GetPlayerQuestItems() const { return PlayerQuestItems; }
-    QuestItemMap const& GetPlayerFFAItems() const { return PlayerFFAItems; }
-    QuestItemMap const& GetPlayerNonQuestNonFFAConditionalItems() const { return PlayerNonQuestNonFFAConditionalItems; }
+    QuestItemMap const& GetPlayerQuestItems() const { return m_playerQuestItems; }
+    QuestItemMap const& GetPlayerFFAItems() const { return m_playerFFAItems; }
+    QuestItemMap const& GetPlayerNonQuestNonFFAConditionalItems() const { return m_playerNonQuestNonFFAConditionalItems; }
 
     LootItemList items;
     uint32 gold;
@@ -235,30 +251,30 @@ struct Loot
     // if loot becomes invalid this reference is used to inform the listener
     void addLootValidatorRef(LootValidatorRef* pLootValidatorRef)
     {
-        i_LootValidatorRefManager.insertFirst(pLootValidatorRef);
+        m_LootValidatorRefManager.insertFirst(pLootValidatorRef);
     }
 
     // void clear();
     void clear()
     {
-        for (QuestItemMap::const_iterator itr = PlayerQuestItems.begin(); itr != PlayerQuestItems.end(); ++itr)
+        for (QuestItemMap::const_iterator itr = m_playerQuestItems.begin(); itr != m_playerQuestItems.end(); ++itr)
             delete itr->second;
-        PlayerQuestItems.clear();
+        m_playerQuestItems.clear();
 
-        for (QuestItemMap::const_iterator itr = PlayerFFAItems.begin(); itr != PlayerFFAItems.end(); ++itr)
+        for (QuestItemMap::const_iterator itr = m_playerFFAItems.begin(); itr != m_playerFFAItems.end(); ++itr)
             delete itr->second;
-        PlayerFFAItems.clear();
+        m_playerFFAItems.clear();
 
-        for (QuestItemMap::const_iterator itr = PlayerNonQuestNonFFAConditionalItems.begin(); itr != PlayerNonQuestNonFFAConditionalItems.end(); ++itr)
+        for (QuestItemMap::const_iterator itr = m_playerNonQuestNonFFAConditionalItems.begin(); itr != m_playerNonQuestNonFFAConditionalItems.end(); ++itr)
             delete itr->second;
-        PlayerNonQuestNonFFAConditionalItems.clear();
+        m_playerNonQuestNonFFAConditionalItems.clear();
 
-        PlayersLooting.clear();
+        m_playersLooting.clear();
         items.clear();
-        quest_items.clear();
+        m_questItems.clear();
         gold = 0;
         unlootedCount = 0;
-        i_LootValidatorRefManager.clearReferences();
+        m_LootValidatorRefManager.clearReferences();
     }
 
     bool empty() const { return items.empty() && gold == 0; }
@@ -267,8 +283,8 @@ struct Loot
     void NotifyItemRemoved(uint8 lootIndex);
     void NotifyQuestItemRemoved(uint8 questIndex);
     void NotifyMoneyRemoved();
-    void AddLooter(uint64 GUID) { PlayersLooting.insert(GUID); }
-    void RemoveLooter(uint64 GUID) { PlayersLooting.erase(GUID); }
+    void AddLooter(ObjectGuid guid) { m_playersLooting.insert(guid); }
+    void RemoveLooter(ObjectGuid guid) { m_playersLooting.erase(guid); }
 
     void generateMoneyLoot(uint32 minAmount, uint32 maxAmount);
     bool FillLoot(uint32 loot_id, LootStore const& store, Player* loot_owner, bool personal, bool noEmptyError = false);
@@ -285,14 +301,17 @@ struct Loot
         QuestItemList* FillQuestLoot(Player* player);
         QuestItemList* FillNonQuestNonFFAConditionalLoot(Player* player);
 
-        LootItemList quest_items;
-        std::set<uint64> PlayersLooting;
-        QuestItemMap PlayerQuestItems;
-        QuestItemMap PlayerFFAItems;
-        QuestItemMap PlayerNonQuestNonFFAConditionalItems;
+        LootItemList m_questItems;
+
+        typedef std::set<ObjectGuid> PlayersLooting;
+        PlayersLooting m_playersLooting;
+
+        QuestItemMap m_playerQuestItems;
+        QuestItemMap m_playerFFAItems;
+        QuestItemMap m_playerNonQuestNonFFAConditionalItems;
 
         // All rolls are registered here. They need to know, when the loot is not valid anymore
-        LootValidatorRefManager i_LootValidatorRefManager;
+        LootValidatorRefManager m_LootValidatorRefManager;
 };
 
 struct LootView

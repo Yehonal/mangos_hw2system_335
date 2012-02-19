@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
 
 #include "TemporarySummon.h"
 #include "Log.h"
-#include "ObjectAccessor.h"
 #include "CreatureAI.h"
 
 TemporarySummon::TemporarySummon( ObjectGuid summoner ) :
@@ -164,7 +163,7 @@ void TemporarySummon::UnSummon()
 {
     CombatStop();
 
-    if (GetSummonerGuid().IsCreature())
+    if (GetSummonerGuid().IsCreatureOrVehicle())
         if(Creature* sum = GetMap()->GetCreature(GetSummonerGuid()))
             if (sum->AI())
                 sum->AI()->SummonedCreatureDespawn(this);

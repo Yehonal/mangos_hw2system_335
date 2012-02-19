@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -145,7 +145,10 @@ void PetAI::UpdateAI(const uint32 diff)
             _stopAttack();
             return;
         }
-        else if (m_creature->IsStopped() || m_creature->IsWithinDistInMap(m_creature->getVictim(), ATTACK_DISTANCE))
+
+        bool meleeReach = m_creature->CanReachWithMeleeAttack(m_creature->getVictim());
+
+        if (m_creature->IsStopped() || meleeReach)
         {
             // required to be stopped cases
             if (m_creature->IsStopped() && m_creature->IsNonMeleeSpellCasted(false))
@@ -156,19 +159,15 @@ void PetAI::UpdateAI(const uint32 diff)
                     return;
             }
             // not required to be stopped case
-            else if (m_creature->isAttackReady() && m_creature->canReachWithAttack(m_creature->getVictim()))
+            else if (DoMeleeAttackIfReady())
             {
-                m_creature->AttackerStateUpdate(m_creature->getVictim());
-
-                m_creature->resetAttackTimer();
-
                 if (!m_creature->getVictim())
                     return;
 
                 //if pet misses its target, it will also be the first in threat list
                 m_creature->getVictim()->AddThreat(m_creature);
 
-                if( _needToStop() )
+                if (_needToStop())
                     _stopAttack();
             }
         }
@@ -241,23 +240,23 @@ void PetAI::UpdateAI(const uint32 diff)
 
             if (inCombat && !m_creature->hasUnitState(UNIT_STAT_FOLLOW) && spell->CanAutoCast(m_creature->getVictim()))
             {
-                targetSpellStore.push_back(std::make_pair<Unit*, Spell*>(m_creature->getVictim(), spell));
+                targetSpellStore.push_back(TargetSpellList::value_type(m_creature->getVictim(), spell));
                 continue;
             }
             else
             {
                 bool spellUsed = false;
-                for(std::set<uint64>::const_iterator tar = m_AllySet.begin(); tar != m_AllySet.end(); ++tar)
+                for (AllySet::const_iterator tar = m_AllySet.begin(); tar != m_AllySet.end(); ++tar)
                 {
-                    Unit* Target = ObjectAccessor::GetUnit(*m_creature,*tar);
+                    Unit* Target = m_creature->GetMap()->GetUnit(*tar);
 
                     //only buff targets that are in combat, unless the spell can only be cast while out of combat
-                    if(!Target)
+                    if (!Target)
                         continue;
 
-                    if(spell->CanAutoCast(Target))
+                    if (spell->CanAutoCast(Target))
                     {
-                        targetSpellStore.push_back(std::make_pair<Unit*, Spell*>(Target, spell));
+                        targetSpellStore.push_back(TargetSpellList::value_type(Target, spell));
                         spellUsed = true;
                         break;
                     }
@@ -314,42 +313,42 @@ void PetAI::UpdateAllies()
 
     m_updateAlliesTimer = 10*IN_MILLISECONDS;                //update friendly targets every 10 seconds, lesser checks increase performance
 
-    if(!owner)
+    if (!owner)
         return;
-    else if(owner->GetTypeId() == TYPEID_PLAYER)
+    else if (owner->GetTypeId() == TYPEID_PLAYER)
         pGroup = ((Player*)owner)->GetGroup();
 
     //only pet and owner/not in group->ok
-    if(m_AllySet.size() == 2 && !pGroup)
+    if (m_AllySet.size() == 2 && !pGroup)
         return;
     //owner is in group; group members filled in already (no raid -> subgroupcount = whole count)
-    if(pGroup && !pGroup->isRaidGroup() && m_AllySet.size() == (pGroup->GetMembersCount() + 2))
+    if (pGroup && !pGroup->isRaidGroup() && m_AllySet.size() == (pGroup->GetMembersCount() + 2))
         return;
 
     m_AllySet.clear();
-    m_AllySet.insert(m_creature->GetGUID());
-    if(pGroup)                                              //add group
+    m_AllySet.insert(m_creature->GetObjectGuid());
+    if (pGroup)                                             //add group
     {
-        for(GroupReference *itr = pGroup->GetFirstMember(); itr != NULL; itr = itr->next())
+        for (GroupReference *itr = pGroup->GetFirstMember(); itr != NULL; itr = itr->next())
         {
-            Player* Target = itr->getSource();
-            if(!Target || !pGroup->SameSubGroup((Player*)owner, Target))
+            Player* target = itr->getSource();
+            if (!target || !pGroup->SameSubGroup((Player*)owner, target))
                 continue;
 
-            if(Target->GetGUID() == owner->GetGUID())
+            if (target->GetObjectGuid() == owner->GetObjectGuid())
                 continue;
 
-            m_AllySet.insert(Target->GetGUID());
+            m_AllySet.insert(target->GetObjectGuid());
         }
     }
     else                                                    //remove group
-        m_AllySet.insert(owner->GetGUID());
+        m_AllySet.insert(owner->GetObjectGuid());
 }
 
 void PetAI::AttackedBy(Unit *attacker)
 {
     //when attacked, fight back in case 1)no victim already AND 2)not set to passive AND 3)not set to stay, unless can it can reach attacker with melee attack anyway
     if(!m_creature->getVictim() && m_creature->GetCharmInfo() && !m_creature->GetCharmInfo()->HasReactState(REACT_PASSIVE) &&
-        (!m_creature->GetCharmInfo()->HasCommandState(COMMAND_STAY) || m_creature->canReachWithAttack(attacker)))
+        (!m_creature->GetCharmInfo()->HasCommandState(COMMAND_STAY) || m_creature->CanReachWithMeleeAttack(attacker)))
         AttackStart(attacker);
 }

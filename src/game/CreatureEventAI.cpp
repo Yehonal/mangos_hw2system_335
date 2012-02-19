@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2009-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +28,8 @@
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "InstanceData.h"
+#include "Chat.h"
+#include "Language.h"
 
 bool CreatureEventAIHolder::UpdateRepeatTimer( Creature* creature, uint32 repeatMin, uint32 repeatMax )
 {
@@ -50,6 +52,13 @@ int CreatureEventAI::Permissible(const Creature *creature)
     if( creature->GetAIName() == "EventAI" )
         return PERMIT_BASE_SPECIAL;
     return PERMIT_BASE_NO;
+}
+
+void CreatureEventAI::GetAIInformation(ChatHandler& reader)
+{
+    reader.PSendSysMessage(LANG_NPC_EVENTAI_PHASE, (uint32)m_Phase);
+    reader.PSendSysMessage(LANG_NPC_EVENTAI_MOVE, reader.GetOnOffStr(m_CombatMovementEnabled));
+    reader.PSendSysMessage(LANG_NPC_EVENTAI_COMBAT, reader.GetOnOffStr(m_MeleeEnabled));
 }
 
 CreatureEventAI::CreatureEventAI(Creature *c ) : CreatureAI(c)
@@ -147,7 +156,7 @@ bool CreatureEventAI::ProcessEvent(CreatureEventAIHolder& pHolder, Unit* pAction
             pHolder.UpdateRepeatTimer(m_creature,event.timer.repeatMin,event.timer.repeatMax);
             break;
         case EVENT_T_TIMER_OOC:
-            if (m_creature->isInCombat())
+            if (m_creature->isInCombat() || m_creature->IsInEvadeMode())
                 return false;
 
             //Repeat Timers
@@ -457,16 +466,10 @@ void CreatureEventAI::ProcessAction(CreatureEventAI_Action const& action, uint32
         case ACTION_T_SET_FACTION:
         {
             if (action.set_faction.factionId)
-                m_creature->setFaction(action.set_faction.factionId);
-            else
-            {
-                if (CreatureInfo const* ci = GetCreatureTemplateStore(m_creature->GetEntry()))
-                {
-                    //if no id provided, assume reset and then use default
-                    if (m_creature->getFaction() != ci->faction_A)
-                        m_creature->setFaction(ci->faction_A);
-                }
-            }
+                m_creature->SetFactionTemporary(action.set_faction.factionId, action.set_faction.factionFlags);
+            else                                            // no id provided, assume reset and then use default
+                m_creature->ClearTemporaryFaction();
+
             break;
         }
         case ACTION_T_MORPH_TO_ENTRY_OR_MODEL:
@@ -476,7 +479,7 @@ void CreatureEventAI::ProcessAction(CreatureEventAI_Action const& action, uint32
                 //set model based on entry from creature_template
                 if (action.morph.creatureId)
                 {
-                    if (CreatureInfo const* ci = GetCreatureTemplateStore(action.morph.creatureId))
+                    if (CreatureInfo const* ci = ObjectMgr::GetCreatureTemplate(action.morph.creatureId))
                     {
                         uint32 display_id = Creature::ChooseDisplayId(ci);
                         m_creature->SetDisplayId(display_id);
@@ -779,7 +782,7 @@ void CreatureEventAI::ProcessAction(CreatureEventAI_Action const& action, uint32
                 return;
             }
 
-            pInst->SetData64(action.set_inst_data64.field, target->GetGUID());
+            pInst->SetData64(action.set_inst_data64.field, target->GetObjectGuid().GetRawValue());
             break;
         }
         case ACTION_T_UPDATE_TEMPLATE:
@@ -836,7 +839,7 @@ void CreatureEventAI::ProcessAction(CreatureEventAI_Action const& action, uint32
                 // set model based on entry from creature_template
                 if (action.mount.creatureId)
                 {
-                    if (CreatureInfo const* cInfo = GetCreatureTemplateStore(action.mount.creatureId))
+                    if (CreatureInfo const* cInfo = ObjectMgr::GetCreatureTemplate(action.mount.creatureId))
                     {
                         uint32 display_id = Creature::ChooseDisplayId(cInfo);
                         m_creature->Mount(display_id);
@@ -937,7 +940,7 @@ void CreatureEventAI::JustDied(Unit* killer)
 {
     Reset();
 
-    if (m_creature->isGuard())
+    if (m_creature->IsGuard())
     {
         //Send Zone Under Attack message to the LocalDefense and WorldDefense Channels
         if (Player* pKiller = killer->GetCharmerOrOwnerPlayerOrPlayerItself())
@@ -1132,10 +1135,6 @@ void CreatureEventAI::UpdateAI(const uint32 diff)
 {
     //Check if we are in combat (also updates calls threat update code)
     bool Combat = m_creature->SelectHostileTarget() && m_creature->getVictim();
-
-    //Must return if creature isn't alive. Normally select hostil target and get victim prevent this
-    if (!m_creature->isAlive())
-        return;
 
     if (!m_bEmptyList)
     {
@@ -1361,20 +1360,6 @@ void CreatureEventAI::DoScriptText(int32 textEntry, WorldObject* pSource, Unit* 
         case CHAT_TYPE_ZONE_YELL:
             pSource->MonsterYellToZone(textEntry, (*i).second.Language, target);
             break;
-    }
-}
-
-void CreatureEventAI::DoMeleeAttackIfReady()
-{
-    //Make sure our attack is ready before checking distance
-    if (m_creature->isAttackReady())
-    {
-        //If we are within range melee the target
-        if (m_creature->IsWithinDistInMap(m_creature->getVictim(), ATTACK_DISTANCE))
-        {
-            m_creature->AttackerStateUpdate(m_creature->getVictim());
-            m_creature->resetAttackTimer();
-        }
     }
 }
 

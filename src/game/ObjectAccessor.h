@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,9 +37,7 @@
 #include <set>
 #include <list>
 
-class Creature;
 class Unit;
-class GameObject;
 class WorldObject;
 class Map;
 
@@ -48,7 +46,7 @@ class HashMapHolder
 {
     public:
 
-        typedef UNORDERED_MAP< uint64, T* >   MapType;
+        typedef UNORDERED_MAP<ObjectGuid, T*>   MapType;
         typedef ACE_RW_Thread_Mutex LockType;
         typedef ACE_Read_Guard<LockType> ReadGuard;
         typedef ACE_Write_Guard<LockType> WriteGuard;
@@ -56,19 +54,19 @@ class HashMapHolder
         static void Insert(T* o)
         {
             WriteGuard guard(i_lock);
-            m_objectMap[o->GetGUID()] = o;
+            m_objectMap[o->GetObjectGuid()] = o;
         }
 
         static void Remove(T* o)
         {
             WriteGuard guard(i_lock);
-            m_objectMap.erase(o->GetGUID());
+            m_objectMap.erase(o->GetObjectGuid());
         }
 
         static T* Find(ObjectGuid guid)
         {
             ReadGuard guard(i_lock);
-            typename MapType::iterator itr = m_objectMap.find(guid.GetRawValue());
+            typename MapType::iterator itr = m_objectMap.find(guid);
             return (itr != m_objectMap.end()) ? itr->second : NULL;
         }
 
@@ -97,19 +95,12 @@ class MANGOS_DLL_DECL ObjectAccessor : public MaNGOS::Singleton<ObjectAccessor, 
     public:
         typedef UNORDERED_MAP<ObjectGuid, Corpse*> Player2CorpsesMapType;
 
-        // global (obj used for map only location local guid objects (pets currently)
-        static Unit*   GetUnitInWorld(WorldObject const& obj, ObjectGuid guid);
-
-        // FIXME: map local object with global search
-        static Creature*   GetCreatureInWorld(ObjectGuid guid)   { return FindHelper<Creature>(guid); }
-        static GameObject* GetGameObjectInWorld(ObjectGuid guid) { return FindHelper<GameObject>(guid); }
-
         // Search player at any map in world and other objects at same map with `obj`
         // Note: recommended use Map::GetUnit version if player also expected at same map only
         static Unit* GetUnit(WorldObject const& obj, ObjectGuid guid);
 
         // Player access
-        static Player* FindPlayer(ObjectGuid guid);         // if need player at specific map better use Map::GetPlayer
+        static Player* FindPlayer(ObjectGuid guid, bool inWorld = true);// if need player at specific map better use Map::GetPlayer
         static Player* FindPlayerByName(const char *name);
         static void KickPlayer(ObjectGuid guid);
 
@@ -135,25 +126,7 @@ class MANGOS_DLL_DECL ObjectAccessor : public MaNGOS::Singleton<ObjectAccessor, 
         void RemoveObject(Corpse *object) { HashMapHolder<Corpse>::Remove(object); }
         void RemoveObject(Player *object) { HashMapHolder<Player>::Remove(object); }
 
-        // TODO: This methods will need lock in MT environment
-        static void LinkMap(Map* map)   { i_mapList.push_back(map); }
-        static void DelinkMap(Map* map) { i_mapList.remove(map); }
     private:
-        // TODO: This methods will need lock in MT environment
-        // Theoreticaly multiple threads can enter and search in this method but
-        // in that case linking/delinking other map should be guarded
-        template <class OBJECT> static OBJECT* FindHelper(ObjectGuid guid)
-        {
-            for (std::list<Map*>::const_iterator i = i_mapList.begin() ; i != i_mapList.end(); ++i)
-            {
-                if (OBJECT* ret = (*i)->GetObjectsStore().find(guid.GetRawValue(), (OBJECT*)NULL))
-                    return ret;
-            }
-
-            return NULL;
-        }
-
-        static std::list<Map*> i_mapList;
 
         Player2CorpsesMapType   i_player2corpse;
 
@@ -163,20 +136,6 @@ class MANGOS_DLL_DECL ObjectAccessor : public MaNGOS::Singleton<ObjectAccessor, 
         LockType i_playerGuard;
         LockType i_corpseGuard;
 };
-
-inline Unit* ObjectAccessor::GetUnitInWorld(WorldObject const& obj, ObjectGuid guid)
-{
-    if(guid.IsEmpty())
-        return NULL;
-
-    if (guid.IsPlayer())
-        return FindPlayer(guid);
-
-    if (guid.IsPet())
-        return obj.IsInWorld() ? obj.GetMap()->GetPet(guid) : NULL;
-
-    return GetCreatureInWorld(guid);
-}
 
 #define sObjectAccessor ObjectAccessor::Instance()
 

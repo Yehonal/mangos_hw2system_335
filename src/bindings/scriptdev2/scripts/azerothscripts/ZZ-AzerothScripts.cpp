@@ -7,7 +7,6 @@ uint32 itemset;
 uint32 level;
 uint32 spawntime=80000;
 uint16 dist=1;
-float x,y,z;
 
 
 //INIZIALIZZAZIONE LISTE CONCATENATE

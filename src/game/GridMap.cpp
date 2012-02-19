@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,12 +25,13 @@
 #include "DBCStores.h"
 #include "GridMap.h"
 #include "VMapFactory.h"
+#include "MoveMap.h"
 #include "World.h"
 #include "Policies/SingletonImp.h"
 #include "Util.h"
 
 char const* MAP_MAGIC         = "MAPS";
-char const* MAP_VERSION_MAGIC = "v1.1";
+char const* MAP_VERSION_MAGIC = "v1.2";
 char const* MAP_AREA_MAGIC    = "AREA";
 char const* MAP_HEIGHT_MAGIC  = "MHGT";
 char const* MAP_LIQUID_MAGIC  = "MLIQ";
@@ -44,7 +45,7 @@ GridMap::GridMap()
     m_area_map = NULL;
 
     // Height level data
-    m_gridHeight = INVALID_HEIGHT;
+    m_gridHeight = INVALID_HEIGHT_VALUE;
     m_gridGetHeight = &GridMap::getHeightFromFlat;
     m_V9 = NULL;
     m_V8 = NULL;
@@ -55,7 +56,7 @@ GridMap::GridMap()
     m_liquid_offY   = 0;
     m_liquid_width  = 0;
     m_liquid_height = 0;
-    m_liquidLevel = INVALID_HEIGHT;
+    m_liquidLevel = INVALID_HEIGHT_VALUE;
     m_liquid_type = NULL;
     m_liquid_map  = NULL;
 }
@@ -478,10 +479,10 @@ float GridMap::getLiquidLevel(float x, float y)
     int cy_int = ((int)y & (MAP_RESOLUTION-1)) - m_liquid_offX;
 
     if (cx_int < 0 || cx_int >=m_liquid_height)
-        return INVALID_HEIGHT;
+        return INVALID_HEIGHT_VALUE;
 
     if (cy_int < 0 || cy_int >=m_liquid_width )
-        return INVALID_HEIGHT;
+        return INVALID_HEIGHT_VALUE;
 
     return m_liquid_map[cx_int*m_liquid_width + cy_int];
 }
@@ -645,6 +646,7 @@ TerrainInfo::~TerrainInfo()
             delete m_GridMaps[i][k];
 
     VMAP::VMapFactory::createOrGetVMapManager()->unloadMap(m_mapId);
+    MMAP::MMapFactory::createOrGetMMapManager()->unloadMap(m_mapId);
 }
 
 GridMap * TerrainInfo::Load(const uint32 x, const uint32 y)
@@ -705,6 +707,9 @@ void TerrainInfo::CleanUpGrids(const uint32 diff)
 
                 //unload VMAPS...
                 VMAP::VMapFactory::createOrGetVMapManager()->unloadMap(m_mapId, x, y);
+
+                //unload mmap...
+                MMAP::MMapFactory::createOrGetMMapManager()->unloadMap(m_mapId, x, y);
             }
         }
     }
@@ -930,7 +935,7 @@ GridMapLiquidStatus TerrainInfo::getLiquidStatus(float x, float y, float z, uint
 {
     GridMapLiquidStatus result = LIQUID_MAP_NO_WATER;
     VMAP::IVMapManager* vmgr = VMAP::VMapFactory::createOrGetVMapManager();
-    float liquid_level, ground_level = INVALID_HEIGHT;
+    float liquid_level, ground_level = INVALID_HEIGHT_VALUE;
     uint32 liquid_type;
     if (vmgr->GetLiquidLevel(GetMapId(), x, y, z, ReqLiquidType, liquid_level, ground_level, liquid_type))
     {
@@ -1035,7 +1040,7 @@ GridMap * TerrainInfo::GetGrid( const float x, const float y )
     // half opt method
     int gx=(int)(32-x/SIZE_OF_GRIDS);                       //grid x
     int gy=(int)(32-y/SIZE_OF_GRIDS);                       //grid y
-    
+
     //quick check if GridMap already loaded
     GridMap * pMap = m_GridMaps[gx][gy];
     if(!pMap)
@@ -1088,6 +1093,9 @@ GridMap * TerrainInfo::LoadMapAndVMap( const uint32 x, const uint32 y )
                 DEBUG_LOG("Ignored VMAP name:%s, id:%d, x:%d, y:%d (vmap rep.: x:%d, y:%d)", mapName, m_mapId, x,y,x,y);
                 break;
             }
+
+            // load navmesh
+            MMAP::MMapFactory::createOrGetMMapManager()->loadMap(m_mapId, x, y);
         }
     }
 
@@ -1134,7 +1142,7 @@ TerrainManager::~TerrainManager()
 TerrainInfo * TerrainManager::LoadTerrain(const uint32 mapId)
 {
     Guard _guard(*this);
-    
+
     TerrainInfo * ptr = NULL;
     TerrainDataMap::const_iterator iter = i_TerrainMap.find(mapId);
     if(iter == i_TerrainMap.end())
@@ -1179,7 +1187,7 @@ void TerrainManager::UnloadAll()
 {
     for (TerrainDataMap::iterator it = i_TerrainMap.begin(); it != i_TerrainMap.end(); ++it)
         delete it->second;
-    
+
     i_TerrainMap.clear();
 }
 

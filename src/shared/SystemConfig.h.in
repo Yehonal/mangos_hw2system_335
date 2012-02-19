@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -71,6 +71,7 @@
 # endif
 # define _MANGOSD_CONFIG  SYSCONFDIR"mangosd.conf"
 # define _REALMD_CONFIG   SYSCONFDIR"realmd.conf"
+# define _AUCTIONHOUSEBOT_CONFIG   SYSCONFDIR"ahbot.conf"
 #else
 # if defined  (__FreeBSD__)
 #  define _ENDIAN_PLATFORM "FreeBSD_"ARCHITECTURE" (" _ENDIAN_STRING ")"
@@ -89,6 +90,7 @@
 # endif
 # define _MANGOSD_CONFIG  SYSCONFDIR"mangosd.conf"
 # define _REALMD_CONFIG  SYSCONFDIR"realmd.conf"
+# define _AUCTIONHOUSEBOT_CONFIG   SYSCONFDIR"ahbot.conf"
 #endif
 
 #define _FULLVERSION(REVD,REVT,REVN,REVH) _PACKAGENAME "/" _VERSION(REVD,REVT,REVN,REVH) " for " _ENDIAN_PLATFORM

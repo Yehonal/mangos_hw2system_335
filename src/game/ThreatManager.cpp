@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,22 +30,25 @@
 //==============================================================
 
 // The pHatingUnit is not used yet
-float ThreatCalcHelper::calcThreat(Unit* pHatedUnit, Unit* /*pHatingUnit*/, float pThreat, bool crit, SpellSchoolMask schoolMask, SpellEntry const *pThreatSpell)
+float ThreatCalcHelper::CalcThreat(Unit* pHatedUnit, Unit* /*pHatingUnit*/, float threat, bool crit, SpellSchoolMask schoolMask, SpellEntry const *pThreatSpell)
 {
     // all flat mods applied early
-    if(!pThreat)
+    if (!threat)
         return 0.0f;
 
     if (pThreatSpell)
     {
-        if (Player* modOwner = pHatedUnit->GetSpellModOwner())
-            modOwner->ApplySpellMod(pThreatSpell->Id, SPELLMOD_THREAT, pThreat);
+        if (pThreatSpell->AttributesEx & SPELL_ATTR_EX_NO_THREAT)
+            return 0.0f;
 
-        if(crit)
-            pThreat *= pHatedUnit->GetTotalAuraMultiplierByMiscMask(SPELL_AURA_MOD_CRITICAL_THREAT,schoolMask);
+        if (Player* modOwner = pHatedUnit->GetSpellModOwner())
+            modOwner->ApplySpellMod(pThreatSpell->Id, SPELLMOD_THREAT, threat);
+
+        if (crit)
+            threat *= pHatedUnit->GetTotalAuraMultiplierByMiscMask(SPELL_AURA_MOD_CRITICAL_THREAT, schoolMask);
     }
 
-    float threat = pHatedUnit->ApplyTotalThreatModifier(pThreat, schoolMask);
+    threat = pHatedUnit->ApplyTotalThreatModifier(threat, schoolMask);
     return threat;
 }
 
@@ -58,7 +61,7 @@ HostileReference::HostileReference(Unit* pUnit, ThreatManager *pThreatManager, f
     iThreat = pThreat;
     iTempThreatModifyer = 0.0f;
     link(pUnit, pThreatManager);
-    iUnitGuid = pUnit->GetGUID();
+    iUnitGuid = pUnit->GetObjectGuid();
     iOnline = true;
     iAccessible = true;
 }
@@ -125,10 +128,9 @@ void HostileReference::updateOnlineStatus()
     bool online = false;
     bool accessible = false;
 
-    if(!isValid())
+    if (!isValid())
     {
-        Unit* target = ObjectAccessor::GetUnit(*getSourceUnit(), getUnitGuid());
-        if(target)
+        if (Unit* target = ObjectAccessor::GetUnit(*getSourceUnit(), getUnitGuid()))
             link(target, getSource());
     }
     // only check for online status if
@@ -221,10 +223,10 @@ void ThreatContainer::clearReferences()
 HostileReference* ThreatContainer::getReferenceByTarget(Unit* pVictim)
 {
     HostileReference* result = NULL;
-    uint64 guid = pVictim->GetGUID();
+    ObjectGuid guid = pVictim->GetObjectGuid();
     for(ThreatList::const_iterator i = iThreatList.begin(); i != iThreatList.end(); ++i)
     {
-        if((*i)->getUnitGuid() == guid)
+        if ((*i)->getUnitGuid() == guid)
         {
             result = (*i);
             break;
@@ -250,7 +252,15 @@ HostileReference* ThreatContainer::addThreat(Unit* pVictim, float pThreat)
 void ThreatContainer::modifyThreatPercent(Unit *pVictim, int32 pPercent)
 {
     if(HostileReference* ref = getReferenceByTarget(pVictim))
-        ref->addThreatPercent(pPercent);
+    {
+        if(pPercent < -100)
+        {
+            ref->removeReference();
+            delete ref;
+        }
+        else
+            ref->addThreatPercent(pPercent);
+    }
 }
 
 //============================================================
@@ -279,58 +289,82 @@ void ThreatContainer::update()
 
 HostileReference* ThreatContainer::selectNextVictim(Creature* pAttacker, HostileReference* pCurrentVictim)
 {
-    HostileReference* currentRef = NULL;
+    HostileReference* pCurrentRef = NULL;
     bool found = false;
-    bool noPriorityTargetFound = false;
+    bool onlySecondChoiceTargetsFound = false;
+    bool checkedCurrentVictim = false;
 
     ThreatList::const_iterator lastRef = iThreatList.end();
     lastRef--;
 
-    for(ThreatList::const_iterator iter = iThreatList.begin(); iter != iThreatList.end() && !found;)
+    for (ThreatList::const_iterator iter = iThreatList.begin(); iter != iThreatList.end() && !found;)
     {
-        currentRef = (*iter);
+        pCurrentRef = (*iter);
 
-        Unit* target = currentRef->getTarget();
-        MANGOS_ASSERT(target);                              // if the ref has status online the target must be there !
+        Unit* pTarget = pCurrentRef->getTarget();
+        MANGOS_ASSERT(pTarget);                             // if the ref has status online the target must be there!
 
         // some units are prefered in comparison to others
-        if(!noPriorityTargetFound && (target->IsImmunedToDamage(pAttacker->GetMeleeDamageSchoolMask()) || target->hasNegativeAuraWithInterruptFlag(AURA_INTERRUPT_FLAG_DAMAGE)) )
+        // if (checkThreatArea) consider IsOutOfThreatArea - expected to be only set for pCurrentVictim
+        //     This prevents dropping valid targets due to 1.1 or 1.3 threat rule vs invalid current target
+        if (!onlySecondChoiceTargetsFound && pAttacker->IsSecondChoiceTarget(pTarget, pCurrentRef == pCurrentVictim))
         {
-            if(iter != lastRef)
-            {
-                // current victim is a second choice target, so don't compare threat with it below
-                if(currentRef == pCurrentVictim)
-                    pCurrentVictim = NULL;
+            if (iter != lastRef)
                 ++iter;
-                continue;
-            }
             else
             {
                 // if we reached to this point, everyone in the threatlist is a second choice target. In such a situation the target with the highest threat should be attacked.
-                noPriorityTargetFound = true;
+                onlySecondChoiceTargetsFound = true;
                 iter = iThreatList.begin();
-                continue;
             }
+
+            // current victim is a second choice target, so don't compare threat with it below
+            if (pCurrentRef == pCurrentVictim)
+                pCurrentVictim = NULL;
+
+            // second choice targets are only handled threat dependend if we have only have second choice targets
+            continue;
         }
 
-        if(!pAttacker->IsOutOfThreatArea(target))           // skip non attackable currently targets
+        if (!pAttacker->IsOutOfThreatArea(pTarget))         // skip non attackable currently targets
         {
-            if(pCurrentVictim)                              // select 1.3/1.1 better target in comparison current target
+            if (pCurrentVictim)                             // select 1.3/1.1 better target in comparison current target
             {
-                // list sorted and and we check current target, then this is best case
-                if(pCurrentVictim == currentRef || currentRef->getThreat() <= 1.1f * pCurrentVictim->getThreat() )
+                // normal case: pCurrentRef is still valid and most hated
+                if (pCurrentVictim == pCurrentRef)
                 {
-                    currentRef = pCurrentVictim;            // for second case
                     found = true;
                     break;
                 }
 
-                if (currentRef->getThreat() > 1.3f * pCurrentVictim->getThreat() ||
-                     (currentRef->getThreat() > 1.1f * pCurrentVictim->getThreat() &&
-                     pAttacker->IsWithinDistInMap(target, ATTACK_DISTANCE)) )
-                {                                           //implement 110% threat rule for targets in melee range
-                    found = true;                           //and 130% rule for targets in ranged distances
-                    break;                                  //for selecting alive targets
+                // we found a valid target, but only compare its threat if the currect victim is also a valid target
+                // Additional check to prevent unneeded comparision in case of valid current victim
+                if (!checkedCurrentVictim)
+                {
+                    Unit* pCurrentTarget = pCurrentVictim->getTarget();
+                    MANGOS_ASSERT(pCurrentTarget);
+                    if (pAttacker->IsSecondChoiceTarget(pCurrentTarget, true))
+                    {
+                        // CurrentVictim is invalid, so return CurrentRef
+                        found = true;
+                        break;
+                    }
+                    checkedCurrentVictim = true;
+                }
+
+                // list sorted and and we check current target, then this is best case
+                if (pCurrentRef->getThreat() <= 1.1f * pCurrentVictim->getThreat())
+                {
+                    pCurrentRef = pCurrentVictim;
+                    found = true;
+                    break;
+                }
+
+                if (pCurrentRef->getThreat() > 1.3f * pCurrentVictim->getThreat() ||
+                    (pCurrentRef->getThreat() > 1.1f * pCurrentVictim->getThreat() && pAttacker->CanReachWithMeleeAttack(pTarget)))
+                {                                           // implement 110% threat rule for targets in melee range
+                    found = true;                           // and 130% rule for targets in ranged distances
+                    break;                                  // for selecting alive targets
                 }
             }
             else                                            // select any
@@ -341,10 +375,10 @@ HostileReference* ThreatContainer::selectNextVictim(Creature* pAttacker, Hostile
         }
         ++iter;
     }
-    if(!found)
-        currentRef = NULL;
+    if (!found)
+        pCurrentRef = NULL;
 
-    return currentRef;
+    return pCurrentRef;
 }
 
 //============================================================
@@ -390,7 +424,7 @@ void ThreatManager::addThreat(Unit* pVictim, float pThreat, bool crit, SpellScho
 
     MANGOS_ASSERT(getOwner()->GetTypeId()== TYPEID_UNIT);
 
-    float threat = ThreatCalcHelper::calcThreat(pVictim, iOwner, pThreat, crit, schoolMask, pThreatSpell);
+    float threat = ThreatCalcHelper::CalcThreat(pVictim, iOwner, pThreat, crit, schoolMask, pThreatSpell);
 
     if (threat > 0.0f)
     {

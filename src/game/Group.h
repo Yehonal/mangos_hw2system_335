@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ struct ItemPrototype;
 class WorldSession;
 class Map;
 class BattleGround;
-class InstanceSave;
+class DungeonPersistentState;
 class Field;
 class Unit;
 
@@ -177,11 +177,11 @@ class Roll : public LootValidatorRef
 
 struct InstanceGroupBind
 {
-    InstanceSave *save;
+    DungeonPersistentState *state;
     bool perm;
     /* permanent InstanceGroupBinds exist iff the leader has a permanent
        PlayerInstanceBind for the same instance. */
-    InstanceGroupBind() : save(NULL), perm(false) {}
+    InstanceGroupBind() : state(NULL), perm(false) {}
 };
 
 /** request member stats checken **/
@@ -195,6 +195,7 @@ class MANGOS_DLL_SPEC Group
             std::string name;
             uint8       group;
             bool        assistant;
+            uint32      lastMap;
         };
         typedef std::list<MemberSlot> MemberSlotList;
         typedef MemberSlotList::const_iterator member_citerator;
@@ -203,7 +204,6 @@ class MANGOS_DLL_SPEC Group
     protected:
         typedef MemberSlotList::iterator member_witerator;
         typedef std::set<Player*> InvitesList;
-
         typedef std::vector<Roll*> Rolls;
 
     public:
@@ -223,12 +223,13 @@ class MANGOS_DLL_SPEC Group
         void   ChangeLeader(ObjectGuid guid);
         void   SetLootMethod(LootMethod method) { m_lootMethod = method; }
         void   SetLooterGuid(ObjectGuid guid) { m_looterGuid = guid; }
-        void   UpdateLooterGuid( Creature* creature, bool ifneed = false );
+        void   UpdateLooterGuid(WorldObject* pSource, bool ifneed = false);
         void   SetLootThreshold(ItemQualities threshold) { m_lootThreshold = threshold; }
         void   Disband(bool hideDestroy=false);
 
         // properties accessories
         uint32 GetId() const { return m_Id; }
+        ObjectGuid GetObjectGuid() const { return ObjectGuid(HIGHGUID_GROUP, GetId()); }
         bool IsFull() const { return (m_groupType == GROUPTYPE_NORMAL) ? (m_memberSlots.size() >= MAX_GROUP_SIZE) : (m_memberSlots.size() >= MAX_RAID_SIZE); }
         bool isRaidGroup() const { return m_groupType & GROUPTYPE_RAID; }
         bool isBGGroup()   const { return m_bgGroup != NULL; }
@@ -338,6 +339,8 @@ class MANGOS_DLL_SPEC Group
 
         void RewardGroupAtKill(Unit* pVictim, Player* player_tap);
 
+        bool SetPlayerMap(const ObjectGuid guid, uint32 mapid);
+
         /*********************************************************/
         /***                   LOOT SYSTEM                     ***/
         /*********************************************************/
@@ -346,17 +349,17 @@ class MANGOS_DLL_SPEC Group
         void SendLootRoll(ObjectGuid const& targetGuid, uint8 rollNumber, uint8 rollType, const Roll &r);
         void SendLootRollWon(ObjectGuid const& targetGuid, uint8 rollNumber, RollVote rollType, const Roll &r);
         void SendLootAllPassed(const Roll &r);
-        void GroupLoot(Creature *creature, Loot *loot);
-        void NeedBeforeGreed(Creature *creature, Loot *loot);
-        void MasterLoot(Creature *creature, Loot *loot);
+        void GroupLoot(WorldObject* pSource, Loot* loot);
+        void NeedBeforeGreed(WorldObject* pSource, Loot* loot);
+        void MasterLoot(WorldObject* pSource, Loot* loot);
         bool CountRollVote(Player* player, ObjectGuid const& lootedTarget, uint32 itemSlot, RollVote vote);
-        void StartLootRool(Creature* lootTarget, LootMethod method, Loot* loot, uint8 itemSlot, uint32 maxEnchantingSkill);
+        void StartLootRool(WorldObject* lootTarget, LootMethod method, Loot* loot, uint8 itemSlot, uint32 maxEnchantingSkill);
         void EndRoll();
 
         void LinkMember(GroupReference *pRef) { m_memberMgr.insertFirst(pRef); }
         void DelinkMember(GroupReference* /*pRef*/ ) { }
 
-        InstanceGroupBind* BindToInstance(InstanceSave *save, bool permanent, bool load = false);
+        InstanceGroupBind* BindToInstance(DungeonPersistentState *save, bool permanent, bool load = false);
         void UnbindInstance(uint32 mapid, uint8 difficulty, bool unload = false);
         InstanceGroupBind* GetBoundInstance(uint32 mapId, Player* player);
         InstanceGroupBind* GetBoundInstance(Map* aMap, Difficulty difficulty);

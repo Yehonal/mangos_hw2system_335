@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -127,6 +127,9 @@ void BattleGroundWS::StartingEventOpenDoors()
     SpawnEvent(WS_EVENT_SPIRITGUIDES_SPAWN, 0, true);
     SpawnEvent(WS_EVENT_FLAG_A, 0, true);
     SpawnEvent(WS_EVENT_FLAG_H, 0, true);
+
+    // Players that join battleground after start are not eligible to get achievement.
+    StartTimedAchievement(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, BG_WS_EVENT_START_BATTLE);
 }
 
 void BattleGroundWS::AddPlayer(Player *plr)
@@ -347,7 +350,7 @@ void BattleGroundWS::EventPlayerClickedOnFlag(Player *Source, GameObject* target
     int32 message_id = 0;
     ChatMsg type;
 
-    uint8 event = (sBattleGroundMgr.GetGameObjectEventIndex(target_obj->GetDBTableGUIDLow())).event1;
+    uint8 event = (sBattleGroundMgr.GetGameObjectEventIndex(target_obj->GetGUIDLow())).event1;
 
     //alliance flag picked up from base
     if(Source->GetTeam() == HORDE && GetFlagState(ALLIANCE) == BG_WS_FLAG_STATE_ON_BASE
@@ -357,7 +360,7 @@ void BattleGroundWS::EventPlayerClickedOnFlag(Player *Source, GameObject* target
         type = CHAT_MSG_BG_SYSTEM_HORDE;
         PlaySoundToAll(BG_WS_SOUND_ALLIANCE_FLAG_PICKED_UP);
         SpawnEvent(WS_EVENT_FLAG_A, 0, false);
-        SetAllianceFlagPicker(Source->GetGUID());
+        SetAllianceFlagPicker(Source->GetObjectGuid());
         m_FlagState[BG_TEAM_ALLIANCE] = BG_WS_FLAG_STATE_ON_PLAYER;
         //update world state to show correct flag carrier
         UpdateFlagState(HORDE, BG_WS_FLAG_STATE_ON_PLAYER);
@@ -373,7 +376,7 @@ void BattleGroundWS::EventPlayerClickedOnFlag(Player *Source, GameObject* target
         type = CHAT_MSG_BG_SYSTEM_ALLIANCE;
         PlaySoundToAll(BG_WS_SOUND_HORDE_FLAG_PICKED_UP);
         SpawnEvent(WS_EVENT_FLAG_H, 0, false);
-        SetHordeFlagPicker(Source->GetGUID());
+        SetHordeFlagPicker(Source->GetObjectGuid());
         m_FlagState[BG_TEAM_HORDE] = BG_WS_FLAG_STATE_ON_PLAYER;
         //update world state to show correct flag carrier
         UpdateFlagState(ALLIANCE, BG_WS_FLAG_STATE_ON_PLAYER);
@@ -399,7 +402,7 @@ void BattleGroundWS::EventPlayerClickedOnFlag(Player *Source, GameObject* target
             type = CHAT_MSG_BG_SYSTEM_HORDE;
             PlaySoundToAll(BG_WS_SOUND_ALLIANCE_FLAG_PICKED_UP);
             SpawnEvent(WS_EVENT_FLAG_A, 0, false);
-            SetAllianceFlagPicker(Source->GetGUID());
+            SetAllianceFlagPicker(Source->GetObjectGuid());
             Source->CastSpell(Source, BG_WS_SPELL_SILVERWING_FLAG, true);
             m_FlagState[BG_TEAM_ALLIANCE] = BG_WS_FLAG_STATE_ON_PLAYER;
             UpdateFlagState(HORDE, BG_WS_FLAG_STATE_ON_PLAYER);
@@ -427,7 +430,7 @@ void BattleGroundWS::EventPlayerClickedOnFlag(Player *Source, GameObject* target
             type = CHAT_MSG_BG_SYSTEM_ALLIANCE;
             PlaySoundToAll(BG_WS_SOUND_HORDE_FLAG_PICKED_UP);
             SpawnEvent(WS_EVENT_FLAG_H, 0, false);
-            SetHordeFlagPicker(Source->GetGUID());
+            SetHordeFlagPicker(Source->GetObjectGuid());
             Source->CastSpell(Source, BG_WS_SPELL_WARSONG_FLAG, true);
             m_FlagState[BG_TEAM_HORDE] = BG_WS_FLAG_STATE_ON_PLAYER;
             UpdateFlagState(ALLIANCE, BG_WS_FLAG_STATE_ON_PLAYER);

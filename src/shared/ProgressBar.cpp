@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,26 +19,53 @@
 #include <stdio.h>
 
 #include "ProgressBar.h"
+#include "Errors.h"
 
-char const* const barGoLink::empty = " ";
+bool BarGoLink::m_showOutput = true;
+
+char const* const BarGoLink::empty = " ";
 #ifdef _WIN32
-char const* const barGoLink::full  = "\x3D";
+char const* const BarGoLink::full  = "\x3D";
 #else
-char const* const barGoLink::full  = "*";
+char const* const BarGoLink::full  = "*";
 #endif
 
-barGoLink::~barGoLink()
+BarGoLink::BarGoLink(int row_count)
 {
+    init(row_count);
+}
+
+BarGoLink::BarGoLink(uint32 row_count)
+{
+    MANGOS_ASSERT(row_count < (uint32)ACE_INT32_MAX);
+    init((int)row_count);
+}
+
+BarGoLink::BarGoLink(uint64 row_count)
+{
+    MANGOS_ASSERT(row_count < (uint64)ACE_INT32_MAX);
+    init((int)row_count);
+}
+
+BarGoLink::~BarGoLink()
+{
+    if (!m_showOutput)
+        return;
+
     printf( "\n" );
     fflush(stdout);
 }
 
-barGoLink::barGoLink( int row_count )
+void BarGoLink::init(int row_count)
 {
     rec_no    = 0;
     rec_pos   = 0;
     indic_len = 50;
     num_rec   = row_count;
+
+    if (!m_showOutput)
+        return;
+
     #ifdef _WIN32
     printf( "\x3D" );
     #else
@@ -53,8 +80,11 @@ barGoLink::barGoLink( int row_count )
     fflush(stdout);
 }
 
-void barGoLink::step( void )
+void BarGoLink::step()
 {
+    if (!m_showOutput)
+        return;
+
     int i, n;
 
     if ( num_rec == 0 ) return;
@@ -79,4 +109,10 @@ void barGoLink::step( void )
 
         rec_pos = n;
     }
+}
+
+// avoid use inline version because linking problems with private static field
+void BarGoLink::SetOutputState(bool on)
+{
+    m_showOutput = on;
 }

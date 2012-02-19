@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ inline void MaNGOS::VisibleNotifier::Visit(GridRefManager<T> &m)
     for(typename GridRefManager<T>::iterator iter = m.begin(); iter != m.end(); ++iter)
     {
         i_camera.UpdateVisibilityOf(iter->getSource(), i_data, i_visibleNow);
-        i_clientGUIDs.erase(iter->getSource()->GetGUID());
+        i_clientGUIDs.erase(iter->getSource()->GetObjectGuid());
     }
 }
 
@@ -47,11 +47,8 @@ inline void MaNGOS::ObjectUpdater::Visit(CreatureMapType &m)
     }
 }
 
-inline void PlayerCreatureRelocationWorker(Player* pl, WorldObject const* viewPoint, Creature* c)
+inline void PlayerCreatureRelocationWorker(Player* pl, Creature* c)
 {
-    // update creature visibility at player/creature move
-    pl->UpdateVisibilityOf(viewPoint,c);
-
     // Creature AI reaction
     if (!c->hasUnitState(UNIT_STAT_LOST_CONTROL))
     {
@@ -80,11 +77,12 @@ inline void MaNGOS::PlayerRelocationNotifier::Visit(CreatureMapType &m)
     if (!i_player.isAlive() || i_player.IsTaxiFlying())
         return;
 
-    WorldObject const* viewPoint = i_player.GetCamera().GetBody();
-
     for(CreatureMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
-        if (iter->getSource()->isAlive())
-            PlayerCreatureRelocationWorker(&i_player, viewPoint, iter->getSource());
+    {
+        Creature* c = iter->getSource();
+        if (c->isAlive())
+            PlayerCreatureRelocationWorker(&i_player, c);
+    }
 }
 
 template<>
@@ -94,9 +92,11 @@ inline void MaNGOS::CreatureRelocationNotifier::Visit(PlayerMapType &m)
         return;
 
     for(PlayerMapType::iterator iter=m.begin(); iter != m.end(); ++iter)
-        if (Player* player = iter->getSource())
-            if (player->isAlive() && !player->IsTaxiFlying())
-                PlayerCreatureRelocationWorker(player, player->GetCamera().GetBody(), &i_creature);
+    {
+        Player* player = iter->getSource();
+        if (player->isAlive() && !player->IsTaxiFlying())
+            PlayerCreatureRelocationWorker(player, &i_creature);
+    }
 }
 
 template<>
@@ -136,14 +136,15 @@ inline void MaNGOS::DynamicObjectUpdater::VisitHelper(Unit* target)
     if (target->GetTypeId() == TYPEID_PLAYER && target != i_check && (((Player*)target)->isGameMaster() || ((Player*)target)->GetVisibility() == VISIBILITY_OFF))
         return;
 
+    // for player casts use less strict negative and more stricted positive targeting
     if (i_check->GetTypeId() == TYPEID_PLAYER )
     {
-        if (i_check->IsFriendlyTo( target ))
-            return;
+        if (i_check->IsFriendlyTo( target ) != i_positive)
+                return;
     }
     else
     {
-        if (!i_check->IsHostileTo( target ))
+        if (i_check->IsHostileTo( target ) == i_positive)
             return;
     }
 
@@ -159,20 +160,11 @@ inline void MaNGOS::DynamicObjectUpdater::VisitHelper(Unit* target)
 
     // Apply PersistentAreaAura on target
     // in case 2 dynobject overlap areas for same spell, same holder is selected, so dynobjects share holder
-    SpellAuraHolder *holder = target->GetSpellAuraHolder(spellInfo->Id, i_dynobject.GetCaster()->GetGUID());
+    SpellAuraHolder *holder = target->GetSpellAuraHolder(spellInfo->Id, i_dynobject.GetCasterGuid());
 
     if (holder)
     {
-        if (Aura* aura = holder->GetAuraByEffectIndex(eff_index))
-        {
-            // already exists, refresh duration
-            if (aura->GetAuraDuration() >=0 && uint32(aura->GetAuraDuration()) < i_dynobject.GetDuration())
-            {
-                aura->SetAuraDuration(i_dynobject.GetDuration());
-                holder->SendAuraUpdate(false);
-            }
-        }
-        else
+        if (!holder->GetAuraByEffectIndex(eff_index))
         {
             PersistentAreaAura* Aur = new PersistentAreaAura(spellInfo, eff_index, NULL, holder, target, i_dynobject.GetCaster());
             holder->AddAura(Aur, eff_index);
@@ -180,6 +172,11 @@ inline void MaNGOS::DynamicObjectUpdater::VisitHelper(Unit* target)
             holder->SetInUse(true);
             Aur->ApplyModifier(true,true);
             holder->SetInUse(false);
+        }
+        else if (holder->GetAuraDuration() >= 0 && uint32(holder->GetAuraDuration()) < i_dynobject.GetDuration())
+        {
+            holder->SetAuraDuration(i_dynobject.GetDuration());
+            holder->SendAuraUpdate(false);
         }
     }
     else
@@ -548,6 +545,15 @@ void MaNGOS::PlayerSearcher<Check>::Visit(PlayerMapType &m)
             return;
         }
     }
+}
+
+template<class Check>
+void MaNGOS::PlayerListSearcher<Check>::Visit(PlayerMapType &m)
+{
+    for(PlayerMapType::iterator itr = m.begin(); itr != m.end(); ++itr)
+        if (itr->getSource()->InSamePhase(i_phaseMask))
+            if (i_check(itr->getSource()))
+                i_objects.push_back(itr->getSource());
 }
 
 template<class Builder>

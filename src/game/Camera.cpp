@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ Camera::Camera(Player* pl) : m_owner(*pl), m_source(pl)
 Camera::~Camera()
 {
     // view of camera should be already reseted to owner (RemoveFromWorld -> Event_RemovedFromWorld -> ResetView)
-    MANGOS_ASSERT(m_source == &m_owner);	
+    MANGOS_ASSERT(m_source == &m_owner);
 
     // for symmetry with constructor and way to make viewpoint's list empty
     m_source->GetViewPoint().Detach(this);
@@ -65,7 +65,7 @@ void Camera::SetView(WorldObject *obj, bool update_far_sight_field /*= true*/)
         return;
     }
 
-    if (!obj->isType(TYPEMASK_DYNAMICOBJECT | TYPEMASK_UNIT))
+    if (!obj->isType(TypeMask(TYPEMASK_DYNAMICOBJECT | TYPEMASK_UNIT)))
     {
         sLog.outError("Camera::SetView, viewpoint type is not available for client");
         return;
@@ -84,7 +84,7 @@ void Camera::SetView(WorldObject *obj, bool update_far_sight_field /*= true*/)
     m_source->GetViewPoint().Attach(this);
 
     if (update_far_sight_field)
-        m_owner.SetUInt64Value(PLAYER_FARSIGHT, (m_source == &m_owner ? 0 : m_source->GetGUID()));
+        m_owner.SetGuidValue(PLAYER_FARSIGHT, (m_source == &m_owner ? ObjectGuid() : m_source->GetObjectGuid()));
 
     UpdateForCurrentViewPoint();
 }

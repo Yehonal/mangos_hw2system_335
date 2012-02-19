@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-#include "ZZ_ScriptsPersonali.h"
+
 #include "Common.h"
 #include "Log.h"
 #include "WorldPacket.h"
@@ -27,10 +27,10 @@
 #include "GossipDef.h"
 #include "QuestDef.h"
 #include "ObjectAccessor.h"
-#include "ScriptCalls.h"
+#include "ScriptMgr.h"
 #include "Group.h"
 
-void WorldSession::HandleQuestgiverStatusQueryOpcode( WorldPacket & recv_data )
+void WorldSession::HandleQuestgiverStatusQueryOpcode(WorldPacket & recv_data)
 {
     ObjectGuid guid;
     recv_data >> guid;
@@ -44,7 +44,7 @@ void WorldSession::HandleQuestgiverStatusQueryOpcode( WorldPacket & recv_data )
         return;
     }
 
-    DEBUG_LOG("WORLD: Received CMSG_QUESTGIVER_STATUS_QUERY for %s", guid.GetString().c_str());
+    DEBUG_LOG("WORLD: Received CMSG_QUESTGIVER_STATUS_QUERY - for %s to %s", _player->GetGuidStr().c_str(), guid.GetString().c_str());
 
     switch(questgiver->GetTypeId())
     {
@@ -54,7 +54,7 @@ void WorldSession::HandleQuestgiverStatusQueryOpcode( WorldPacket & recv_data )
 
             if (!cr_questgiver->IsHostileTo(_player))       // not show quest status to enemies
             {
-                dialogStatus = Script->NPCDialogStatus(_player, cr_questgiver);
+                dialogStatus = sScriptMgr.GetDialogStatus(_player, cr_questgiver);
 
                 if (dialogStatus > DIALOG_STATUS_REWARD_REP)
                     dialogStatus = getDialogStatus(_player, cr_questgiver, DIALOG_STATUS_NONE);
@@ -64,7 +64,7 @@ void WorldSession::HandleQuestgiverStatusQueryOpcode( WorldPacket & recv_data )
         case TYPEID_GAMEOBJECT:
         {
             GameObject* go_questgiver = (GameObject*)questgiver;
-            dialogStatus = Script->GODialogStatus(_player, go_questgiver);
+            dialogStatus = sScriptMgr.GetDialogStatus(_player, go_questgiver);
 
             if (dialogStatus > DIALOG_STATUS_REWARD_REP)
                 dialogStatus = getDialogStatus(_player, go_questgiver, DIALOG_STATUS_NONE);
@@ -85,13 +85,12 @@ void WorldSession::HandleQuestgiverHelloOpcode(WorldPacket & recv_data)
     ObjectGuid guid;
     recv_data >> guid;
 
-    DEBUG_LOG("WORLD: Received CMSG_QUESTGIVER_HELLO npc: %s", guid.GetString().c_str());
+    DEBUG_LOG("WORLD: Received CMSG_QUESTGIVER_HELLO - for %s to %s", _player->GetGuidStr().c_str(), guid.GetString().c_str());
 
-    Creature *pCreature = GetPlayer()->GetNPCIfCanInteractWith(guid, UNIT_NPC_FLAG_NONE);
-
+    Creature* pCreature = GetPlayer()->GetNPCIfCanInteractWith(guid, UNIT_NPC_FLAG_NONE);
     if (!pCreature)
     {
-        DEBUG_LOG ("WORLD: HandleQuestgiverHelloOpcode - %s not found or you can't interact with him.", guid.GetString().c_str());
+        DEBUG_LOG ("WORLD: HandleQuestgiverHelloOpcode - for %s to %s not found or you can't interact with him.", _player->GetGuidStr().c_str(), guid.GetString().c_str());
         return;
     }
 
@@ -103,24 +102,24 @@ void WorldSession::HandleQuestgiverHelloOpcode(WorldPacket & recv_data)
     if (!pCreature->IsStopped())
         pCreature->StopMoving();
 
-    if (Script->GossipHello(_player, pCreature))
+    if (sScriptMgr.OnGossipHello(_player, pCreature))
         return;
 
     _player->PrepareGossipMenu(pCreature, pCreature->GetCreatureInfo()->GossipMenuId);
     _player->SendPreparedGossip(pCreature);
 }
 
-void WorldSession::HandleQuestgiverAcceptQuestOpcode( WorldPacket & recv_data )
+void WorldSession::HandleQuestgiverAcceptQuestOpcode(WorldPacket & recv_data)
 {
     ObjectGuid guid;
     uint32 quest;
     uint32 unk1;
     recv_data >> guid >> quest >> unk1;
 
-    if (!GetPlayer()->isAlive())
+    if (!CanInteractWithQuestGiver(guid, "CMSG_QUESTGIVER_ACCEPT_QUEST"))
         return;
 
-    DEBUG_LOG("WORLD: Received CMSG_QUESTGIVER_ACCEPT_QUEST npc = %s, quest = %u, unk1 = %u", guid.GetString().c_str(), quest, unk1 );
+    DEBUG_LOG("WORLD: Received CMSG_QUESTGIVER_ACCEPT_QUEST - for %s to %s, quest = %u, unk1 = %u", _player->GetGuidStr().c_str(), guid.GetString().c_str(), quest, unk1 );
 
     Object* pObject = _player->GetObjectByTypeMask(guid, TYPEMASK_CREATURE_GAMEOBJECT_PLAYER_OR_ITEM);
 
@@ -131,7 +130,7 @@ void WorldSession::HandleQuestgiverAcceptQuestOpcode( WorldPacket & recv_data )
         )
     {
         _player->PlayerTalkClass->CloseGossip();
-        _player->SetDivider( 0 );
+        _player->ClearDividerGuid();
         return;
     }
 
@@ -142,23 +141,19 @@ void WorldSession::HandleQuestgiverAcceptQuestOpcode( WorldPacket & recv_data )
         if(!GetPlayer()->CanTakeQuest(qInfo,true) )
         {
             _player->PlayerTalkClass->CloseGossip();
-            _player->SetDivider( 0 );
+            _player->ClearDividerGuid();
             return;
         }
 
-        if( _player->GetDivider() != 0 )
+        if (Player *pPlayer = ObjectAccessor::FindPlayer(_player->GetDividerGuid()))
         {
-            Player *pPlayer = ObjectAccessor::FindPlayer( _player->GetDivider() );
-            if( pPlayer )
-            {
-                pPlayer->SendPushToPartyResponse( _player, QUEST_PARTY_MSG_ACCEPT_QUEST );
-                _player->SetDivider( 0 );
-            }
+            pPlayer->SendPushToPartyResponse(_player, QUEST_PARTY_MSG_ACCEPT_QUEST);
+            _player->ClearDividerGuid();
         }
 
         if( _player->CanAddQuest( qInfo, true ) )
         {
-            _player->AddQuest( qInfo, pObject );
+            _player->AddQuest( qInfo, pObject );            // pObject (if it item) can be destroyed at call
 
             if (qInfo->HasQuestFlag(QUEST_FLAGS_PARTY_ACCEPT))
             {
@@ -173,7 +168,7 @@ void WorldSession::HandleQuestgiverAcceptQuestOpcode( WorldPacket & recv_data )
 
                         if (pPlayer->CanTakeQuest(qInfo, true))
                         {
-                            pPlayer->SetDivider(_player->GetGUID());
+                            pPlayer->SetDividerGuid(_player->GetObjectGuid());
 
                             //need confirmation that any gossip window will close
                             pPlayer->PlayerTalkClass->CloseGossip();
@@ -189,36 +184,6 @@ void WorldSession::HandleQuestgiverAcceptQuestOpcode( WorldPacket & recv_data )
 
             _player->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_QUEST, quest);
 
-            switch(pObject->GetTypeId())
-            {
-                case TYPEID_UNIT:
-                    Script->QuestAccept(_player, ((Creature*)pObject), qInfo );
-                    break;
-                case TYPEID_ITEM:
-                case TYPEID_CONTAINER:
-                {
-                    Script->ItemQuestAccept(_player, ((Item*)pObject), qInfo );
-
-                    // destroy not required for quest finish quest starting item
-                    bool destroyItem = true;
-                    for(int i = 0; i < QUEST_ITEM_OBJECTIVES_COUNT; ++i)
-                    {
-                        if ((qInfo->ReqItemId[i] == ((Item*)pObject)->GetEntry()) && (((Item*)pObject)->GetProto()->MaxCount > 0))
-                        {
-                            destroyItem = false;
-                            break;
-                        }
-                    }
-
-                    if(destroyItem)
-                        _player->DestroyItem(((Item*)pObject)->GetBagSlot(), ((Item*)pObject)->GetSlot(), true);
-
-                    break;
-                }
-                case TYPEID_GAMEOBJECT:
-                    Script->GOQuestAccept(_player, ((GameObject*)pObject), qInfo );
-                    break;
-            }
             _player->PlayerTalkClass->CloseGossip();
 
             if( qInfo->GetSrcSpell() > 0 )
@@ -238,7 +203,7 @@ void WorldSession::HandleQuestgiverQueryQuestOpcode( WorldPacket & recv_data )
     uint8 unk1;
     recv_data >> guid >> quest >> unk1;
 
-    DEBUG_LOG("WORLD: Received CMSG_QUESTGIVER_QUERY_QUEST npc = %s, quest = %u, unk1 = %u", guid.GetString().c_str(), quest, unk1 );
+    DEBUG_LOG("WORLD: Received CMSG_QUESTGIVER_QUERY_QUEST - for %s to %s, quest = %u, unk1 = %u", _player->GetGuidStr().c_str(), guid.GetString().c_str(), quest, unk1);
 
     // Verify that the guid is valid and is a questgiver or involved in the requested quest
     Object* pObject = _player->GetObjectByTypeMask(guid, TYPEMASK_CREATURE_GAMEOBJECT_OR_ITEM);
@@ -265,7 +230,7 @@ void WorldSession::HandleQuestQueryOpcode( WorldPacket & recv_data )
     }
 }
 
-void WorldSession::HandleQuestgiverChooseRewardOpcode( WorldPacket & recv_data )
+void WorldSession::HandleQuestgiverChooseRewardOpcode(WorldPacket & recv_data)
 {
     uint32 quest, reward;
     ObjectGuid guid;
@@ -273,14 +238,14 @@ void WorldSession::HandleQuestgiverChooseRewardOpcode( WorldPacket & recv_data )
 
     if(reward >= QUEST_REWARD_CHOICES_COUNT)
     {
-        sLog.outError("Error in CMSG_QUESTGIVER_CHOOSE_REWARD: player %s (guid %d) tried to get invalid reward (%u) (probably packet hacking)", _player->GetName(), _player->GetGUIDLow(), reward);
+        sLog.outError("Error in CMSG_QUESTGIVER_CHOOSE_REWARD - %s tried to get invalid reward (%u) (probably packet hacking)", _player->GetGuidStr().c_str(), _player->GetGUIDLow(), reward);
         return;
     }
 
-    if(!GetPlayer()->isAlive())
+    if (!CanInteractWithQuestGiver(guid, "CMSG_QUESTGIVER_CHOOSE_REWARD"))
         return;
 
-    DEBUG_LOG("WORLD: Received CMSG_QUESTGIVER_CHOOSE_REWARD npc = %s, quest = %u, reward = %u", guid.GetString().c_str(), quest, reward);
+    DEBUG_LOG("WORLD: Received CMSG_QUESTGIVER_CHOOSE_REWARD - for %s to %s, quest = %u, reward = %u", _player->GetGuidStr().c_str(), guid.GetString().c_str(), quest, reward);
 
     Object* pObject = _player->GetObjectByTypeMask(guid, TYPEMASK_CREATURE_OR_GAMEOBJECT);
     if(!pObject)
@@ -296,25 +261,9 @@ void WorldSession::HandleQuestgiverChooseRewardOpcode( WorldPacket & recv_data )
         {
             _player->RewardQuest( pQuest, reward, pObject );
 
-            switch(pObject->GetTypeId())
-            {
-                case TYPEID_UNIT:
-                    if (!(Script->ChooseReward(_player, ((Creature*)pObject), pQuest, reward)))
-                    {
-                        // Send next quest
-                        if (Quest const* nextquest = _player->GetNextQuest(guid, pQuest))
-                            _player->PlayerTalkClass->SendQuestGiverQuestDetails(nextquest, guid, true);
-                    }
-                    break;
-                case TYPEID_GAMEOBJECT:
-                    if (!Script->GOChooseReward(_player, ((GameObject*)pObject), pQuest, reward))
-                    {
-                        // Send next quest
-                        if (Quest const* nextquest = _player->GetNextQuest(guid ,pQuest))
-                            _player->PlayerTalkClass->SendQuestGiverQuestDetails(nextquest, guid, true);
-                    }
-                    break;
-            }
+            // Send next quest
+            if (Quest const* nextquest = _player->GetNextQuest(guid, pQuest))
+                _player->PlayerTalkClass->SendQuestGiverQuestDetails(nextquest, guid, true);
         }
         else
             _player->PlayerTalkClass->SendQuestGiverOfferReward(pQuest, guid, true);
@@ -327,10 +276,10 @@ void WorldSession::HandleQuestgiverRequestRewardOpcode( WorldPacket & recv_data 
     ObjectGuid guid;
     recv_data >> guid >> quest;
 
-    if (!GetPlayer()->isAlive())
+    if (!CanInteractWithQuestGiver(guid, "CMSG_QUESTGIVER_REQUEST_REWARD"))
         return;
 
-    DEBUG_LOG("WORLD: Received CMSG_QUESTGIVER_REQUEST_REWARD npc = %s, quest = %u", guid.GetString().c_str(), quest);
+    DEBUG_LOG("WORLD: Received CMSG_QUESTGIVER_REQUEST_REWARD - for %s to %s, quest = %u", _player->GetGuidStr().c_str(), guid.GetString().c_str(), quest);
 
     Object* pObject = _player->GetObjectByTypeMask(guid, TYPEMASK_CREATURE_OR_GAMEOBJECT);
     if (!pObject||!pObject->HasInvolvedQuest(quest))
@@ -407,7 +356,7 @@ void WorldSession::HandleQuestConfirmAccept(WorldPacket& recv_data)
         if (!pQuest->HasQuestFlag(QUEST_FLAGS_PARTY_ACCEPT))
             return;
 
-        Player* pOriginalPlayer = ObjectAccessor::FindPlayer(_player->GetDivider());
+        Player* pOriginalPlayer = ObjectAccessor::FindPlayer(_player->GetDividerGuid());
 
         if (!pOriginalPlayer)
             return;
@@ -426,7 +375,7 @@ void WorldSession::HandleQuestConfirmAccept(WorldPacket& recv_data)
         if (_player->CanAddQuest(pQuest, true))
             _player->AddQuest(pQuest, NULL);                // NULL, this prevent DB script from duplicate running
 
-        _player->SetDivider(0);
+        _player->ClearDividerGuid();
     }
 }
 
@@ -436,20 +385,21 @@ void WorldSession::HandleQuestgiverCompleteQuest(WorldPacket& recv_data)
     ObjectGuid guid;
     recv_data >> guid >> quest;
 
-    if (!GetPlayer()->isAlive())
+    if (!CanInteractWithQuestGiver(guid, "CMSG_QUESTGIVER_COMPLETE_QUEST"))
         return;
 
-    DEBUG_LOG("WORLD: Received CMSG_QUESTGIVER_COMPLETE_QUEST npc = %s, quest = %u", guid.GetString().c_str(), quest);
+    // All ok, continue
+    DEBUG_LOG("WORLD: Received CMSG_QUESTGIVER_COMPLETE_QUEST - for %s to %s, quest = %u", _player->GetGuidStr().c_str(), guid.GetString().c_str(), quest);
 
-    if (Quest const *pQuest = sObjectMgr.GetQuestTemplate(quest))
+    if (Quest const* pQuest = sObjectMgr.GetQuestTemplate(quest))
     {
-        if (_player->GetQuestStatus( quest ) != QUEST_STATUS_COMPLETE)
+        if (_player->GetQuestStatus(quest) != QUEST_STATUS_COMPLETE)
         {
             if (pQuest->IsRepeatable())
                 _player->PlayerTalkClass->SendQuestGiverRequestItems(pQuest, guid, _player->CanCompleteRepeatableQuest(pQuest), false);
             else
-                _player->PlayerTalkClass->SendQuestGiverRequestItems(pQuest, guid, _player->CanRewardQuest(pQuest,false), false);
-		}
+                _player->PlayerTalkClass->SendQuestGiverRequestItems(pQuest, guid, _player->CanRewardQuest(pQuest, false), false);
+        }
         else
         {
             if (pQuest->GetReqItemsCount())                 // some items required
@@ -509,14 +459,14 @@ void WorldSession::HandlePushQuestToParty(WorldPacket& recvPacket)
                     continue;
                 }
 
-                if (pPlayer->GetDivider() != 0)
+                if (pPlayer->GetDividerGuid())
                 {
                     _player->SendPushToPartyResponse(pPlayer, QUEST_PARTY_MSG_BUSY);
                     continue;
                 }
 
                 pPlayer->PlayerTalkClass->SendQuestGiverQuestDetails(pQuest, _player->GetObjectGuid(), true);
-                pPlayer->SetDivider(_player->GetGUID());
+                pPlayer->SetDividerGuid(_player->GetObjectGuid());
             }
         }
     }
@@ -530,16 +480,13 @@ void WorldSession::HandleQuestPushResult(WorldPacket& recvPacket)
 
     DEBUG_LOG("WORLD: Received MSG_QUEST_PUSH_RESULT");
 
-    if (_player->GetDivider() != 0)
+    if (Player *pPlayer = ObjectAccessor::FindPlayer(_player->GetDividerGuid()))
     {
-        if (Player *pPlayer = ObjectAccessor::FindPlayer(_player->GetDivider()))
-        {
-            WorldPacket data( MSG_QUEST_PUSH_RESULT, (8+1) );
-            data << ObjectGuid(guid);
-            data << uint8(msg);                             // valid values: 0-8
-            pPlayer->GetSession()->SendPacket(&data);
-            _player->SetDivider( 0 );
-        }
+        WorldPacket data( MSG_QUEST_PUSH_RESULT, (8+1) );
+        data << ObjectGuid(guid);
+        data << uint8(msg);                             // valid values: 0-8
+        pPlayer->GetSession()->SendPacket(&data);
+        _player->ClearDividerGuid();
     }
 }
 
@@ -617,7 +564,7 @@ uint32 WorldSession::getDialogStatus(Player *pPlayer, Object* questgiver, uint32
                     {
                         dialogStatusNew = DIALOG_STATUS_REWARD_REP;
                     }
-                    else if (pPlayer->getLevel() <= pPlayer->GetQuestLevelForPlayer(pQuest) + sWorld.getConfig(CONFIG_UINT32_QUEST_LOW_LEVEL_HIDE_DIFF))
+                    else if (int32(pPlayer->getLevel()) <= int32(pPlayer->GetQuestLevelForPlayer(pQuest)) + sWorld.getConfig(CONFIG_INT32_QUEST_LOW_LEVEL_HIDE_DIFF))
                     {
                         if (pQuest->HasQuestFlag(QUEST_FLAGS_DAILY) || pQuest->HasQuestFlag(QUEST_FLAGS_WEEKLY))
                             dialogStatusNew = DIALOG_STATUS_AVAILABLE_REP;
@@ -652,7 +599,7 @@ void WorldSession::HandleQuestgiverStatusMultipleQuery(WorldPacket& /*recvPacket
     {
         uint8 dialogStatus = DIALOG_STATUS_NONE;
 
-        if (itr->IsCreatureOrPet())
+        if (itr->IsAnyTypeCreature())
         {
             // need also pet quests case support
             Creature *questgiver = GetPlayer()->GetMap()->GetAnyTypeCreature(*itr);
@@ -663,7 +610,7 @@ void WorldSession::HandleQuestgiverStatusMultipleQuery(WorldPacket& /*recvPacket
             if (!questgiver->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER))
                 continue;
 
-            dialogStatus = Script->NPCDialogStatus(_player, questgiver);
+            dialogStatus = sScriptMgr.GetDialogStatus(_player, questgiver);
 
             if (dialogStatus > DIALOG_STATUS_REWARD_REP)
                 dialogStatus = getDialogStatus(_player, questgiver, DIALOG_STATUS_NONE);
@@ -682,7 +629,7 @@ void WorldSession::HandleQuestgiverStatusMultipleQuery(WorldPacket& /*recvPacket
             if (questgiver->GetGoType() != GAMEOBJECT_TYPE_QUESTGIVER)
                 continue;
 
-            dialogStatus = Script->GODialogStatus(_player, questgiver);
+            dialogStatus = sScriptMgr.GetDialogStatus(_player, questgiver);
 
             if (dialogStatus > DIALOG_STATUS_REWARD_REP)
                 dialogStatus = getDialogStatus(_player, questgiver, DIALOG_STATUS_NONE);
@@ -695,4 +642,33 @@ void WorldSession::HandleQuestgiverStatusMultipleQuery(WorldPacket& /*recvPacket
 
     data.put<uint32>(0, count);                             // write real count
     SendPacket(&data);
+}
+
+bool WorldSession::CanInteractWithQuestGiver(ObjectGuid guid, char const* descr)
+{
+    if (guid.IsCreatureOrVehicle())
+    {
+        Creature* pCreature = _player->GetNPCIfCanInteractWith(guid, UNIT_NPC_FLAG_QUESTGIVER);
+        if (!pCreature)
+        {
+            DEBUG_LOG("WORLD: %s - %s cannot interact with %s.", descr, _player->GetGuidStr().c_str(), guid.GetString().c_str());
+            return false;
+        }
+    }
+    else if (guid.IsGameObject())
+    {
+        GameObject* pGo = _player->GetGameObjectIfCanInteractWith(guid, GAMEOBJECT_TYPE_QUESTGIVER);
+        if (!pGo)
+        {
+            DEBUG_LOG("WORLD: %s - %s cannot interact with %s.", descr, _player->GetGuidStr().c_str(), guid.GetString().c_str());
+            return false;
+        }
+    }
+    else if (!_player->isAlive())
+    {
+        DEBUG_LOG("WORLD: %s - %s is dead, requested guid was %s", descr, _player->GetGuidStr().c_str(), guid.GetString().c_str());
+        return false;
+    }
+
+    return true;
 }

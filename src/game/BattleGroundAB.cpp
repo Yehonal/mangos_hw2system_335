@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -174,6 +174,9 @@ void BattleGroundAB::StartingEventOpenDoors()
         SpawnBGObject(m_BgObjects[BG_AB_OBJECT_SPEEDBUFF_STABLES + buff + i * 3], RESPAWN_IMMEDIATELY);
     }
     OpenDoorEvent(BG_EVENT_DOOR);
+
+    // Players that join battleground after start are not eligible to get achievement.
+    StartTimedAchievement(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, BG_AB_EVENT_START_BATTLE);
 }
 
 void BattleGroundAB::AddPlayer(Player *plr)
@@ -335,7 +338,7 @@ void BattleGroundAB::EventPlayerClickedOnFlag(Player *source, GameObject* target
     if (GetStatus() != STATUS_IN_PROGRESS)
         return;
 
-    uint8 event = (sBattleGroundMgr.GetGameObjectEventIndex(target_obj->GetDBTableGUIDLow())).event1;
+    uint8 event = (sBattleGroundMgr.GetGameObjectEventIndex(target_obj->GetGUIDLow())).event1;
     if (event >= BG_AB_NODES_MAX)                           // not a node
         return;
     BG_AB_Nodes node = BG_AB_Nodes(event);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -81,11 +81,13 @@ void WorldSession::HandleGroupInviteOpcode( WorldPacket & recv_data )
         SendPartyResult(PARTY_OP_INVITE, membername, ERR_PLAYER_WRONG_FACTION);
         return;
     }
+
     if(GetPlayer()->GetInstanceId() != 0 && player->GetInstanceId() != 0 && GetPlayer()->GetInstanceId() != player->GetInstanceId() && GetPlayer()->GetMapId() == player->GetMapId())
     {
         SendPartyResult(PARTY_OP_INVITE, membername, ERR_TARGET_NOT_IN_INSTANCE_S);
         return;
     }
+
     // just ignore us
     if(player->GetSocial()->HasIgnore(GetPlayer()->GetObjectGuid()))
     {
@@ -96,6 +98,12 @@ void WorldSession::HandleGroupInviteOpcode( WorldPacket & recv_data )
     Group *group = GetPlayer()->GetGroup();
     if( group && group->isBGGroup() )
         group = GetPlayer()->GetOriginalGroup();
+
+    if(group && group->isRaidGroup() && !player->GetAllowLowLevelRaid() && (player->getLevel() < sWorld.getConfig(CONFIG_UINT32_MIN_LEVEL_FOR_RAID)))
+    {
+        SendPartyResult(PARTY_OP_INVITE, "", ERR_RAID_DISALLOWED_BY_LEVEL);
+        return;
+    }
 
     Group *group2 = player->GetGroup();
     if( group2 && group2->isBGGroup() )
@@ -297,8 +305,7 @@ void WorldSession::HandleGroupUninviteOpcode(WorldPacket & recv_data)
     if (!grp)
         return;
 
-    ObjectGuid guid = grp->GetMemberGuid(membername);
-    if (!guid.IsEmpty())
+    if (ObjectGuid guid = grp->GetMemberGuid(membername))
     {
         Player::RemoveFromGroup(grp, guid);
         return;
@@ -537,8 +544,11 @@ void WorldSession::HandleGroupChangeSubGroupOpcode( WorldPacket & recv_data )
     // everything is fine, do it
     if (Player* player = sObjectMgr.GetPlayer(name.c_str()))
         group->ChangeMembersGroup(player, groupNr);
-    else if (uint64 guid = sObjectMgr.GetPlayerGUIDByName(name.c_str()))
-        group->ChangeMembersGroup(guid, groupNr);
+    else
+    {
+        if (ObjectGuid guid = sObjectMgr.GetPlayerGuidByName(name.c_str()))
+            group->ChangeMembersGroup(guid, groupNr);
+    }
 }
 
 void WorldSession::HandleGroupAssistantLeaderOpcode( WorldPacket & recv_data )
@@ -615,7 +625,7 @@ void WorldSession::HandleRaidReadyCheckOpcode( WorldPacket & recv_data )
 
         // everything is fine, do it
         WorldPacket data(MSG_RAID_READY_CHECK, 8);
-        data << GetPlayer()->GetGUID();
+        data << ObjectGuid(GetPlayer()->GetObjectGuid());
         group->BroadcastPacket(&data, false, -1);
 
         group->OfflineReadyCheck();
@@ -807,7 +817,7 @@ void WorldSession::HandleRequestPartyMemberStatsOpcode( WorldPacket &recv_data )
     ObjectGuid guid;
     recv_data >> guid;
 
-    Player *player = sObjectMgr.GetPlayer(guid);
+    Player * player = HashMapHolder<Player>::Find(guid);
     if(!player)
     {
         WorldPacket data(SMSG_PARTY_MEMBER_STATS_FULL, 3+4+2);
@@ -838,9 +848,33 @@ void WorldSession::HandleRequestPartyMemberStatsOpcode( WorldPacket &recv_data )
     data << uint16(player->GetPower(powerType));            // GROUP_UPDATE_FLAG_CUR_POWER
     data << uint16(player->GetMaxPower(powerType));         // GROUP_UPDATE_FLAG_MAX_POWER
     data << uint16(player->getLevel());                     // GROUP_UPDATE_FLAG_LEVEL
-    data << uint16(player->GetZoneId());                    // GROUP_UPDATE_FLAG_ZONE
-    data << uint16(player->GetPositionX());                 // GROUP_UPDATE_FLAG_POSITION
-    data << uint16(player->GetPositionY());                 // GROUP_UPDATE_FLAG_POSITION
+
+    //verify player coordinates and zoneid to send to teammates
+    uint16 iZoneId = 0;
+    uint16 iCoordX = 0;
+    uint16 iCoordY = 0;
+
+    if (player->IsInWorld())
+    {
+        iZoneId = player->GetZoneId();
+        iCoordX = player->GetPositionX();
+        iCoordY = player->GetPositionY();
+    }
+    else if (player->IsBeingTeleported())               // Player is in teleportation
+    {
+        WorldLocation& loc = player->GetTeleportDest(); // So take teleportation destination
+        iZoneId = sTerrainMgr.GetZoneId(loc.mapid, loc.coord_x, loc.coord_y, loc.coord_z);
+        iCoordX = loc.coord_x;
+        iCoordY = loc.coord_y;
+    }
+    else
+    {
+        //unknown player status.
+    }
+
+    data << uint16(iZoneId);                              // GROUP_UPDATE_FLAG_ZONE
+    data << uint16(iCoordX);                              // GROUP_UPDATE_FLAG_POSITION
+    data << uint16(iCoordY);                              // GROUP_UPDATE_FLAG_POSITION
 
     uint64 auramask = 0;
     size_t maskPos = data.wpos();
@@ -914,4 +948,14 @@ void WorldSession::HandleOptOutOfLootOpcode( WorldPacket & recv_data )
 
     if(unkn != 0)
         sLog.outError("CMSG_GROUP_PASS_ON_LOOT: activation not implemented!");
+}
+
+void WorldSession::HandleSetAllowLowLevelRaidOpcode( WorldPacket & recv_data )
+{
+    DEBUG_LOG("WORLD: Received CMSG_SET_ALLOW_LOW_LEVEL_RAID: %4X", recv_data.GetOpcode());
+
+    uint8 allow;
+    recv_data >> allow;
+
+    GetPlayer()->SetAllowLowLevelRaid(allow);
 }

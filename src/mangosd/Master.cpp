@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,6 +20,10 @@
     \ingroup mangosd
 */
 
+#ifndef WIN32
+    #include "PosixDaemon.h"
+#endif
+
 #include "WorldSocketMgr.h"
 #include "Common.h"
 #include "Master.h"
@@ -34,10 +38,11 @@
 #include "Database/DatabaseEnv.h"
 #include "CliRunnable.h"
 #include "RASocket.h"
-#include "ScriptCalls.h"
 #include "Util.h"
 #include "revision_sql.h"
 #include "MaNGOSsoap.h"
+#include "MassMailMgr.h"
+#include "DBCStores.h"
 
 #include <ace/OS_NS_signal.h>
 #include <ace/TP_Reactor.h>
@@ -196,6 +201,15 @@ int Master::Run()
     ///- Initialize the World
     sWorld.SetInitialWorldSettings();
 
+    #ifndef WIN32
+    detachDaemon();
+    #endif
+    //server loaded successfully => enable async DB requests
+    //this is done to forbid any async transactions during server startup!
+    CharacterDatabase.AllowAsyncTransactions();
+    WorldDatabase.AllowAsyncTransactions();
+    LoginDatabase.AllowAsyncTransactions();
+
     ///- Catch termination signals
     _HookSignals();
 
@@ -207,7 +221,7 @@ int Master::Run()
     {
         std::string builds = AcceptableClientBuildsListStr();
         LoginDatabase.escape_string(builds);
-        LoginDatabase.PExecute("UPDATE realmlist SET realmflags = realmflags & ~(%u), population = 0, realmbuilds = '%s'  WHERE id = '%u'", REALM_FLAG_OFFLINE, builds.c_str(), realmID);
+        LoginDatabase.DirectPExecute("UPDATE realmlist SET realmflags = realmflags & ~(%u), population = 0, realmbuilds = '%s'  WHERE id = '%u'", REALM_FLAG_OFFLINE, builds.c_str(), realmID);
     }
 
     ACE_Based::Thread* cliThread = NULL;
@@ -283,10 +297,6 @@ int Master::Run()
         soap_thread = new ACE_Based::Thread(runnable);
     }
 
-
-    uint32 realCurrTime, realPrevTime;
-    realCurrTime = realPrevTime = WorldTimer::getMSTime();
-
     ///- Start up freeze catcher thread
     ACE_Based::Thread* freeze_thread = NULL;
     if(uint32 freeze_delay = sConfig.GetIntDefault("MaxCoreStuckTime", 0))
@@ -327,7 +337,7 @@ int Master::Run()
     }
 
     ///- Set server offline in realmlist
-    LoginDatabase.PExecute("UPDATE realmlist SET realmflags = realmflags | %u WHERE id = '%u'", REALM_FLAG_OFFLINE, realmID);
+    LoginDatabase.DirectPExecute("UPDATE realmlist SET realmflags = realmflags | %u WHERE id = '%u'", REALM_FLAG_OFFLINE, realmID);
 
     ///- Remove signal handling before leaving
     _UnhookSignals();
@@ -345,6 +355,9 @@ int Master::Run()
 
     ///- Clean account database before leaving
     clearOnlineAccounts();
+
+    // send all still queued mass mails (before DB connections shutdown)
+    sMassMailMgr.Update(true);
 
     ///- Wait for DB delay threads to end
     CharacterDatabase.HaltDelayThread();
@@ -403,10 +416,6 @@ int Master::Run()
         delete cliThread;
     }
 
-    // for some unknown reason, unloading scripts here and not in worldrunnable
-    // fixes a memory leak related to detaching threads from the module
-    UnloadScriptingModule();
-
     ///- Exit the process with specified return value
     return World::GetExitCode();
 }
@@ -416,15 +425,16 @@ bool Master::_StartDB()
 {
     ///- Get world database info from configuration file
     std::string dbstring = sConfig.GetStringDefault("WorldDatabaseInfo", "");
+    int nConnections = sConfig.GetIntDefault("WorldDatabaseConnections", 1);
     if(dbstring.empty())
     {
         sLog.outError("Database not specified in configuration file");
         return false;
     }
-    sLog.outString("World Database: %s", dbstring.c_str());
+    sLog.outString("World Database total connections: %i", nConnections + 1);
 
     ///- Initialise the world database
-    if(!WorldDatabase.Initialize(dbstring.c_str()))
+    if(!WorldDatabase.Initialize(dbstring.c_str(), nConnections))
     {
         sLog.outError("Cannot connect to world database %s",dbstring.c_str());
         return false;
@@ -438,6 +448,7 @@ bool Master::_StartDB()
     }
 
     dbstring = sConfig.GetStringDefault("CharacterDatabaseInfo", "");
+    nConnections = sConfig.GetIntDefault("CharacterDatabaseConnections", 1);
     if(dbstring.empty())
     {
         sLog.outError("Character Database not specified in configuration file");
@@ -446,10 +457,10 @@ bool Master::_StartDB()
         WorldDatabase.HaltDelayThread();
         return false;
     }
-    sLog.outString("Character Database: %s", dbstring.c_str());
+    sLog.outString("Character Database total connections: %i", nConnections + 1);
 
     ///- Initialise the Character database
-    if(!CharacterDatabase.Initialize(dbstring.c_str()))
+    if(!CharacterDatabase.Initialize(dbstring.c_str(), nConnections))
     {
         sLog.outError("Cannot connect to Character database %s",dbstring.c_str());
 
@@ -468,6 +479,7 @@ bool Master::_StartDB()
 
     ///- Get login database info from configuration file
     dbstring = sConfig.GetStringDefault("LoginDatabaseInfo", "");
+    nConnections = sConfig.GetIntDefault("LoginDatabaseConnections", 1);
     if(dbstring.empty())
     {
         sLog.outError("Login database not specified in configuration file");
@@ -479,8 +491,8 @@ bool Master::_StartDB()
     }
 
     ///- Initialise the login database
-    sLog.outString("Login Database: %s", dbstring.c_str() );
-    if(!LoginDatabase.Initialize(dbstring.c_str()))
+    sLog.outString("Login Database total connections: %i", nConnections + 1);
+    if(!LoginDatabase.Initialize(dbstring.c_str(), nConnections))
     {
         sLog.outError("Cannot connect to login database %s",dbstring.c_str());
 

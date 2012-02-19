@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,18 +20,17 @@
 #include "Errors.h"
 #include "Creature.h"
 #include "Player.h"
-#include "ObjectAccessor.h"
 #include "World.h"
 
 int GuardAI::Permissible(const Creature *creature)
 {
-    if( creature->isGuard())
+    if (creature->IsGuard())
         return PERMIT_BASE_SPECIAL;
 
     return PERMIT_BASE_NO;
 }
 
-GuardAI::GuardAI(Creature *c) : CreatureAI(c), i_victimGuid(0), i_state(STATE_NORMAL), i_tracker(TIME_INTERVAL_LOOK)
+GuardAI::GuardAI(Creature *c) : CreatureAI(c), i_state(STATE_NORMAL), i_tracker(TIME_INTERVAL_LOOK)
 {
 }
 
@@ -65,7 +64,7 @@ void GuardAI::EnterEvadeMode()
 
         i_state = STATE_NORMAL;
 
-        i_victimGuid = 0;
+        i_victimGuid.Clear();
         m_creature->CombatStop(true);
         m_creature->DeleteThreatList();
         return;
@@ -96,7 +95,7 @@ void GuardAI::EnterEvadeMode()
 
     m_creature->RemoveAllAuras();
     m_creature->DeleteThreatList();
-    i_victimGuid = 0;
+    i_victimGuid.Clear();
     m_creature->CombatStop(true);
     i_state = STATE_NORMAL;
 
@@ -111,16 +110,9 @@ void GuardAI::UpdateAI(const uint32 /*diff*/)
     if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
         return;
 
-    i_victimGuid = m_creature->getVictim()->GetGUID();
+    i_victimGuid = m_creature->getVictim()->GetObjectGuid();
 
-    if (m_creature->isAttackReady())
-    {
-        if (m_creature->IsWithinDistInMap(m_creature->getVictim(), ATTACK_DISTANCE))
-        {
-            m_creature->AttackerStateUpdate(m_creature->getVictim());
-            m_creature->resetAttackTimer();
-        }
-    }
+    DoMeleeAttackIfReady();
 }
 
 bool GuardAI::IsVisible(Unit *pl) const
@@ -136,7 +128,7 @@ void GuardAI::AttackStart(Unit *u)
 
     if(m_creature->Attack(u,true))
     {
-        i_victimGuid = u->GetGUID();
+        i_victimGuid = u->GetObjectGuid();
         m_creature->AddThreat(u);
         m_creature->SetInCombatWith(u);
         u->SetInCombatWith(m_creature);

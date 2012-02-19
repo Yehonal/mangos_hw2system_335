@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 #include "ObjectAccessor.h"
 #include "Language.h"
 #include "AccountMgr.h"
+#include "ScriptMgr.h"
 #include "SystemConfig.h"
 #include "revision.h"
 #include "revision_nr.h"
@@ -99,9 +100,19 @@ bool ChatHandler::HandleServerInfoCommand(char* /*args*/)
         full = _FULLVERSION(REVISION_DATE,REVISION_TIME,REVISION_NR,"|cffffffff|Hurl:" REVISION_ID "|h" REVISION_ID "|h|r");
     else
         full = _FULLVERSION(REVISION_DATE,REVISION_TIME,REVISION_NR,REVISION_ID);
-
     SendSysMessage(full);
-    PSendSysMessage(LANG_USING_SCRIPT_LIB,sWorld.GetScriptsVersion());
+
+    if (sScriptMgr.IsScriptLibraryLoaded())
+    {
+        char const* ver = sScriptMgr.GetScriptLibraryVersion();
+        if (ver && *ver)
+            PSendSysMessage(LANG_USING_SCRIPT_LIB, ver);
+        else
+            SendSysMessage(LANG_USING_SCRIPT_LIB_UNKNOWN);
+    }
+    else
+        SendSysMessage(LANG_USING_SCRIPT_LIB_NONE);
+
     PSendSysMessage(LANG_USING_WORLD_DB,sWorld.GetDBVersion());
     PSendSysMessage(LANG_USING_EVENT_AI,sWorld.GetCreatureEventAIVersion());
     PSendSysMessage(LANG_CONNECTED_USERS, activeClientsNum, maxActiveClientsNum, queuedClientsNum, maxQueuedClientsNum);
@@ -159,7 +170,7 @@ bool ChatHandler::HandleGMListIngameCommand(char* /*args*/)
     {
         HashMapHolder<Player>::ReadGuard g(HashMapHolder<Player>::GetLock());
         HashMapHolder<Player>::MapType &m = sObjectAccessor.GetPlayers();
-        for(HashMapHolder<Player>::MapType::const_iterator itr = m.begin(); itr != m.end(); ++itr)
+        for (HashMapHolder<Player>::MapType::const_iterator itr = m.begin(); itr != m.end(); ++itr)
         {
             AccountTypes itr_sec = itr->second->GetSession()->GetSecurity();
             if ((itr->second->isGameMaster() || (itr_sec > SEC_PLAYER && itr_sec <= (AccountTypes)sWorld.getConfig(CONFIG_UINT32_GM_LEVEL_IN_GM_LIST))) &&
@@ -237,7 +248,10 @@ bool ChatHandler::HandleAccountPasswordCommand(char* args)
             return false;
     }
 
-    return true;
+    // OK, but avoid normal report for hide passwords, but log use command for anyone
+    LogCommand(".account password *** *** ***");
+    SetSentErrorMessage(true);
+    return false;
 }
 
 bool ChatHandler::HandleAccountLockCommand(char* args)

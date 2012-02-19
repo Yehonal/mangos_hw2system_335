@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 #include "NullCreatureAI.h"
 #include "Policies/SingletonImp.h"
 #include "MovementGenerator.h"
-#include "ScriptCalls.h"
+#include "ScriptMgr.h"
 #include "Pet.h"
 
 INSTANTIATE_SINGLETON_1(CreatureAIRegistry);
@@ -34,7 +34,7 @@ namespace FactorySelector
     {
         // Allow scripting AI for normal creatures and not controlled pets (guardians and mini-pets)
         if ((!creature->IsPet() || !((Pet*)creature)->isControlled()) && !creature->isCharmed())
-            if(CreatureAI* scriptedAI = Script->GetAI(creature))
+            if (CreatureAI* scriptedAI = sScriptMgr.GetCreatureAI(creature))
                 return scriptedAI;
 
         CreatureAIRegistry &ai_registry(CreatureAIRepository::Instance());
@@ -56,7 +56,7 @@ namespace FactorySelector
         if (!ai_factory && !ainame.empty())
             ai_factory = ai_registry.GetRegistryItem( ainame.c_str() );
 
-        if (!ai_factory && creature->isGuard() )
+        if (!ai_factory && creature->IsGuard())
             ai_factory = ai_registry.GetRegistryItem("GuardAI");
 
         // select by permit check

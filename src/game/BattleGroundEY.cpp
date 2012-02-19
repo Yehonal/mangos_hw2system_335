@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -109,6 +109,9 @@ void BattleGroundEY::StartingEventOpenDoors()
         uint8 buff = urand(0, 2);
         SpawnBGObject(m_BgObjects[BG_EY_OBJECT_SPEEDBUFF_FEL_REAVER + buff + i * 3], RESPAWN_IMMEDIATELY);
     }
+
+    // Players that join battleground after start are not eligible to get achievement.
+    StartTimedAchievement(ACHIEVEMENT_CRITERIA_TYPE_WIN_BG, BG_EY_EVENT_START_BATTLE);
 }
 
 void BattleGroundEY::AddPoints(Team team, uint32 Points)
@@ -181,7 +184,7 @@ void BattleGroundEY::CheckSomeoneLeftPoint()
                 !plr->IsWithinDist3d(BG_EY_NodePositions[i][0], BG_EY_NodePositions[i][1], BG_EY_NodePositions[i][2], BG_EY_POINT_RADIUS))
                 //move player out of point (add him to players that are out of points
             {
-				m_PlayersNearPoint[BG_EY_PLAYERS_OUT_OF_POINTS].push_back(m_PlayersNearPoint[i][j]);
+                m_PlayersNearPoint[BG_EY_PLAYERS_OUT_OF_POINTS].push_back(m_PlayersNearPoint[i][j]);
                 m_PlayersNearPoint[i].erase(m_PlayersNearPoint[i].begin() + j);
                 UpdateWorldStateForPlayer(PROGRESS_BAR_SHOW, BG_EY_PROGRESS_BAR_DONT_SHOW, plr);
             }

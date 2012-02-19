@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,11 +28,11 @@
 #include "Player.h"
 #include "GossipDef.h"
 #include "UpdateMask.h"
-#include "ScriptCalls.h"
-#include "ObjectAccessor.h"
+#include "ScriptMgr.h"
 #include "Creature.h"
 #include "Pet.h"
 #include "Guild.h"
+#include "GuildMgr.h"
 #include "Chat.h"
 
 enum StableResultCode
@@ -96,6 +96,13 @@ void WorldSession::SendShowBank(ObjectGuid guid)
     SendPacket(&data);
 }
 
+void WorldSession::SendShowMailBox(ObjectGuid guid)
+{
+    WorldPacket data(SMSG_SHOW_MAILBOX, 8);
+    data << ObjectGuid(guid);
+    SendPacket(&data);
+}
+
 void WorldSession::HandleTrainerListOpcode( WorldPacket & recv_data )
 {
     ObjectGuid guid;
@@ -112,7 +119,7 @@ void WorldSession::SendTrainerList(ObjectGuid guid)
 }
 
 
-static void SendTrainerSpellHelper(WorldPacket& data, TrainerSpell const* tSpell, TrainerSpellState state, float fDiscountMod, bool can_learn_primary_prof)
+static void SendTrainerSpellHelper(WorldPacket& data, TrainerSpell const* tSpell, TrainerSpellState state, float fDiscountMod, bool can_learn_primary_prof, uint32 reqLevel)
 {
     bool primary_prof_first_rank = sSpellMgr.IsPrimaryProfessionFirstRankSpell(tSpell->learnedSpell);
     SpellChainNode const* chain_node = sSpellMgr.GetSpellChainNode(tSpell->learnedSpell);
@@ -124,7 +131,7 @@ static void SendTrainerSpellHelper(WorldPacket& data, TrainerSpell const* tSpell
     data << uint32(primary_prof_first_rank && can_learn_primary_prof ? 1 : 0);
     // primary prof. learn confirmation dialog
     data << uint32(primary_prof_first_rank ? 1 : 0);    // must be equal prev. field to have learn button in enabled state
-    data << uint8(tSpell->reqLevel);
+    data << uint8(reqLevel);
     data << uint32(tSpell->reqSkill);
     data << uint32(tSpell->reqSkillValue);
     data << uint32(!tSpell->IsCastable() && chain_node ? (chain_node->prev ? chain_node->prev : chain_node->req) : 0);
@@ -186,12 +193,15 @@ void WorldSession::SendTrainerList(ObjectGuid guid, const std::string& strTitle)
         {
             TrainerSpell const* tSpell = &itr->second;
 
-            if(!_player->IsSpellFitByClassAndRace(tSpell->learnedSpell))
+            uint32 reqLevel = 0;
+            if(!_player->IsSpellFitByClassAndRace(tSpell->learnedSpell, &reqLevel))
                 continue;
 
-            TrainerSpellState state = _player->GetTrainerSpellState(tSpell);
+            reqLevel = tSpell->isProvidedReqLevel ? tSpell->reqLevel : std::max(reqLevel, tSpell->reqLevel);
 
-            SendTrainerSpellHelper(data, tSpell, state, fDiscountMod, can_learn_primary_prof);
+            TrainerSpellState state = _player->GetTrainerSpellState(tSpell, reqLevel);
+
+            SendTrainerSpellHelper(data, tSpell, state, fDiscountMod, can_learn_primary_prof, reqLevel);
 
             ++count;
         }
@@ -203,12 +213,15 @@ void WorldSession::SendTrainerList(ObjectGuid guid, const std::string& strTitle)
         {
             TrainerSpell const* tSpell = &itr->second;
 
-            if(!_player->IsSpellFitByClassAndRace(tSpell->learnedSpell))
+            uint32 reqLevel = 0;
+            if(!_player->IsSpellFitByClassAndRace(tSpell->learnedSpell, &reqLevel))
                 continue;
 
-            TrainerSpellState state = _player->GetTrainerSpellState(tSpell);
+            reqLevel = tSpell->isProvidedReqLevel ? tSpell->reqLevel : std::max(reqLevel, tSpell->reqLevel);
 
-            SendTrainerSpellHelper(data, tSpell, state, fDiscountMod, can_learn_primary_prof);
+            TrainerSpellState state = _player->GetTrainerSpellState(tSpell, reqLevel);
+
+            SendTrainerSpellHelper(data, tSpell, state, fDiscountMod, can_learn_primary_prof, reqLevel);
 
             ++count;
         }
@@ -249,16 +262,24 @@ void WorldSession::HandleTrainerBuySpellOpcode( WorldPacket & recv_data )
     if (!cSpells && !tSpells)
         return;
 
-    // not found, cheat?
-    TrainerSpell const* trainer_spell = cSpells->Find(spellId);
-    if (!trainer_spell)
+    // Try find spell in npc_trainer
+    TrainerSpell const* trainer_spell = cSpells ? cSpells->Find(spellId) : NULL;
+
+    // Not found, try find in npc_trainer_template
+    if (!trainer_spell && tSpells)
         trainer_spell = tSpells->Find(spellId);
 
+    // Not found anywhere, cheating?
     if (!trainer_spell)
         return;
 
     // can't be learn, cheat? Or double learn with lags...
-    if (_player->GetTrainerSpellState(trainer_spell) != TRAINER_SPELL_GREEN)
+    uint32 reqLevel = 0;
+    if(!_player->IsSpellFitByClassAndRace(trainer_spell->learnedSpell, &reqLevel))
+        return;
+
+    reqLevel = trainer_spell->isProvidedReqLevel ? trainer_spell->reqLevel : std::max(reqLevel, trainer_spell->reqLevel);
+    if (_player->GetTrainerSpellState(trainer_spell, reqLevel) != TRAINER_SPELL_GREEN)
         return;
 
     // apply reputation discount
@@ -316,7 +337,7 @@ void WorldSession::HandleGossipHelloOpcode(WorldPacket & recv_data)
     if (pCreature->isSpiritGuide())
         pCreature->SendAreaSpiritHealerQueryOpcode(_player);
 
-    if (!Script->GossipHello(_player, pCreature))
+    if (!sScriptMgr.OnGossipHello(_player, pCreature))
     {
         _player->PrepareGossipMenu(pCreature, pCreature->GetCreatureInfo()->GossipMenuId);
         _player->SendPreparedGossip(pCreature);
@@ -344,6 +365,9 @@ void WorldSession::HandleGossipSelectOptionOpcode( WorldPacket & recv_data )
     if (GetPlayer()->hasUnitState(UNIT_STAT_DIED))
         GetPlayer()->RemoveSpellsCausingAura(SPELL_AURA_FEIGN_DEATH);
 
+    uint32 sender = _player->PlayerTalkClass->GossipOptionSender(gossipListId);
+    uint32 action = _player->PlayerTalkClass->GossipOptionAction(gossipListId);
+
     if (guid.IsAnyTypeCreature())
     {
         Creature *pCreature = GetPlayer()->GetNPCIfCanInteractWith(guid, UNIT_NPC_FLAG_NONE);
@@ -354,16 +378,8 @@ void WorldSession::HandleGossipSelectOptionOpcode( WorldPacket & recv_data )
             return;
         }
 
-        if (!code.empty())
-        {
-            if (!Script->GossipSelectWithCode(_player, pCreature, _player->PlayerTalkClass->GossipOptionSender(gossipListId), _player->PlayerTalkClass->GossipOptionAction(gossipListId), code.c_str()))
-                _player->OnGossipSelect(pCreature, gossipListId, menuId);
-        }
-        else
-        {
-            if (!Script->GossipSelect(_player, pCreature, _player->PlayerTalkClass->GossipOptionSender(gossipListId), _player->PlayerTalkClass->GossipOptionAction(gossipListId)))
-                _player->OnGossipSelect(pCreature, gossipListId, menuId);
-        }
+        if (!sScriptMgr.OnGossipSelect(_player, pCreature, sender, action, code.empty() ? NULL : code.c_str()))
+            _player->OnGossipSelect(pCreature, gossipListId, menuId);
     }
     else if (guid.IsGameObject())
     {
@@ -375,16 +391,8 @@ void WorldSession::HandleGossipSelectOptionOpcode( WorldPacket & recv_data )
             return;
         }
 
-        if (!code.empty())
-        {
-            if (!Script->GOGossipSelectWithCode(_player, pGo, _player->PlayerTalkClass->GossipOptionSender(gossipListId), _player->PlayerTalkClass->GossipOptionAction(gossipListId), code.c_str()))
-                _player->OnGossipSelect(pGo, gossipListId, menuId);
-        }
-        else
-        {
-            if (!Script->GOGossipSelect(_player, pGo, _player->PlayerTalkClass->GossipOptionSender(gossipListId), _player->PlayerTalkClass->GossipOptionAction(gossipListId)))
-                _player->OnGossipSelect(pGo, gossipListId, menuId);
-        }
+        if (!sScriptMgr.OnGossipSelect(_player, pGo, sender, action, code.empty() ? NULL : code.c_str()))
+            _player->OnGossipSelect(pGo, gossipListId, menuId);
     }
 }
 
@@ -495,10 +503,9 @@ void WorldSession::HandleListStabledPetsOpcode( WorldPacket & recv_data )
 
     recv_data >> npcGUID;
 
-    Creature *unit = GetPlayer()->GetNPCIfCanInteractWith(npcGUID, UNIT_NPC_FLAG_STABLEMASTER);
-    if (!unit)
+    if (!CheckStableMaster(npcGUID))
     {
-        DEBUG_LOG( "WORLD: HandleListStabledPetsOpcode - %s not found or you can't interact with him.", npcGUID.GetString().c_str());
+        SendStableResult(STABLE_ERR_STABLE);
         return;
     }
 
@@ -865,7 +872,7 @@ void WorldSession::HandleRepairItemOpcode( WorldPacket & recv_data )
     float discountMod = _player->GetReputationPriceDiscount(unit);
 
     uint32 TotalCost = 0;
-    if (!itemGuid.IsEmpty())
+    if (itemGuid)
     {
         DEBUG_LOG("ITEM: %s repair of %s", npcGuid.GetString().c_str(), itemGuid.GetString().c_str());
 
@@ -885,7 +892,7 @@ void WorldSession::HandleRepairItemOpcode( WorldPacket & recv_data )
         uint32 GuildId = _player->GetGuildId();
         if (!GuildId)
             return;
-        Guild *pGuild = sObjectMgr.GetGuildById(GuildId);
+        Guild* pGuild = sGuildMgr.GetGuildById(GuildId);
         if (!pGuild)
             return;
         pGuild->LogBankEvent(GUILD_BANK_LOG_REPAIR_MONEY, 0, _player->GetGUIDLow(), TotalCost);

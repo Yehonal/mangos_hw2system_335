@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,23 +36,26 @@ enum LogLevel
 // bitmask (not forgot update logFilterData content)
 enum LogFilters
 {
-    LOG_FILTER_TRANSPORT_MOVES    = 0x0001,                 // any related to transport moves
-    LOG_FILTER_CREATURE_MOVES     = 0x0002,                 // creature move by cells
-    LOG_FILTER_VISIBILITY_CHANGES = 0x0004,                 // update visibility for diff objects and players
-    LOG_FILTER_ACHIEVEMENT_UPDATES= 0x0008,                 // achievement update broadcasts
-    LOG_FILTER_WEATHER            = 0x0010,                 // weather changes
-    LOG_FILTER_PLAYER_STATS       = 0x0020,                 // player save data
-    LOG_FILTER_SQL_TEXT           = 0x0040,                 // raw SQL text send to DB engine
-    LOG_FILTER_PLAYER_MOVES       = 0x0080,                 // player moves by grid/cell
-    LOG_FILTER_PERIODIC_AFFECTS   = 0x0100,                 // DoT/HoT apply trace
-    LOG_FILTER_AI_AND_MOVEGENSS   = 0x0200,                 // AI/movement generators debug output
-    LOG_FILTER_DAMAGE             = 0x0400,                 // Direct/Area damage trace
-    LOG_FILTER_COMBAT             = 0x0800,                 // attack states/roll attack results/etc
-    LOG_FILTER_SPELL_CAST         = 0x1000,                 // spell cast/aura apply/spell proc events
-    LOG_FILTER_DB_STRICTED_CHECK  = 0x2000,                 // stricted DB data checks output (with possible false reports) for DB devs
+    LOG_FILTER_TRANSPORT_MOVES    = 0x000001,               //  0 any related to transport moves
+    LOG_FILTER_CREATURE_MOVES     = 0x000002,               //  1 creature move by cells
+    LOG_FILTER_VISIBILITY_CHANGES = 0x000004,               //  2 update visibility for diff objects and players
+    LOG_FILTER_ACHIEVEMENT_UPDATES= 0x000008,               //  3 achievement update broadcasts
+    LOG_FILTER_WEATHER            = 0x000010,               //  4 weather changes
+    LOG_FILTER_PLAYER_STATS       = 0x000020,               //  5 player save data
+    LOG_FILTER_SQL_TEXT           = 0x000040,               //  6 raw SQL text send to DB engine
+    LOG_FILTER_PLAYER_MOVES       = 0x000080,               //  7 player moves by grid/cell
+    LOG_FILTER_PERIODIC_AFFECTS   = 0x000100,               //  8 DoT/HoT apply trace
+    LOG_FILTER_AI_AND_MOVEGENSS   = 0x000200,               //  9 AI/movement generators debug output
+    LOG_FILTER_DAMAGE             = 0x000400,               // 10 Direct/Area damage trace
+    LOG_FILTER_COMBAT             = 0x000800,               // 11 attack states/roll attack results/etc
+    LOG_FILTER_SPELL_CAST         = 0x001000,               // 12 spell cast/aura apply/spell proc events
+    LOG_FILTER_DB_STRICTED_CHECK  = 0x002000,               // 13 stricted DB data checks output (with possible false reports) for DB devs
+    LOG_FILTER_AHBOT_SELLER       = 0x004000,               // 14 Auction House Bot seller part
+    LOG_FILTER_AHBOT_BUYER        = 0x008000,               // 15 Auction House Bot buyer part
+    LOG_FILTER_PATHFINDING        = 0x010000,               // 16 Pathfinding
 };
 
-#define LOG_FILTER_COUNT            14
+#define LOG_FILTER_COUNT            17
 
 struct LogFilterData
 {
@@ -119,7 +121,7 @@ class Log : public MaNGOS::Singleton<Log, MaNGOS::ClassLevelLockable<Log, ACE_Th
     public:
         void Initialize();
         void InitColors(const std::string& init_str);
-        void outTitle( const char * str);
+
         void outCommand( uint32 account, const char * str, ...) ATTR_PRINTF(3,4);
         void outString();                                   // any log level
                                                             // any log level
@@ -131,11 +133,8 @@ class Log : public MaNGOS::Singleton<Log, MaNGOS::ClassLevelLockable<Log, ACE_Th
                                                             // log level >= 2
         void outDetail( const char * str, ... )      ATTR_PRINTF(2,3);
                                                             // log level >= 3
-        void outDebugInLine( const char * str, ... ) ATTR_PRINTF(2,3);
-                                                            // log level >= 3
         void outDebug( const char * str, ... )       ATTR_PRINTF(2,3);
-                                                            // any log level
-        void outMenu( const char * str, ... )        ATTR_PRINTF(2,3);
+
         void outErrorDb();                                  // any log level
                                                             // any log level
         void outErrorDb( const char * str, ... )     ATTR_PRINTF(2,3);
@@ -248,4 +247,3 @@ void MANGOS_DLL_SPEC debug_log(const char * str, ...) ATTR_PRINTF(1,2);
 void MANGOS_DLL_SPEC error_log(const char * str, ...) ATTR_PRINTF(1,2);
 void MANGOS_DLL_SPEC error_db_log(const char * str, ...) ATTR_PRINTF(1,2);
 #endif
- 

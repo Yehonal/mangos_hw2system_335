@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -42,6 +42,13 @@ enum eStatus
 {
     STATUS_CONNECTED = 0,
     STATUS_AUTHED
+};
+
+enum AccountFlags
+{
+    ACCOUNT_FLAG_GM         = 0x00000001,
+    ACCOUNT_FLAG_TRIAL      = 0x00000008,
+    ACCOUNT_FLAG_PROPASS    = 0x00800000,
 };
 
 // GCC have alternative #pragma pack(N) syntax and old gcc version not support pack(push,N), also any gcc version not support it at some paltform
@@ -110,9 +117,9 @@ typedef struct AUTH_LOGON_PROOF_S
     uint8   cmd;
     uint8   error;
     uint8   M2[20];
-    uint32  unk1;
-    uint32  unk2;
-    uint16  unk3;
+    uint32  accountFlags;                                   // see enum AccountFlags
+    uint32  surveyId;                                       // SurveyId
+    uint16  unkFlags;                                       // some flags (AccountMsgAvailable = 0x01)
 } sAuthLogonProof_S;
 
 typedef struct AUTH_LOGON_PROOF_S_BUILD_6005
@@ -298,9 +305,9 @@ void AuthSocket::SendProof(Sha1Hash sha)
             memcpy(proof.M2, sha.GetDigest(), 20);
             proof.cmd = CMD_AUTH_LOGON_PROOF;
             proof.error = 0;
-            proof.unk1 = 0x00800000;
-            proof.unk2 = 0x00;
-            proof.unk3 = 0x00;
+            proof.accountFlags = ACCOUNT_FLAG_PROPASS;
+            proof.surveyId = 0x00000000;
+            proof.unkFlags = 0x0000;
 
             send((char *)&proof, sizeof(proof));
             break;
@@ -888,7 +895,7 @@ void AuthSocket::LoadRealmlist(ByteBuffer &pkt, uint32 acctid)
         case 5875:                                          // 1.12.1
         case 6005:                                          // 1.12.2
         {
-            pkt << uint32(0);
+            pkt << uint32(0);                               // unused value
             pkt << uint8(sRealmList.size());
 
             for(RealmList::RealmMap::const_iterator  i = sRealmList.begin(); i != sRealmList.end(); ++i)
@@ -924,7 +931,7 @@ void AuthSocket::LoadRealmlist(ByteBuffer &pkt, uint32 acctid)
                 }
 
                 // Show offline state for unsupported client builds and locked realms (1.x clients not support locked state show)
-                if (!ok_build || (i->second.allowedSecurityLevel >= _accountSecurityLevel))
+                if (!ok_build || (i->second.allowedSecurityLevel > _accountSecurityLevel))
                     realmflags = RealmFlags(realmflags | REALM_FLAG_OFFLINE);
 
                 pkt << uint32(i->second.icon);              // realm type
@@ -937,8 +944,7 @@ void AuthSocket::LoadRealmlist(ByteBuffer &pkt, uint32 acctid)
                 pkt << uint8(0x00);                         // unk, may be realm number/id?
             }
 
-            pkt << uint8(0x00);
-            pkt << uint8(0x02);
+            pkt << uint16(0x0002);                          // unused value (why 2?)
             break;
         }
 
@@ -950,7 +956,7 @@ void AuthSocket::LoadRealmlist(ByteBuffer &pkt, uint32 acctid)
         case 12340:                                         // 3.3.5a
         default:                                            // and later
         {
-            pkt << uint32(0);
+            pkt << uint32(0);                               // unused value
             pkt << uint16(sRealmList.size());
 
             for(RealmList::RealmMap::const_iterator  i = sRealmList.begin(); i != sRealmList.end(); ++i)
@@ -1004,7 +1010,7 @@ void AuthSocket::LoadRealmlist(ByteBuffer &pkt, uint32 acctid)
                 }
             }
 
-            pkt << uint16(0x0010);
+            pkt << uint16(0x0010);                          // unused value (why 10?)
             break;
         }
     }

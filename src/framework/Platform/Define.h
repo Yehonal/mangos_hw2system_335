@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -118,6 +118,12 @@ typedef ACE_UINT8 uint8;
 typedef uint16      WORD;
 typedef uint32      DWORD;
 #endif //COMPILER
+
+#if COMPILER == COMPILER_GNU
+#  if !defined(__GXX_EXPERIMENTAL_CXX0X__) || (__GNUC__ < 4) || (__GNUC__ == 4) && (__GNUC_MINOR__ < 7)
+#    define override
+#  endif
+#endif
 
 typedef uint64 OBJECT_HANDLE;
 

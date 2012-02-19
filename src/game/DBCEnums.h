@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+* Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@
 
 enum BattleGroundBracketId                                  // bracketId for level ranges
 {
+    BG_BRACKET_ID_TEMPLATE       = -1,                      // used to mark bg as template
     BG_BRACKET_ID_FIRST          = 0,
     BG_BRACKET_ID_LAST           = 15
 };
@@ -163,7 +164,7 @@ enum AchievementCriteriaTypes
     ACHIEVEMENT_CRITERIA_TYPE_SPECIAL_PVP_KILL= 70,
     ACHIEVEMENT_CRITERIA_TYPE_FISH_IN_GAMEOBJECT = 72,
     // TODO: title id is not mentioned in dbc
-    ACHIEVEMENT_CRITERIA_TYPE_EARNED_PVP_TITLE = 74,
+    ACHIEVEMENT_CRITERIA_TYPE_ON_LOGIN = 74,
     ACHIEVEMENT_CRITERIA_TYPE_LEARN_SKILLLINE_SPELLS= 75,
     ACHIEVEMENT_CRITERIA_TYPE_WIN_DUEL = 76,
     ACHIEVEMENT_CRITERIA_TYPE_LOSE_DUEL = 77,
@@ -221,7 +222,7 @@ enum AreaFlags
     AREA_FLAG_SLAVE_CAPITAL         = 0x00000008,           // city and city subsones
     AREA_FLAG_UNK3                  = 0x00000010,           // can't find common meaning
     AREA_FLAG_SLAVE_CAPITAL2        = 0x00000020,           // slave capital city flag?
-    AREA_FLAG_UNK4                  = 0x00000040,           // many zones have this flag
+    AREA_FLAG_DUEL                  = 0x00000040,           // zones where duels allowed
     AREA_FLAG_ARENA                 = 0x00000080,           // arena, both instanced and world arenas
     AREA_FLAG_CAPITAL               = 0x00000100,           // main capital city flag
     AREA_FLAG_CITY                  = 0x00000200,           // only for one zone named "City" (where it located?)
@@ -266,7 +267,7 @@ enum Difficulty
 
 enum SpawnMask
 {
-    SPAWNMASK_REGULAR           = (1 << REGULAR_DIFFICULTY),// any any maps without spawn modes (continents/subway) or in minimal spawnmode
+    SPAWNMASK_REGULAR           = (1 << REGULAR_DIFFICULTY),// any maps without spawn modes (continents/subway) or in minimal spawnmode
 
     SPAWNMASK_DUNGEON_NORMAL    = (1 << DUNGEON_DIFFICULTY_NORMAL),
     SPAWNMASK_DUNGEON_HEROIC    = (1 << DUNGEON_DIFFICULTY_HEROIC),
@@ -311,6 +312,11 @@ enum AbilytyLearnType
 {
     ABILITY_LEARNED_ON_GET_PROFESSION_SKILL     = 1,
     ABILITY_LEARNED_ON_GET_RACE_OR_CLASS_SKILL  = 2
+};
+
+enum AbilitySkillFlags
+{
+    ABILITY_SKILL_NONTRAINABLE = 0x100
 };
 
 enum ItemEnchantmentType
@@ -420,7 +426,7 @@ enum SpellCastTargetFlags
     TARGET_FLAG_UNK2            = 0x00010000,               // pguid, not used in any spells as of 3.0.3 (can be set dynamically)
     TARGET_FLAG_GLYPH           = 0x00020000,               // used in glyph spells
     TARGET_FLAG_UNK3            = 0x00040000,               //
-    TARGET_FLAG_UNK4            = 0x00080000                // uint32, loop { vec3, guid -> if guid == 0 break }
+    TARGET_FLAG_VISUAL_CHAIN    = 0x00080000                // uint32, loop { vec3, guid -> if guid == 0 break }
 };
 
 enum SpellEffectIndex

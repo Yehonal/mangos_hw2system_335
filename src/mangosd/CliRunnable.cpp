@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@
 #include "Language.h"
 #include "Log.h"
 #include "World.h"
-#include "ScriptCalls.h"
 #include "ObjectMgr.h"
 #include "WorldSession.h"
 #include "Config/Config.h"
@@ -270,7 +269,7 @@ void ChatHandler::HandleCharacterDeletedRestoreHelper(DeletedInfo const& delInfo
         return;
     }
 
-    if (sObjectMgr.GetPlayerGUIDByName(delInfo.name))
+    if (sObjectMgr.GetPlayerGuidByName(delInfo.name))
     {
         PSendSysMessage(LANG_CHARACTER_DELETED_SKIP_NAME, delInfo.name.c_str(), delInfo.lowguid, delInfo.accountId);
         return;
@@ -515,7 +514,7 @@ bool ChatHandler::HandleServerLogFilterCommand(char* args)
         SendSysMessage(LANG_LOG_FILTERS_STATE_HEADER);
         for(int i = 0; i < LOG_FILTER_COUNT; ++i)
             if (*logFilterData[i].name)
-                PSendSysMessage("  %-20s = %s",logFilterData[i].name, sLog.HasLogFilter(1 << i) ? GetMangosString(LANG_ON) : GetMangosString(LANG_OFF));
+                PSendSysMessage("  %-20s = %s",logFilterData[i].name, GetOnOffStr(sLog.HasLogFilter(1 << i)));
         return true;
     }
 
@@ -534,7 +533,7 @@ bool ChatHandler::HandleServerLogFilterCommand(char* args)
     if (strncmp(filtername, "all", 4) == 0)
     {
         sLog.SetLogFilter(LogFilters(0xFFFFFFFF), value);
-        PSendSysMessage(LANG_ALL_LOG_FILTERS_SET_TO_S, value ? GetMangosString(LANG_ON) : GetMangosString(LANG_OFF));
+        PSendSysMessage(LANG_ALL_LOG_FILTERS_SET_TO_S, GetOnOffStr(value));
         return true;
     }
 
@@ -546,7 +545,7 @@ bool ChatHandler::HandleServerLogFilterCommand(char* args)
         if (!strncmp(filtername,logFilterData[i].name,strlen(filtername)))
         {
             sLog.SetLogFilter(LogFilters(1 << i),value);
-            PSendSysMessage("  %-20s = %s",logFilterData[i].name,value ? GetMangosString(LANG_ON) : GetMangosString(LANG_OFF));
+            PSendSysMessage("  %-20s = %s",logFilterData[i].name, GetOnOffStr(value));
             return true;
         }
     }

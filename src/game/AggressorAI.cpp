@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,9 +20,10 @@
 #include "Errors.h"
 #include "Creature.h"
 #include "SharedDefines.h"
-#include "ObjectAccessor.h"
 #include "VMapFactory.h"
 #include "World.h"
+#include "DBCStores.h"
+#include "Map.h"
 
 #include <list>
 
@@ -36,7 +37,7 @@ AggressorAI::Permissible(const Creature *creature)
     return PERMIT_BASE_NO;
 }
 
-AggressorAI::AggressorAI(Creature *c) : CreatureAI(c), i_victimGuid(0), i_state(STATE_NORMAL), i_tracker(TIME_INTERVAL_LOOK)
+AggressorAI::AggressorAI(Creature *c) : CreatureAI(c), i_state(STATE_NORMAL), i_tracker(TIME_INTERVAL_LOOK)
 {
 }
 
@@ -72,7 +73,7 @@ void AggressorAI::EnterEvadeMode()
     if (!m_creature->isAlive())
     {
         DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "Creature stopped attacking, he is dead [guid=%u]", m_creature->GetGUIDLow());
-        i_victimGuid = 0;
+        i_victimGuid.Clear();
         m_creature->CombatStop(true);
         m_creature->DeleteThreatList();
         return;
@@ -113,7 +114,7 @@ void AggressorAI::EnterEvadeMode()
     }
 
     m_creature->DeleteThreatList();
-    i_victimGuid = 0;
+    i_victimGuid.Clear();
     m_creature->CombatStop(true);
     m_creature->SetLootRecipient(NULL);
 }
@@ -125,16 +126,9 @@ AggressorAI::UpdateAI(const uint32 /*diff*/)
     if(!m_creature->SelectHostileTarget() || !m_creature->getVictim())
         return;
 
-    i_victimGuid = m_creature->getVictim()->GetGUID();
+    i_victimGuid = m_creature->getVictim()->GetObjectGuid();
 
-    if( m_creature->isAttackReady() )
-    {
-        if( m_creature->IsWithinDistInMap(m_creature->getVictim(), ATTACK_DISTANCE))
-        {
-            m_creature->AttackerStateUpdate(m_creature->getVictim());
-            m_creature->resetAttackTimer();
-        }
-    }
+    DoMeleeAttackIfReady();
 }
 
 bool
@@ -152,7 +146,7 @@ AggressorAI::AttackStart(Unit *u)
 
     if(m_creature->Attack(u,true))
     {
-        i_victimGuid = u->GetGUID();
+        i_victimGuid = u->GetObjectGuid();
 
         m_creature->AddThreat(u);
         m_creature->SetInCombatWith(u);

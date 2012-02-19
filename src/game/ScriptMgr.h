@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,6 +22,23 @@
 #include "Common.h"
 #include "Policies/Singleton.h"
 #include "ObjectGuid.h"
+#include "DBCEnums.h"
+#include "ace/Atomic_Op.h"
+
+struct AreaTriggerEntry;
+class Aura;
+class Creature;
+class CreatureAI;
+class GameObject;
+class InstanceData;
+class Item;
+class Map;
+class Object;
+class Player;
+class Quest;
+class SpellCastTargets;
+class Unit;
+class WorldObject;
 
 enum eScriptCommand
 {
@@ -31,7 +48,10 @@ enum eScriptCommand
                                                             //              flag_original_source_as_target  = 0x02
                                                             //              flag_buddy_as_target            = 0x04
                                                             // dataint = text entry from db_script_string -table. dataint2-4 optional for random selected text.
-    SCRIPT_COMMAND_EMOTE                    = 1,            // source = unit, datalong = emote_id
+    SCRIPT_COMMAND_EMOTE                    = 1,            // source = Unit (or WorldObject when creature entry defined), target = Unit (or none)
+                                                            // datalong = emote_id
+                                                            // datalong2 = creature entry (searching for a buddy, closest to source), datalong3 = creature search radius
+                                                            // data_flags = flag_target_as_source           = 0x01
     SCRIPT_COMMAND_FIELD_SET                = 2,            // source = any, datalong = field_id, datalong2 = value
     SCRIPT_COMMAND_MOVE_TO                  = 3,            // source = Creature, datalong2 = time, x/y/z
     SCRIPT_COMMAND_FLAG_SET                 = 4,            // source = any, datalong = field_id, datalong2 = bitmask
@@ -45,7 +65,8 @@ enum eScriptCommand
     SCRIPT_COMMAND_CLOSE_DOOR               = 12,           // source = unit, datalong=db_guid, datalong2=reset_delay
     SCRIPT_COMMAND_ACTIVATE_OBJECT          = 13,           // source = unit, target=GO
     SCRIPT_COMMAND_REMOVE_AURA              = 14,           // source (datalong2!=0) or target (datalong==0) unit, datalong = spell_id
-    SCRIPT_COMMAND_CAST_SPELL               = 15,           // source/target cast spell at target/source (script->datalong2: 0: s->t 1: s->s 2: t->t 3: t->s
+    SCRIPT_COMMAND_CAST_SPELL               = 15,           // source/target cast spell at target/source
+                                                            // datalong2: 0: s->t 1: s->s 2: t->t 3: t->s (this values in 2 bits), and 0x4 mask for cast triggered can be added to
     SCRIPT_COMMAND_PLAY_SOUND               = 16,           // source = any object, target=any/player, datalong (sound_id), datalong2 (bitmask: 0/1=anyone/target, 0/2=with distance dependent, so 1|2 = 3 is target with distance dependent)
     SCRIPT_COMMAND_CREATE_ITEM              = 17,           // source or target must be player, datalong = item entry, datalong2 = amount
     SCRIPT_COMMAND_DESPAWN_SELF             = 18,           // source or target must be creature, datalong = despawn delay
@@ -69,6 +90,19 @@ enum eScriptCommand
     SCRIPT_COMMAND_SET_RUN                  = 25,           // source=any, target=creature
                                                             // datalong= bool 0=off, 1=on
                                                             // datalong2=creature entry, datalong3=search radius
+    SCRIPT_COMMAND_ATTACK_START             = 26,           // source = Creature (or WorldObject when creature entry are defined), target = Player
+                                                            // datalong2 = creature entry (searching for a buddy, closest to source), datalong3 = creature search radius
+    SCRIPT_COMMAND_GO_LOCK_STATE            = 27,           // source or target must be WorldObject
+                                                            // datalong= 1=lock, 2=unlock, 4=set not-interactable, 8=set interactable
+                                                            // datalong2= go entry, datalong3= go search radius
+    SCRIPT_COMMAND_STAND_STATE              = 28,           // source = Unit (or WorldObject when creature entry defined), target = Unit (or none)
+                                                            // datalong = stand state (enum UnitStandStateType)
+                                                            // datalong2 = creature entry (searching for a buddy, closest to source), datalong3 = creature search radius
+                                                            // data_flags = flag_target_as_source           = 0x01
+    SCRIPT_COMMAND_MODIFY_NPC_FLAGS         = 29,           // source=worldobject or target=worldobject (datalong1==0), else creature
+                                                            // datalong=NPCFlags
+                                                            // datalong1=creature entry, datalong2=search radius
+                                                            // data_flags = 0x01=add, 0x02=remove
 };
 
 #define MAX_TEXT_ID 4                                       // used for SCRIPT_COMMAND_TALK
@@ -94,6 +128,10 @@ struct ScriptInfo
         struct                                              // SCRIPT_COMMAND_EMOTE (1)
         {
             uint32 emoteId;                                 // datalong
+            uint32 creatureEntry;                           // datalong2
+            uint32 searchRadius;                            // datalong3
+            uint32 unused1;                                 // datalong4
+            uint32 flags;                                   // data_flags
         } emote;
 
         struct                                              // SCRIPT_COMMAND_FIELD_SET (2)
@@ -219,6 +257,8 @@ struct ScriptInfo
             uint32 factionId;                               // datalong
             uint32 creatureEntry;                           // datalong2
             uint32 searchRadius;                            // datalong3
+            uint32 empty1;                                  // datalong4
+            uint32 flags;                                   // data_flags
         } faction;
 
         struct                                              // SCRIPT_COMMAND_MORPH_TO_ENTRY_OR_MODEL (23)
@@ -245,6 +285,40 @@ struct ScriptInfo
             uint32 creatureEntry;                           // datalong2
             uint32 searchRadius;                            // datalong3
         } run;
+
+        struct                                              // SCRIPT_COMMAND_ATTACK_START (26)
+        {
+            uint32 empty1;                                  // datalong
+            uint32 creatureEntry;                           // datalong2
+            uint32 searchRadius;                            // datalong3
+            uint32 empty2;                                  // datalong4
+            uint32 flags;                                   // data_flags
+        } attack;
+
+        struct                                              // SCRIPT_COMMAND_GO_LOCK_STATE (27)
+        {
+            uint32 lockState;                               // datalong
+            uint32 goEntry;                                 // datalong2
+            uint32 searchRadius;                            // datalong3
+        } goLockState;
+
+        struct                                              // SCRIPT_COMMAND_STAND_STATE (28)
+        {
+            uint32 stand_state;                             // datalong
+            uint32 creatureEntry;                           // datalong2
+            uint32 searchRadius;                            // datalong3
+            uint32 unused1;                                 // datalong4
+            uint32 flags;                                   // data_flags
+        } standState;
+
+        struct                                              // SCRIPT_COMMAND_MODIFY_NPC_FLAGS (29)
+        {
+            uint32 flag;                                    // datalong
+            uint32 creatureEntry;                           // datalong2
+            uint32 searchRadius;                            // datalong3
+            uint32 empty1;                                  // datalong4
+            uint32 data_flags;                              // data_flags
+        } npcFlag;
 
         struct
         {
@@ -278,8 +352,9 @@ struct ScriptAction
     ScriptInfo const* script;                               // pointer to static script data
 };
 
-typedef std::multimap<uint32, ScriptInfo> ScriptMap;
-typedef std::map<uint32, ScriptMap > ScriptMapMap;
+typedef std::multimap<uint32 /*delay*/, ScriptInfo> ScriptMap;
+typedef std::map<uint32 /*id*/, ScriptMap > ScriptMapMap;
+
 extern ScriptMapMap sQuestEndScripts;
 extern ScriptMapMap sQuestStartScripts;
 extern ScriptMapMap sSpellScripts;
@@ -288,45 +363,125 @@ extern ScriptMapMap sEventScripts;
 extern ScriptMapMap sGossipScripts;
 extern ScriptMapMap sCreatureMovementScripts;
 
+enum ScriptLoadResult
+{
+    SCRIPT_LOAD_OK,
+    SCRIPT_LOAD_ERR_NOT_FOUND,
+    SCRIPT_LOAD_ERR_WRONG_API,
+    SCRIPT_LOAD_ERR_OUTDATED,
+};
+
 class ScriptMgr
 {
-public:
-    ScriptMgr();
-    ~ScriptMgr();
+    public:
+        ScriptMgr();
+        ~ScriptMgr();
 
-    typedef std::vector<std::string> ScriptNameMap;
+        void LoadGameObjectScripts();
+        void LoadQuestEndScripts();
+        void LoadQuestStartScripts();
+        void LoadEventScripts();
+        void LoadSpellScripts();
+        void LoadGossipScripts();
+        void LoadCreatureMovementScripts();
 
-    void LoadGameObjectScripts();
-    void LoadQuestEndScripts();
-    void LoadQuestStartScripts();
-    void LoadEventScripts();
-    void LoadSpellScripts();
-    void LoadGossipScripts();
-    void LoadCreatureMovementScripts();
+        void LoadDbScriptStrings();
 
-    void LoadDbScriptStrings();
+        void LoadScriptNames();
+        void LoadAreaTriggerScripts();
+        void LoadEventIdScripts();
 
-    void LoadScriptNames();
-    void LoadAreaTriggerScripts();
-    void LoadEventIdScripts();
+        uint32 GetAreaTriggerScriptId(uint32 triggerId) const;
+        uint32 GetEventIdScriptId(uint32 eventId) const;
 
-    uint32 GetAreaTriggerScriptId(uint32 triggerId) const;
-    uint32 GetEventIdScriptId(uint32 eventId) const;
+        const char* GetScriptName(uint32 id) const { return id < m_scriptNames.size() ? m_scriptNames[id].c_str() : ""; }
+        uint32 GetScriptId(const char *name) const;
+        uint32 GetScriptIdsCount() const { return m_scriptNames.size(); }
 
-    ScriptNameMap const& GetScriptNames() { return m_scriptNames; }
-    const char* GetScriptName(uint32 id) const { return id < m_scriptNames.size() ? m_scriptNames[id].c_str() : ""; }
-    uint32 GetScriptId(const char *name) const;
-private:
-    void LoadScripts(ScriptMapMap& scripts, const char* tablename);
-    void CheckScriptTexts(ScriptMapMap const& scripts, std::set<int32>& ids);
+        ScriptLoadResult LoadScriptLibrary(const char* libName);
+        void UnloadScriptLibrary();
+        bool IsScriptLibraryLoaded() const { return m_hScriptLib != NULL; }
 
-    typedef UNORDERED_MAP<uint32, uint32> AreaTriggerScriptMap;
-    typedef UNORDERED_MAP<uint32, uint32> EventIdScriptMap;
+        uint32 IncreaseScheduledScriptsCount() { return (uint32)++m_scheduledScripts; }
+        uint32 DecreaseScheduledScriptCount() { return (uint32)--m_scheduledScripts; }
+        uint32 DecreaseScheduledScriptCount(size_t count) { return (uint32)(m_scheduledScripts -= count); }
+        bool IsScriptScheduled() const { return m_scheduledScripts > 0; }
 
-    AreaTriggerScriptMap    m_AreaTriggerScripts;
-    EventIdScriptMap        m_EventIdScripts;
+        CreatureAI* GetCreatureAI(Creature* pCreature);
+        InstanceData* CreateInstanceData(Map* pMap);
 
-    ScriptNameMap           m_scriptNames;
+        char const* GetScriptLibraryVersion() const;
+        bool OnGossipHello(Player* pPlayer, Creature* pCreature);
+        bool OnGossipHello(Player* pPlayer, GameObject* pGameObject);
+        bool OnGossipSelect(Player* pPlayer, Creature* pCreature, uint32 sender, uint32 action, const char* code);
+        bool OnGossipSelect(Player* pPlayer, GameObject* pGameObject, uint32 sender, uint32 action, const char* code);
+        bool OnQuestAccept(Player* pPlayer, Creature* pCreature, Quest const* pQuest);
+        bool OnQuestAccept(Player* pPlayer, GameObject* pGameObject, Quest const* pQuest);
+        bool OnQuestAccept(Player* pPlayer, Item* pItem, Quest const* pQuest);
+        bool OnQuestRewarded(Player* pPlayer, Creature* pCreature, Quest const* pQuest);
+        bool OnQuestRewarded(Player* pPlayer, GameObject* pGameObject, Quest const* pQuest);
+        uint32 GetDialogStatus(Player* pPlayer, Creature* pCreature);
+        uint32 GetDialogStatus(Player* pPlayer, GameObject* pGameObject);
+        bool OnGameObjectUse(Player* pPlayer, GameObject* pGameObject);
+        bool OnItemUse(Player* pPlayer, Item* pItem, SpellCastTargets const& targets);
+        bool OnAreaTrigger(Player* pPlayer, AreaTriggerEntry const* atEntry);
+        bool OnProcessEvent(uint32 eventId, Object* pSource, Object* pTarget, bool isStart);
+        bool OnEffectDummy(Unit* pCaster, uint32 spellId, SpellEffectIndex effIndex, Creature* pTarget);
+        bool OnEffectDummy(Unit* pCaster, uint32 spellId, SpellEffectIndex effIndex, GameObject* pTarget);
+        bool OnEffectDummy(Unit* pCaster, uint32 spellId, SpellEffectIndex effIndex, Item* pTarget);
+        bool OnAuraDummy(Aura const* pAura, bool apply);
+
+    private:
+        void LoadScripts(ScriptMapMap& scripts, const char* tablename);
+        void CheckScriptTexts(ScriptMapMap const& scripts, std::set<int32>& ids);
+
+        template<class T>
+        void GetScriptHookPtr(T& ptr, const char* name)
+        {
+            ptr = (T)MANGOS_GET_PROC_ADDR(m_hScriptLib, name);
+        }
+
+        typedef std::vector<std::string> ScriptNameMap;
+        typedef UNORDERED_MAP<uint32, uint32> AreaTriggerScriptMap;
+        typedef UNORDERED_MAP<uint32, uint32> EventIdScriptMap;
+
+        AreaTriggerScriptMap    m_AreaTriggerScripts;
+        EventIdScriptMap        m_EventIdScripts;
+
+        ScriptNameMap           m_scriptNames;
+        MANGOS_LIBRARY_HANDLE   m_hScriptLib;
+
+        //atomic op counter for active scripts amount
+        ACE_Atomic_Op<ACE_Thread_Mutex, long> m_scheduledScripts;
+
+        void (MANGOS_IMPORT* m_pOnInitScriptLibrary)();
+        void (MANGOS_IMPORT* m_pOnFreeScriptLibrary)();
+        const char* (MANGOS_IMPORT* m_pGetScriptLibraryVersion)();
+
+        CreatureAI* (MANGOS_IMPORT* m_pGetCreatureAI) (Creature*);
+        InstanceData* (MANGOS_IMPORT* m_pCreateInstanceData) (Map*);
+
+        bool (MANGOS_IMPORT* m_pOnGossipHello) (Player*, Creature*);
+        bool (MANGOS_IMPORT* m_pOnGOGossipHello) (Player*, GameObject*);
+        bool (MANGOS_IMPORT* m_pOnGossipSelect) (Player*, Creature*, uint32, uint32);
+        bool (MANGOS_IMPORT* m_pOnGOGossipSelect) (Player*, GameObject*, uint32, uint32);
+        bool (MANGOS_IMPORT* m_pOnGossipSelectWithCode) (Player*, Creature*, uint32, uint32, const char*);
+        bool (MANGOS_IMPORT* m_pOnGOGossipSelectWithCode) (Player*, GameObject*, uint32, uint32, const char*);
+        bool (MANGOS_IMPORT* m_pOnQuestAccept) (Player*, Creature*, Quest const*);
+        bool (MANGOS_IMPORT* m_pOnGOQuestAccept) (Player*, GameObject*, Quest const*);
+        bool (MANGOS_IMPORT* m_pOnItemQuestAccept) (Player*, Item*, Quest const*);
+        bool (MANGOS_IMPORT* m_pOnQuestRewarded) (Player*, Creature*, Quest const*);
+        bool (MANGOS_IMPORT* m_pOnGOQuestRewarded) (Player*, GameObject*, Quest const*);
+        uint32 (MANGOS_IMPORT* m_pGetNPCDialogStatus) (Player*, Creature*);
+        uint32 (MANGOS_IMPORT* m_pGetGODialogStatus) (Player*, GameObject*);
+        bool (MANGOS_IMPORT* m_pOnGOUse) (Player*, GameObject*);
+        bool (MANGOS_IMPORT* m_pOnItemUse) (Player*, Item*, SpellCastTargets const&);
+        bool (MANGOS_IMPORT* m_pOnAreaTrigger) (Player*, AreaTriggerEntry const*);
+        bool (MANGOS_IMPORT* m_pOnProcessEvent) (uint32, Object*, Object*, bool);
+        bool (MANGOS_IMPORT* m_pOnEffectDummyCreature) (Unit*, uint32, SpellEffectIndex, Creature*);
+        bool (MANGOS_IMPORT* m_pOnEffectDummyGO) (Unit*, uint32, SpellEffectIndex, GameObject*);
+        bool (MANGOS_IMPORT* m_pOnEffectDummyItem) (Unit*, uint32, SpellEffectIndex, Item*);
+        bool (MANGOS_IMPORT* m_pOnAuraDummy) (Aura const*, bool);
 };
 
 #define sScriptMgr MaNGOS::Singleton<ScriptMgr>::Instance()
@@ -334,6 +489,7 @@ private:
 MANGOS_DLL_SPEC uint32 GetAreaTriggerScriptId(uint32 triggerId);
 MANGOS_DLL_SPEC uint32 GetEventIdScriptId(uint32 eventId);
 MANGOS_DLL_SPEC uint32 GetScriptId(const char *name);
-MANGOS_DLL_SPEC ScriptMgr::ScriptNameMap const& GetScriptNames();
+MANGOS_DLL_SPEC char const* GetScriptName(uint32 id);
+MANGOS_DLL_SPEC uint32 GetScriptIdsCount();
 
 #endif

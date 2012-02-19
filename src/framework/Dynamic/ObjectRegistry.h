@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -43,12 +43,12 @@ class MANGOS_DLL_DECL ObjectRegistry
         }
 
         /// Inserts a registry item
-        bool InsertItem(T *obj, Key key, bool override = false)
+        bool InsertItem(T *obj, Key key, bool replace = false)
         {
             typename RegistryMapType::iterator iter = i_registeredObjects.find(key);
             if( iter != i_registeredObjects.end() )
             {
-                if( !override )
+                if( !replace )
                     return false;
                 delete iter->second;
                 i_registeredObjects.erase(iter);

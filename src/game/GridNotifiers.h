@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -148,7 +148,8 @@ namespace MaNGOS
     {
         DynamicObject &i_dynobject;
         Unit* i_check;
-        DynamicObjectUpdater(DynamicObject &dynobject, Unit* caster) : i_dynobject(dynobject)
+        bool i_positive;
+        DynamicObjectUpdater(DynamicObject &dynobject, Unit* caster, bool positive) : i_dynobject(dynobject), i_positive(positive)
         {
             i_check = caster;
             Unit* owner = i_check->GetOwner();
@@ -468,6 +469,21 @@ namespace MaNGOS
         template<class NOT_INTERESTED> void Visit(GridRefManager<NOT_INTERESTED> &) {}
     };
 
+    template<class Check>
+    struct MANGOS_DLL_DECL PlayerListSearcher
+    {
+        uint32 i_phaseMask;
+        std::list<Player*> &i_objects;
+        Check& i_check;
+
+        PlayerListSearcher(std::list<Player*> &objects, Check & check)
+            : i_phaseMask(check.GetFocusObject().GetPhaseMask()), i_objects(objects),i_check(check) {}
+
+        void Visit(PlayerMapType &m);
+
+        template<class NOT_INTERESTED> void Visit(GridRefManager<NOT_INTERESTED> &) {}
+    };
+
     template<class Do>
     struct MANGOS_DLL_DECL PlayerWorker
     {
@@ -749,20 +765,6 @@ namespace MaNGOS
             GameObjectEntryInPosRangeCheck(GameObjectEntryInPosRangeCheck const&);
     };
 
-    class GameObjectWithDbGUIDCheck
-    {
-        public:
-            GameObjectWithDbGUIDCheck(WorldObject const& obj,uint32 db_guid) : i_obj(obj), i_db_guid(db_guid) {}
-            WorldObject const& GetFocusObject() const { return i_obj; }
-            bool operator()(GameObject const* go) const
-            {
-                return go->GetDBTableGUIDLow() == i_db_guid;
-            }
-        private:
-            WorldObject const& i_obj;
-            uint32 i_db_guid;
-    };
-
     // Unit checks
 
     class MostHPMissingInRangeCheck
@@ -951,11 +953,11 @@ namespace MaNGOS
                 return false;
             }
         private:
-            bool i_targetForUnit;
-            bool i_targetForPlayer;
             WorldObject const* i_obj;
             WorldObject const* i_originalCaster;
             float i_range;
+            bool i_targetForUnit;
+            bool i_targetForPlayer;
     };
 
     class AnyAoETargetUnitInObjectRangeCheck
@@ -983,9 +985,9 @@ namespace MaNGOS
             }
 
         private:
-            bool i_targetForPlayer;
             WorldObject const* i_obj;
             float i_range;
+            bool i_targetForPlayer;
     };
 
     // do attack at call of help to friendly crearture
@@ -1150,6 +1152,8 @@ namespace MaNGOS
             NearestCreatureEntryWithLiveStateInObjectRangeCheck(NearestCreatureEntryWithLiveStateInObjectRangeCheck const&);
     };
 
+    // Player checks and do
+
     class AnyPlayerInObjectRangeCheck
     {
         public:
@@ -1167,7 +1171,23 @@ namespace MaNGOS
             float i_range;
     };
 
-    // Player checks and do
+    class AnyPlayerInObjectRangeWithAuraCheck
+    {
+        public:
+            AnyPlayerInObjectRangeWithAuraCheck(WorldObject const* obj, float range, uint32 spellId)
+                : i_obj(obj), i_range(range), i_spellId(spellId) {}
+            WorldObject const& GetFocusObject() const { return *i_obj; }
+            bool operator()(Player* u)
+            {
+                return u->isAlive()
+                    && i_obj->IsWithinDistInMap(u, i_range)
+                    && u->HasAura(i_spellId);
+            }
+        private:
+            WorldObject const* i_obj;
+            float i_range;
+            uint32 i_spellId;
+    };
 
     // Prepare using Builder localized packets with caching and send to player
     template<class Builder>

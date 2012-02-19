@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,6 +38,7 @@ char const* ObjectGuid::GetTypeName(HighGuid high)
         case HIGHGUID_CORPSE:       return "Corpse";
         case HIGHGUID_MO_TRANSPORT: return "MoTransport";
         case HIGHGUID_INSTANCE:     return "InstanceID";
+        case HIGHGUID_GROUP:        return "Group";
         default:
             return "<unknown>";
     }
@@ -47,11 +48,11 @@ std::string ObjectGuid::GetString() const
 {
     std::ostringstream str;
     str << GetTypeName();
-    
+
     if (IsPlayer())
     {
         std::string name;
-        if (sObjectMgr.GetPlayerNameByGUID(m_guid, name))
+        if (sObjectMgr.GetPlayerNameByGUID(*this, name))
             str << " " << name;
     }
 
@@ -107,3 +108,4 @@ template uint32 ObjectGuidGenerator<HIGHGUID_VEHICLE>::Generate();
 template uint32 ObjectGuidGenerator<HIGHGUID_DYNAMICOBJECT>::Generate();
 template uint32 ObjectGuidGenerator<HIGHGUID_CORPSE>::Generate();
 template uint32 ObjectGuidGenerator<HIGHGUID_INSTANCE>::Generate();
+template uint32 ObjectGuidGenerator<HIGHGUID_GROUP>::Generate();

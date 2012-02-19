@@ -53,12 +53,8 @@ int m_ServiceStatus = -1;
 
 DatabaseType WorldDatabase;                                 ///< Accessor to the world database
 DatabaseType CharacterDatabase;                             ///< Accessor to the character database
-<<<<<<< HEAD
-DatabaseType loginDatabase;                                 ///< Accessor to the realm/login database
-DatabaseType Hw2Database;   //[hw2] db
-=======
 DatabaseType LoginDatabase;                                 ///< Accessor to the realm/login database
->>>>>>> 61d889801801e784890d3f84c28d7e70aa9ab50e
+DatabaseType Hw2Database;   								///[hw2] db
 
 uint32 realmID;                                             ///< Id of the realm
 

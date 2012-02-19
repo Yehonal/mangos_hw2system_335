@@ -1237,7 +1237,7 @@ void ChatHandler::ExecuteCommand(const char* text)
             SetSentErrorMessage(false);
             if ((this->*(command->Handler))((char*)text))   // text content destroyed at call
             {
-                if (command->SecurityLevel > SEC_PLAYER || table[i].Name=="az") // mette a log i comandi SEC_PLAYER AZ
+                if (command->SecurityLevel > SEC_PLAYER || command->Name == "az") // mette a log i comandi SEC_PLAYER AZ
                     LogCommand(fullcmd.c_str());
             }
             // some commands have custom error messages. Don't send the default one in these cases.

@@ -15,7 +15,6 @@
 #include "Spell.h"
 #include "SpellAuras.h"
 #include "Chat.h"
-#include "TargetedMovementGenerator.h"
 #include "AccountMgr.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
@@ -110,6 +109,7 @@ class MANGOS_DLL_SPEC Hw2Class
         time_t m_modGameTime;
         uint32 timerCambiaOra;
         int newHr;
+        float x,y,z; // usate per getclosepoint
 
 
 		//procedure
@@ -123,7 +123,7 @@ class MANGOS_DLL_SPEC Hw2Class
 		//special function
 		Player * AzerothSelectNearbyFrTarget(Unit* unit) const;
 	    std::list<Unit *> SelectNearbyTargets(Unit* unit,uint8 tipo,float distanza) const;
-		uint64 HandleFindPlayer(const char* stringa,Player *Pl,Player *SelPl);
+	    ObjectGuid HandleFindPlayer(const char* stringa,Player *Pl,Player *SelPl);
 		bool AzDumpWrite(Player *pl,const char* args);
 		bool AzDumpLoad(Player *pl,const char* args);
 		std::string CreaStringaComposta(const char *format, ...);
@@ -137,20 +137,32 @@ class MANGOS_DLL_SPEC Hw2Class
 		bool Hw2Config(bool start,uint8 mode=0,uint8 tipo=0,bool scelta=false);
         time_t const& GetModGameTime() const { return m_modGameTime; }
         void Update(uint32 diff);
+        void RemoveCharFromDB(uint32 lowguid);
+        void Hw2SendSysMessage(Player *target,const char* msg, ...) {
+        	std::string out = strcat("[AZ Message]",msg);
+        	va_list args;
+        	ChatHandler(target).PSendSysMessage(out.c_str(),args);
+        };
+
+        void Hw2SendSysMessage(Player *target, int32 msg, ...) {
+        	const char *format = ChatHandler(target).GetMangosString(msg);
+        	va_list args;
+        	Hw2SendSysMessage(target,format,args);
+        };
 
         static Hw2Class *GetHw2();
 		
 		//rpg functions
 		bool RpgFunzioneIniziale(Player *pl);
-		bool RpgModificaPT(bool salva,uint64 guid,int32 credito,int32 totale,bool indirect_pt=false, Player *Modder=NULL);
-		bool RpgModIdentity(uint64 guid,char* stringa,Player *pl);
+		bool RpgModificaPT(bool salva,ObjectGuid guid,int32 credito,int32 totale,bool indirect_pt=false, Player *Modder=NULL);
+		bool RpgModIdentity(ObjectGuid guid,char* stringa,Player *pl);
 
 		bool RpgGestioneEmote(Player *pl,uint32 emote);
 		bool RpgVisualizzaProfilo(Player* pl,Player* selected);
-		bool RpgSetSupervisor(uint64 guid, uint64 supervisor,Player *Modder,bool Force=false);
-		bool RpgAggiornaUpLine(uint64 guid,bool salva=false,float punti=0);
-		bool RpgProfiloOffLine(uint64 guid,Player *Modder);
-		int32 RpgContaDownLine(uint64 guid,uint16 pl_rango);
+		bool RpgSetSupervisor(ObjectGuid guid, ObjectGuid supervisor,Player *Modder,bool Force=false);
+		bool RpgAggiornaUpLine(ObjectGuid guid,bool salva=false,float punti=0);
+		bool RpgProfiloOffLine(ObjectGuid guid,Player *Modder);
+		int32 RpgContaDownLine(ObjectGuid guid,uint16 pl_rango);
 		uint16 RpgTrovaRank(int32 TotRpg);
 
 		//Tournament Functions

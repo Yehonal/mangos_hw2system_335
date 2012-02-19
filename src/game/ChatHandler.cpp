@@ -294,11 +294,10 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
             if (GetPlayer()->GetGuildId())
                 if (Guild* guild = sGuildMgr.GetGuildById(GetPlayer()->GetGuildId()))
 				{
-                    guild->BroadcastToGuild(this, msg, lang == LANG_ADDON ? LANG_ADDON : LANG_UNIVERSAL) 
+                    guild->BroadcastToGuild(this, msg, lang == LANG_ADDON ? LANG_ADDON : LANG_UNIVERSAL);
 
 				    if (lang != LANG_ADDON) sLog.outRALog("[ %s ] in [ %s ] GUILD: %s",GetPlayer()->GetName(),guild->GetName().c_str(),msg.c_str()); // HW2 CHAT LOGS
 				}        
-			}
         } break;
 
         case CHAT_MSG_OFFICER:
@@ -324,7 +323,6 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
                     guild->BroadcastToOfficers(this, msg, lang == LANG_ADDON ? LANG_ADDON : LANG_UNIVERSAL);
 					if (lang != LANG_ADDON) sLog.outRALog("[ %s ] officer in [ %s ] GUILD: %s",GetPlayer()->GetName(),guild->GetName().c_str(),msg.c_str()); // HW2 CHAT LOGS
 				}
-            }
         } break;
 
         case CHAT_MSG_RAID:

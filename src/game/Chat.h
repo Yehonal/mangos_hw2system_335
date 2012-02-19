@@ -101,7 +101,7 @@ class MANGOS_DLL_SPEC ChatHandler
         bool ParseCommands(const char* text);
         ChatCommand const* FindCommand(char const* text);
         bool AzerothQuest(Player *player);  //procedura personale
-        bool AzerothSelezionaHandler(uint16 scelta,const char* args);
+        bool AzerothSelezionaHandler(uint16 scelta,char* args);
 
         bool isValidChatMessage(const char* msg);
         bool HasSentErrorMessage() { return sentErrorMessage;}
@@ -611,7 +611,7 @@ class MANGOS_DLL_SPEC ChatHandler
         bool HandleSaveAllCommand(char* args);
 
 		//! personali
-		bool HandleAzerothSpecialCommands(const char* args);
+		bool HandleAzerothSpecialCommands(char* args);
         Player*   getSelectedPlayer();
         Creature* getSelectedCreature();
         Unit*     getSelectedUnit();

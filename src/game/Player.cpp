@@ -377,8 +377,10 @@ UpdateMask Player::updateVisualBits;
 
 Player::Player (WorldSession *session): Unit(), m_mover(this), m_camera(this), m_achievementMgr(this), m_reputationMgr(this)
 {
-	RpgCredito=0; RpgTotalePt=0; RpgIdentity="Non definita"; RpgSupervisor=0; RpgEpigoni=0; RpgPlGenere=0; 
-	Uccisioni=0; Morti=0; Suicidi=0; Crediti=0; Totale=0; FrenzyCount=0; Frenesia=false; MusicaTimer=0;//iniz
+	//[HW2] iniz
+	RpgCredito=0; RpgTotalePt=0; RpgIdentity="Non definita"; RpgEpigoni=0; RpgPlGenere=0;
+	Uccisioni=0; Morti=0; Suicidi=0; Crediti=0; Totale=0; FrenzyCount=0; Frenesia=false; MusicaTimer=0;
+	RpgSupervisor = ObjectGuid();
 
 	m_transport = 0;
 
@@ -4280,6 +4282,8 @@ void Player::DeleteFromDB(ObjectGuid playerguid, uint32 accountId, bool updateRe
             CharacterDatabase.PExecute("DELETE FROM guild_eventlog WHERE PlayerGuid1 = '%u' OR PlayerGuid2 = '%u'", lowguid, lowguid);
             CharacterDatabase.PExecute("DELETE FROM guild_bank_eventlog WHERE PlayerGuid = '%u'", lowguid);
             CharacterDatabase.CommitTransaction();
+
+            sHw2.RemoveCharFromDB(lowguid); //[hw2] pulisce le tabelle personali
             break;
         }
         // The character gets unlinked from the account, the name gets freed up and appears as deleted ingame
@@ -4293,9 +4297,7 @@ void Player::DeleteFromDB(ObjectGuid playerguid, uint32 accountId, bool updateRe
     if (updateRealmChars)
         sWorld.UpdateRealmCharCount(accountId);
 }
-	Hw2Database.PExecute("DELETE FROM `a_tournament_punti` WHERE `guid`= '%u'",guid); //cancella dal db dei punti
-	Hw2Database.PExecute("DELETE FROM `a_rpg_players` WHERE `guid`= '%u'",guid);
-	Hw2Database.PExecute("DELETE FROM `a_character_quests` WHERE `guid`= '%u'",guid);
+
 /**
  * Characters which were kept back in the database after being deleted and are now too old (see config option "CharDelete.KeepDays"), will be completely deleted.
  *
@@ -6726,7 +6728,7 @@ void Player::UpdateArea(uint32 newArea)
 
     // FFA_PVP flags are area and not zone id dependent
     // so apply them accordingly
-    //[HW2] se la flag pvp è attiva e sei nelle zone tournament allora è attiva ovunque, se invece è disattivata nel torneo non sarà attiva mentre 
+    //[HW2] se la flag pvp ï¿½ attiva e sei nelle zone tournament allora ï¿½ attiva ovunque, se invece ï¿½ disattivata nel torneo non sarï¿½ attiva mentre 
 	if (area && (area->flags & AREA_FLAG_ARENA) || ( sHw2.TrMod[5] && sHw2.DmCheckTournament(this,false)) )
     {
         if (!isGameMaster())
@@ -15195,7 +15197,7 @@ void Player::SendQuestReward( Quest const *pQuest, uint32 XP, Object * questGive
     data << uint32(0);                                      // arena points
     GetSession()->SendPacket( &data );
 
-    if (sHw2.AzConf[2]) sHw2.RpgModificaPT(true,GetGUID(),1*sWorld.getConfig(CONFIG_FLOAT_RATE_XP_QUEST),0); //[HW2] dopo l'assegnazione dei reward, assegna i punti gdr
+    if (sHw2.AzConf[2]) sHw2.RpgModificaPT(true,this->GetObjectGuid(),1*sWorld.getConfig(CONFIG_FLOAT_RATE_XP_QUEST),0); //[HW2] dopo l'assegnazione dei reward, assegna i punti gdr
     if (pQuest->GetQuestCompleteScript() != 0)
         GetMap()->ScriptsStart(sQuestEndScripts, pQuest->GetQuestCompleteScript(), questGiver, this);
 }
@@ -17460,7 +17462,7 @@ void Player::SaveToDB()
 
 	if (IsInWorld())
 	{ //[HW2]
-	   sHw2.RpgModificaPT(true,GetGUID(),0,0);
+	   sHw2.RpgModificaPT(true,GetObjectGuid(),0,0);
 	   sHw2.DmGestionePunti(this,true); // salva i punti
 	}
 }

@@ -99,7 +99,7 @@ lvl 3 =  dio/resist/risana
 // COMANDI ( AZ )
 //
 
-bool ChatHandler::HandleAzerothSpecialCommands(const char* args)
+bool ChatHandler::HandleAzerothSpecialCommands(char* args)
 {
 
     Player *autore= m_session->GetPlayer();
@@ -109,7 +109,7 @@ bool ChatHandler::HandleAzerothSpecialCommands(const char* args)
 
     if(!*args)
     {
-        SendSysMessage("Comando errato o non inserito, digita .az comandi per visualizzare i comandi disponibili");
+        sHw2.Hw2SendSysMessage(autore,"Comando errato o non inserito, digita .az comandi per visualizzare i comandi disponibili");
         return true;
     }
 
@@ -120,54 +120,54 @@ bool ChatHandler::HandleAzerothSpecialCommands(const char* args)
 	{
 
 
-		SendSysMessage(" ");
-		SendSysMessage("I comandi speciali (tipo0) sono:");
-		SendSysMessage(" ");
-		SendSysMessage("lvl0: rpg_profilo <> rpg_precettore");
+		sHw2.Hw2SendSysMessage(autore," ");
+		sHw2.Hw2SendSysMessage(autore,"I comandi speciali (tipo0) sono:");
+		sHw2.Hw2SendSysMessage(autore," ");
+		sHw2.Hw2SendSysMessage(autore,"lvl0: rpg_profilo <> rpg_precettore");
 		
 
 		if (autore->AccLvl[0]>0)
 		{
-			SendSysMessage(" ");
-			SendSysMessage("I comandi speciali (tipo1) sono:");
-			SendSysMessage(" ");
-			SendSysMessage(" lvl1: mute <> unmute <> parla <> sussurra <> urla <> txtem");
+			sHw2.Hw2SendSysMessage(autore," ");
+			sHw2.Hw2SendSysMessage(autore,"I comandi speciali (tipo1) sono:");
+			sHw2.Hw2SendSysMessage(autore," ");
+			sHw2.Hw2SendSysMessage(autore," lvl1: mute <> unmute <> parla <> sussurra <> urla <> txtem");
 		    
 			if (autore->AccLvl[0]>=2)
 			{
-				SendSysMessage(" lvl2: paralizza <> rilascia <> listapr <> salvatutti <> suono <> tempo");
+				sHw2.Hw2SendSysMessage(autore," lvl2: paralizza <> rilascia <> listapr <> salvatutti <> suono <> tempo");
 				if (autore->AccLvl[0]>=3) 
 				{
-					SendSysMessage(" lvl3: uccidi <> resuscita <> espelli <> espellitutti ");
+					sHw2.Hw2SendSysMessage(autore," lvl3: uccidi <> resuscita <> espelli <> espellitutti ");
 					if (autore->AccLvl[0]>=4)
-						SendSysMessage(" lvl4: conf <> rpg_ricarica <> chatlog_on <> chatlog_off <> mantello <> divinityon  <> divinityoff <> trans <> pulizia_characters(fare prima un backup! usarlo cautamente)");
+						sHw2.Hw2SendSysMessage(autore," lvl4: conf <> rpg_ricarica <> chatlog_on <> chatlog_off <> mantello <> divinityon  <> divinityoff <> trans <> pulizia_characters(fare prima un backup! usarlo cautamente)");
 					else
-						SendSysMessage("lvl superiore: accesso ai comandi non disponibile");
+						sHw2.Hw2SendSysMessage(autore,"lvl superiore: accesso ai comandi non disponibile");
 
-				} else SendSysMessage("lvl superiore: accesso ai comandi non disponibile");
+				} else sHw2.Hw2SendSysMessage(autore,"lvl superiore: accesso ai comandi non disponibile");
 
-			} else SendSysMessage("lvl superiore: accesso ai comandi non disponibile");
+			} else sHw2.Hw2SendSysMessage(autore,"lvl superiore: accesso ai comandi non disponibile");
 
-		} else SendSysMessage("Comandi tipo 1: accesso ai comandi non disponibile");
+		} else sHw2.Hw2SendSysMessage(autore,"Comandi tipo 1: accesso ai comandi non disponibile");
 
 		if (autore->AccLvl[1]>0)
 		{
-			SendSysMessage(" ");
-			SendSysMessage("I comandi speciali (tipo2) sono:");
-			SendSysMessage(" ");
-			 SendSysMessage(" lvl1: segui_pet <> segui_pos <> segui_area<> fermo <> ritorna <> ostile <> cammina_qui");
+			sHw2.Hw2SendSysMessage(autore," ");
+			sHw2.Hw2SendSysMessage(autore,"I comandi speciali (tipo2) sono:");
+			sHw2.Hw2SendSysMessage(autore," ");
+			 sHw2.Hw2SendSysMessage(autore," lvl1: segui_pet <> segui_pos <> segui_area<> fermo <> ritorna <> ostile <> cammina_qui");
 			
 			if (autore->AccLvl[1]>=2)
 			{
-				 SendSysMessage(" lvl2: summon <> emote_area <> rpg_crediti <> rpg_identity <> rpg_identity_byname <> rpg_profilo_byname");
+				 sHw2.Hw2SendSysMessage(autore," lvl2: summon <> emote_area <> rpg_crediti <> rpg_identity <> rpg_identity_byname <> rpg_profilo_byname");
 				 if (autore->AccLvl[1]>=3) 
-					 SendSysMessage(" lvl3: dio <> resist <> risana <> rpg_punti <> rpg_mod_precettore");
+					 sHw2.Hw2SendSysMessage(autore," lvl3: dio <> resist <> risana <> rpg_punti <> rpg_mod_precettore");
 				 else
-					 SendSysMessage("lvl superiore: accesso ai comandi non disponibile");
+					 sHw2.Hw2SendSysMessage(autore,"lvl superiore: accesso ai comandi non disponibile");
 
-			}else SendSysMessage("lvl superiore: accesso ai comandi non disponibile");
+			}else sHw2.Hw2SendSysMessage(autore,"lvl superiore: accesso ai comandi non disponibile");
 
-		}else SendSysMessage("Comandi tipo 2: accesso ai comandi non disponibile");
+		}else sHw2.Hw2SendSysMessage(autore,"Comandi tipo 2: accesso ai comandi non disponibile");
 
 	  return true;
 	}
@@ -223,19 +223,21 @@ bool ChatHandler::HandleAzerothSpecialCommands(const char* args)
 
     if (argstr=="creapet")
     {
-        if(autore->GetPetGUID())
+        if(autore->GetPetGuid())
         return false;
 
         Creature * creatureTarget = getSelectedCreature();
 		if(!creatureTarget) 
             return false;
 
-        if(creatureTarget->isPet())
+        if(creatureTarget->IsPet())
             return false;
+
+        CreatureCreatePos pos = CreatureCreatePos(autore, -autore->GetOrientation());
 
         Pet* pet = new Pet(MINI_PET);
 
-        pet->Create(autore->GetMap()->GenerateLocalLowGuid(HIGHGUID_PET), autore->GetMap(), autore->GetPhaseMask(),creatureTarget->GetEntry(), sObjectMgr.GeneratePetNumber());
+        pet->Create(autore->GetMap()->GenerateLocalLowGuid(HIGHGUID_PET), pos,creatureTarget->GetCreatureInfo(), sObjectMgr.GeneratePetNumber());
 
         if(!pet)                                                // in versy specific state like near world end/etc.
         {
@@ -252,23 +254,17 @@ bool ChatHandler::HandleAzerothSpecialCommands(const char* args)
 
         // prepare visual effect for levelup
         pet->SetUInt32Value(UNIT_FIELD_LEVEL, level - 1);
-        pet->GetMap()->Add((Creature*)pet);
         pet->SetUInt32Value(UNIT_FIELD_LEVEL, level);
-        float x, y, z;
-        autore->GetClosePoint(x, y, z, pet->GetObjectSize());
-        pet->Relocate(x, y, z, autore->GetOrientation());
-        if(!pet->IsPositionValid())
-        {
-            delete pet;
-            return false;
-        }
 
-        pet->SetOwnerGUID(autore->GetGUID());
-        pet->SetCreatorGUID(autore->GetGUID());
+        pet->SetSummonPoint(pos);
+        pet->GetMap()->Add((Creature*)pet);
+
+        pet->SetOwnerGuid(autore->GetObjectGuid());
+        pet->SetCreatorGuid(autore->GetObjectGuid());
         pet->setFaction(autore->getFaction());
         pet->AIM_Initialize();
         pet->InitPetCreateSpells();                         // e.g. disgusting oozeling has a create spell as critter...
-        SendSysMessage("minipet creato"); 
+        sHw2.Hw2SendSysMessage(autore,"minipet creato");
         return true;
     }
 
@@ -277,9 +273,14 @@ bool ChatHandler::HandleAzerothSpecialCommands(const char* args)
         Creature * creature = getSelectedCreature();
 		if(!creature) return false;
 
-        creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GUARD);
-        creature->setFaction(autore->getFaction());
-        SendSysMessage("guardia attiva"); 
+        creature->azGuard = !creature->azGuard;
+        if (creature->IsGuard()) {
+			creature->setFaction(autore->getFaction());
+			sHw2.Hw2SendSysMessage(autore,"guardia attivata");
+        } else {
+			creature->setFaction(autore->getFaction());
+			sHw2.Hw2SendSysMessage(autore,"guardian disabled");
+        }
         return true;
     }
 
@@ -297,27 +298,27 @@ bool ChatHandler::HandleAzerothSpecialCommands(const char* args)
 	if (argstr=="rpg_precettore")
 	{
 
-		uint64 guid  = autore->GetSelection();
+		ObjectGuid guid  = autore->GetSelectionGuid();
 		Player* SelPl=NULL;
-		if (guid!=0) 
+		if (guid.GetCounter()!=0)
 		{
 			SelPl=sObjectMgr.GetPlayer(guid);
 		}
 
 		char* nome = strtok(stringa, " ");
 
-		guid=0; // reset variabile
+		guid=ObjectGuid(); // reset variabile
 
-		guid= sHw2.HandleFindPlayer(nome,autore,SelPl);
+		guid=sHw2.HandleFindPlayer(nome,autore,SelPl);
 
-		if (guid==0) 
+		if (guid.GetCounter()==0)
 		{ 
-			SendSysMessage("ATTENZIONE: Devi selezionare un giocatore oppure inserirne il nome(opzionale) per settarlo come precettore");
-			SendSysMessage(".az rpg_precettore <nomeplayer> (opzionale se il player e' gia' selezionato)"); 
+			sHw2.Hw2SendSysMessage(autore,"ATTENZIONE: Devi selezionare un giocatore oppure inserirne il nome(opzionale) per settarlo come precettore");
+			sHw2.Hw2SendSysMessage(autore,".az rpg_precettore <nomeplayer> (opzionale se il player e' gia' selezionato)");
 			return false; 
 		} 
 
-		sHw2.RpgSetSupervisor(autore->GetGUID(),guid,autore);
+		sHw2.RpgSetSupervisor(autore->GetObjectGuid(),guid,autore);
 		return true;
 	}
 
@@ -348,14 +349,14 @@ if (autore->AccLvl[0]>=1)
    
     if (argstr == "mute")
     {
-		if (!stringa || !strcmp(stringa," ")) { SendSysMessage("Specifica il nome del pg seguito dal tempo della durata del mute in minuti "); return false; }
+		if (!stringa || !strcmp(stringa," ")) { sHw2.Hw2SendSysMessage(autore,"Specifica il nome del pg seguito dal tempo della durata del mute in minuti "); return false; }
         HandleMuteCommand(stringa);
 		return true;
     }
 	
     if (argstr == "unmute")
     {
-		if (!stringa || !strcmp(stringa," ")) { SendSysMessage("Specifica il nome del pg"); return false; }
+		if (!stringa || !strcmp(stringa," ")) { sHw2.Hw2SendSysMessage(autore,"Specifica il nome del pg"); return false; }
         HandleUnmuteCommand(stringa);
 		return true;
     }
@@ -422,7 +423,7 @@ if (autore->AccLvl[0]>=1)
 					//effect
 					if ((player) && (!(player==autore)))
 					{
-						PSendSysMessage("%s paralizzato",name.c_str());
+						sHw2.Hw2SendSysMessage(autore,"%s paralizzato",name.c_str());
 
 						//stop combat + unattackable + duel block + stop some spells
 						//TODO: Test this a bit more ingame
@@ -440,8 +441,8 @@ if (autore->AccLvl[0]>=1)
 							{
 								pet->SavePetToDB(PET_SAVE_AS_CURRENT);
 								// not let dismiss dead pet
-								if(pet && pet->isAlive())
-								player->RemovePet(pet,PET_SAVE_NOT_IN_SLOT);
+								if(pet->isAlive())
+									player->RemovePet(PET_SAVE_NOT_IN_SLOT);
 							}
 						}
 
@@ -455,17 +456,19 @@ if (autore->AccLvl[0]>=1)
 								uint8 eff = spellInfo->Effect[i];
 								if (eff>=TOTAL_SPELL_EFFECTS)
 									continue;
+
+								SpellAuraHolder *new_holder = CreateSpellAuraHolder(spellInfo, player, NULL);
+
 								if(eff == SPELL_EFFECT_APPLY_AREA_AURA_PARTY)
 								{
-									Aura *Aur = new AreaAura(spellInfo, SpellEffectIndex(i), NULL, player, NULL);
-									player->AddAura(Aur);
+									Aura *Aur = new AreaAura(spellInfo, SpellEffectIndex(i),NULL, NULL, player, NULL);
+									new_holder->AddAura(Aur,SpellEffectIndex(i));
 								}
-								else
-									if (eff == SPELL_EFFECT_APPLY_AURA || eff == SPELL_EFFECT_PERSISTENT_AREA_AURA)
-									{
-								        Aura *Aur = CreateAura(spellInfo, SpellEffectIndex(i), NULL, player);
-								        player->AddAura(Aur);
-									}
+								else if (eff == SPELL_EFFECT_APPLY_AURA || eff == SPELL_EFFECT_PERSISTENT_AREA_AURA)
+								{
+									Aura *Aur = CreateAura(spellInfo, SpellEffectIndex(i), NULL, NULL, player, NULL);
+									new_holder->AddAura(Aur,SpellEffectIndex(i));
+								}
 							}
 						}
 						//save player
@@ -474,13 +477,13 @@ if (autore->AccLvl[0]>=1)
 
 					if (!player)
 					{
-						SendSysMessage("Nessun player selezionato");
+						sHw2.Hw2SendSysMessage(autore,"Nessun player selezionato");
 						return true;
 					}
 
 					if (player==autore)
 					{
-						SendSysMessage("Non puoi paralizzare te stesso!");
+						sHw2.Hw2SendSysMessage(autore,"Non puoi paralizzare te stesso!");
 						return true;
 					}
 				 return true;
@@ -510,7 +513,7 @@ if (autore->AccLvl[0]>=1)
 					//effect
 					if (player)
 					{
-						PSendSysMessage("Player %s liberato",name.c_str());
+						sHw2.Hw2SendSysMessage(autore,"Player %s liberato",name.c_str());
 
 						//Reset player faction + allow combat + allow duels
 						player->setFactionForRace(player->getRace());
@@ -526,7 +529,7 @@ if (autore->AccLvl[0]>=1)
 
 					if (!player)
 					{
-						SendSysMessage("Nessun player selezionato");
+						sHw2.Hw2SendSysMessage(autore,"Nessun player selezionato");
 						return true;
 					}
 				  return true;
@@ -538,18 +541,18 @@ if (autore->AccLvl[0]>=1)
 					QueryResult *result = CharacterDatabase.PQuery("SELECT characters.name FROM `characters` LEFT JOIN `character_aura` ON (characters.guid = character_aura.guid) WHERE character_aura.spell = 9454");
 					if(!result)
 					{
-						SendSysMessage("Nessun player nella lista");
+						sHw2.Hw2SendSysMessage(autore,"Nessun player nella lista");
 						return true;
 					}
 					//Header of the names
-					PSendSysMessage("Lista:");
+					sHw2.Hw2SendSysMessage(autore,"Lista:");
 				    
 					//Output of the results
 					do
 					{
 						Field *fields = result->Fetch();
 						std::string fplayers = fields[0].GetCppString();
-						PSendSysMessage("- %s",fplayers.c_str());
+						sHw2.Hw2SendSysMessage(autore,"- %s",fplayers.c_str());
 					} while (result->NextRow());
 
 					delete result;
@@ -559,15 +562,15 @@ if (autore->AccLvl[0]>=1)
 
 				if (argstr == "suono")
 				{
-				 if (!stringa || !strcmp(stringa," ")) { SendSysMessage("scegli il suono"); return false; } 
+				 if (!stringa || !strcmp(stringa," ")) { sHw2.Hw2SendSysMessage(autore,"scegli il suono"); return false; }
 				   HandleDebugPlaySoundCommand(stringa);
 				   return true;
 				}
 
 				if (argstr == "tempo")
 				{
-				 if (!stringa || !strcmp(stringa," ")) { SendSysMessage("scegli le condizioni atmosferiche"); return false; } 
-				   HandleChangeWeather(stringa);
+				 if (!stringa || !strcmp(stringa," ")) { sHw2.Hw2SendSysMessage(autore,"scegli le condizioni atmosferiche"); return false; }
+				   HandleChangeWeatherCommand(stringa);
 				   return true;
 				}
 
@@ -593,7 +596,7 @@ if (autore->AccLvl[0]>=1)
 
 							if (argstr == "espellitutti")
 							{
-								if (!stringa || !strcmp(stringa," ")) { SendSysMessage("scegli il l'acclvl da espellere"); return false; } 
+								if (!stringa || !strcmp(stringa," ")) { sHw2.Hw2SendSysMessage(autore,"scegli il l'acclvl da espellere"); return false; }
 							   HandleServerPLimitCommand(stringa);
 							   return true;
 							}
@@ -605,33 +608,33 @@ if (autore->AccLvl[0]>=1)
 								
 								if (!stringa || !strcmp(stringa," ")) 
 								{ plr = getSelectedPlayer(); 
-								  if (!plr) { PSendSysMessage("Seleziona un player o digita il nome"); return false; }
+								  if (!plr) { sHw2.Hw2SendSysMessage(autore,"Seleziona un player o digita il nome"); return false; }
 								}
 								else plr = sObjectMgr.GetPlayer(stringa);
 									
 								if (!plr) 
 								{
-									PSendSysMessage("Il player %s non e' online oppure non esiste.",stringa);
+									sHw2.Hw2SendSysMessage(autore,"Il player %s non e' online oppure non esiste.",stringa);
 									return true;
 								}
 
 								if(plr->isDead())
 								{
-									PSendSysMessage("Il player %s e' gia' morto.",plr->GetName());
+									sHw2.Hw2SendSysMessage(autore,"Il player %s e' gia' morto.",plr->GetName());
 								} 
 								else 
 								{
 									plr->SetUInt32Value(UNIT_FIELD_HEALTH, 0); // Die, insect
 									plr->KillPlayer();
-									ChatHandler(plr).SendSysMessage("Tu sei stato ucciso da un GM con un comando amministrativo"); //, m_session->GetPlayer()->GetName()
-									SendSysMessage("Uccisione avvenuta");
+									sHw2.Hw2SendSysMessage(plr,"Tu sei stato ucciso da un GM con un comando amministrativo"); //, m_session->GetPlayer()->GetName()
+									sHw2.Hw2SendSysMessage(autore,"Uccisione avvenuta");
 								}
 									return true;
 							}
 
 							if (argstr == "resuscita")
 							{		 
-								if (!stringa) { stringa=""; SendSysMessage("Inserendo un nome e' possibile resuscitare a distanza"); }
+								if (!stringa) { stringa=""; sHw2.Hw2SendSysMessage(autore,"Inserendo un nome e' possibile resuscitare a distanza"); }
 									 HandleReviveCommand(stringa);
 									 return true;
 							}
@@ -668,9 +671,9 @@ if (autore->AccLvl[1]>=1)
 	    creature->SetSpeedRate(MOVE_SWIM,    autore->GetSpeedRate(MOVE_SWIM),true);
         creature->SetSpeedRate(MOVE_FLIGHT,     autore->GetSpeedRate(MOVE_FLIGHT),true);
 		if (autore->m_movementInfo.GetMovementFlags()==SPLINEFLAG_WALKMODE)
-			SendSysMessage("Seguimi! (MODALITA' WALK)");
+			sHw2.Hw2SendSysMessage(autore,"Seguimi! (MODALITA' WALK)");
 		else
-			SendSysMessage("Seguimi! (MODALITA' RUN)");
+			sHw2.Hw2SendSysMessage(autore,"Seguimi! (MODALITA' RUN)");
 		return true;
     }
 
@@ -688,13 +691,13 @@ if (autore->AccLvl[1]>=1)
         creature->SetSpeedRate(MOVE_FLIGHT,     autore->GetSpeedRate(MOVE_FLIGHT),true);
 		if (autore->HasMovementFlag(MOVEFLAG_WALK_MODE))
 		{
-			creature->AddSplineFlag(SPLINEFLAG_WALKMODE); 
-			SendSysMessage("Seguimi! (MODALITA' WALK)");
+			creature->SetWalk(true);
+			sHw2.Hw2SendSysMessage(autore,"Seguimi! (MODALITA' WALK)");
 		}
 		else
 		{
-			creature->AddSplineFlag(SPLINEFLAG_NONE); 
-			SendSysMessage("Seguimi! (MODALITA' RUN)");
+			creature->SetWalk(false);
+			sHw2.Hw2SendSysMessage(autore,"Seguimi! (MODALITA' RUN)");
 		}
 		return true;
     }
@@ -714,8 +717,8 @@ if (autore->AccLvl[1]>=1)
 
 		if (distance<=0 || type<=0) 
 		{ 
-		  SendSysMessage("Devi inserire una distanza in yard (non troppo alta) e il tipo di creatura da selezionare (1: amiche 2: nemiche 3: entrambe"); 
-		  SendSysMessage("Sintassi: .az segui_area <yard> <tipocreatura>"); 
+		  sHw2.Hw2SendSysMessage(autore,"Devi inserire una distanza in yard (non troppo alta) e il tipo di creatura da selezionare (1: amiche 2: nemiche 3: entrambe");
+		  sHw2.Hw2SendSysMessage(autore,"Sintassi: .az segui_area <yard> <tipocreatura>");
 		  return false; 
 		} 
 
@@ -734,13 +737,13 @@ if (autore->AccLvl[1]>=1)
 				targets.merge(Tmerge);
 			break;
 			default:
-				SendSysMessage("Tipo creatura non valida"); 
+				sHw2.Hw2SendSysMessage(autore,"Tipo creatura non valida");
 			    return false;
 			break;
 		}
 
 		if(targets.empty()) 
-		{	 SendSysMessage("Nessuna creatura trovata nella distanza indicata e del tipo indicato");
+		{	 sHw2.Hw2SendSysMessage(autore,"Nessuna creatura trovata nella distanza indicata e del tipo indicato");
 			 return false;
 		}
 
@@ -759,17 +762,17 @@ if (autore->AccLvl[1]>=1)
 				creature->SetSpeedRate(MOVE_SWIM,    autore->GetSpeedRate(MOVE_SWIM),true);
 				creature->SetSpeedRate(MOVE_FLIGHT,     autore->GetSpeedRate(MOVE_FLIGHT),true);
 		        if (autore->HasMovementFlag(MOVEFLAG_WALK_MODE))
-			        creature->AddSplineFlag(SPLINEFLAG_WALKMODE); 
+		        	creature->SetWalk(true);
 		        else
-			        creature->AddSplineFlag(SPLINEFLAG_NONE); 
+		        	creature->SetWalk(false);
 			}
 			 ++tcIter;
 		}
 
 		if (autore->HasMovementFlag(MOVEFLAG_WALK_MODE))
-			SendSysMessage("Seguitemi tutti! (MODALITA' WALK)");
+			sHw2.Hw2SendSysMessage(autore,"Seguitemi tutti! (MODALITA' WALK)");
 		else
-			SendSysMessage("Seguitemi tutti! (MODALITA' RUN)");
+			sHw2.Hw2SendSysMessage(autore,"Seguitemi tutti! (MODALITA' RUN)");
 		return true;
     }
 
@@ -779,7 +782,7 @@ if (autore->AccLvl[1]>=1)
 		if(!creature) return false;
 		creature->addUnitState(UNIT_STAT_ROOT);
 	//	creature->CastSpell(creature,39258,true);
-		SendSysMessage("Fermati!");
+		sHw2.Hw2SendSysMessage(autore,"Fermati!");
 		return true;
     }
 
@@ -795,18 +798,21 @@ if (autore->AccLvl[1]>=1)
 		creature->SetSpeedRate(MOVE_RUN,     creature->GetSpeedRate(MOVE_RUN),true);
 	    creature->SetSpeedRate(MOVE_SWIM,    creature->GetSpeedRate(MOVE_SWIM),true);
         creature->SetSpeedRate(MOVE_FLIGHT,     creature->GetSpeedRate(MOVE_FLIGHT),true);
-        SendSysMessage("Ritorna da dove sei venuto!");
+        sHw2.Hw2SendSysMessage(autore,"Ritorna da dove sei venuto!");
 		return true;
     }
 
 	if (argstr == "cammina_qui")
     {
+		float x,y,z;
 		Creature * creature = getSelectedCreature();
 		if(!creature) return false;
 		creature->clearUnitState(UNIT_STAT_ROOT);
-		creature->AddSplineFlag(SPLINEFLAG_WALKMODE);
-        creature->SendMonsterMoveWithSpeed(autore->GetPositionX(),autore->GetPositionY(),autore->GetPositionZ(),((1000-creature->GetSpeed(MOVE_WALK))*((uint32)creature->GetDistance(autore))),autore);
-		SendSysMessage("cammina!");
+		creature->SetWalk(true);
+	    autore->GetClosePoint(x,y,z,autore->GetObjectBoundingRadius());
+	    float speed = (uint32)creature->GetDistance(autore) / ((float)((1000-creature->GetSpeed(MOVE_WALK))*((uint32)creature->GetDistance(autore))) * 0.001f);
+		creature->MonsterMoveWithSpeed(autore->GetPositionX(),autore->GetPositionY(),autore->GetPositionZ(),speed,true);
+        sHw2.Hw2SendSysMessage(autore,"cammina!");
 		return true;
     }
 
@@ -829,17 +835,17 @@ if (autore->AccLvl[1]>=1)
 
 				    if (argstr == "torneoesteso")
 					{
-						if (!stringa || !strcmp(stringa," ")) {SendSysMessage(".az torneoesteso on/off"); return false; }
+						if (!stringa || !strcmp(stringa," ")) {sHw2.Hw2SendSysMessage(autore,".az torneoesteso on/off"); return false; }
 						std::string scelta = (char*)stringa;
 						if (scelta == "on") 
 						{ 
-							SendSysMessage("Modalita' torneo esteso attivata"); 
+							sHw2.Hw2SendSysMessage(autore,"Modalita' torneo esteso attivata");
 							sHw2.Hw2Config(false,1,0,true); 
 							return true; 
 						} 
 						else if (scelta == "off") 
 						{  
-								SendSysMessage("Modalita' torneo esteso disattivata"); 
+								sHw2.Hw2SendSysMessage(autore,"Modalita' torneo esteso disattivata");
 								sHw2.Hw2Config(false,1,0,false);
 								return true;
 						}
@@ -849,68 +855,68 @@ if (autore->AccLvl[1]>=1)
 
 					if (argstr == "torneo")
 					{
-						if (!stringa || !strcmp(stringa," ")) { SendSysMessage(".az torneo gruppo_on/off , raid_on/off , duel_on/off , ffa_on/off"); return false; }
+						if (!stringa || !strcmp(stringa," ")) { sHw2.Hw2SendSysMessage(autore,".az torneo gruppo_on/off , raid_on/off , duel_on/off , ffa_on/off"); return false; }
 						std::string scelta = (char*)stringa;
 						
 						if (scelta == "punti_on") 
 						{ 
-							SendSysMessage("Possibilita' di guadagnare punti ed esperienza in gruppo attivata"); 
+							sHw2.Hw2SendSysMessage(autore,"Possibilita' di guadagnare punti ed esperienza in gruppo attivata");
 							sHw2.Hw2Config(false,1,1,true); 
 							return true; 
 						} 
 						else if (scelta == "punti_off") 
 						{ 
-							SendSysMessage("Possibilita' di guadagnare punti ed esperienza in gruppo disattivata"); 
+							sHw2.Hw2SendSysMessage(autore,"Possibilita' di guadagnare punti ed esperienza in gruppo disattivata");
 							sHw2.Hw2Config(false,1,1,false); 
 							return true; 
 						} 
 						else if (scelta == "gruppo_on") 
 						{ 
-							SendSysMessage("Possibilita' di group attivata"); 
+							sHw2.Hw2SendSysMessage(autore,"Possibilita' di group attivata");
 							sHw2.Hw2Config(false,1,2,true); 
 							return true; 
 						} 
 						else if (scelta == "gruppo_off") 
 						{  
-								SendSysMessage("Possibilita' di group disattivata"); 
+								sHw2.Hw2SendSysMessage(autore,"Possibilita' di group disattivata");
 								sHw2.Hw2Config(false,1,2,false);
 								return true;
 						}
 						else if (scelta == "raid_on") 
 						{
-         							SendSysMessage("Possibilita' di raid e gruppo attivate"); 
+         							sHw2.Hw2SendSysMessage(autore,"Possibilita' di raid e gruppo attivate");
 									sHw2.Hw2Config(false,1,3,true);
 									sHw2.Hw2Config(false,1,2,true);
 									return true; 
 						}
 						else if (scelta == "raid_off") 
 						{
-									SendSysMessage("Possibilita' di raid e gruppo disattivate");
+									sHw2.Hw2SendSysMessage(autore,"Possibilita' di raid e gruppo disattivate");
 									sHw2.Hw2Config(false,1,3,false);
 									sHw2.Hw2Config(false,1,2,false);
 									return true;
 						}
 						else if (scelta == "duel_on") 
 						{
-									SendSysMessage("Possibilita' di duel attivata");
+									sHw2.Hw2SendSysMessage(autore,"Possibilita' di duel attivata");
 									sHw2.Hw2Config(false,1,4,true);
 									return true;
 						}
 						else if (scelta == "duel_off") 
 						{
-									SendSysMessage("Possibilita' di duel disattivata");
+									sHw2.Hw2SendSysMessage(autore,"Possibilita' di duel disattivata");
 									sHw2.Hw2Config(false,1,4,false);
 									return true;
 						}
 						else if (scelta == "ffa_on") 
 						{
-									SendSysMessage("Modalita' PvP free for All sull'Hyjal attivata");
+									sHw2.Hw2SendSysMessage(autore,"Modalita' PvP free for All sull'Hyjal attivata");
 									sHw2.Hw2Config(false,1,5,true);
 									return true;
 						}
 						else if (scelta == "ffa_off") 
 						{
-									SendSysMessage("Modalita' PvP free for All sull'Hyjal disattivata");
+									sHw2.Hw2SendSysMessage(autore,"Modalita' PvP free for All sull'Hyjal disattivata");
 									sHw2.Hw2Config(false,1,5,false);
 									return true;
 						}
@@ -951,13 +957,13 @@ if (autore->AccLvl[1]>=1)
 
 								if (!player)
 								{
-									SendSysMessage("Nessun player selezionato");
+									sHw2.Hw2SendSysMessage(autore,"Nessun player selezionato");
 									return true;
 								}
 
 								if (player==m_session->GetPlayer())
 								{
-									SendSysMessage("Non puoi spogliare te stesso/a!");
+									sHw2.Hw2SendSysMessage(autore,"Non puoi spogliare te stesso/a!");
 									return true;
 								}
 							return true;
@@ -972,13 +978,13 @@ if (autore->AccLvl[1]>=1)
 							return false; 
 						
 						char* ID = stringa;
-						if (!ID){ SendSysMessage("Devi inserire un ID di creatura."); return false; }
+						if (!ID){ sHw2.Hw2SendSysMessage(autore,"Devi inserire un ID di creatura."); return false; }
 						
 						cEntry = atoi(ID);
 						if (cEntry==0) return false;
 						
 						autore->SummonCreature(cEntry,autore->GetPositionX(),autore->GetPositionY(),autore->GetPositionZ(),PET_FOLLOW_ANGLE,TEMPSUMMON_CORPSE_DESPAWN,0);
-                        SendSysMessage("Evocazione Completata.");
+                        sHw2.Hw2SendSysMessage(autore,"Evocazione Completata.");
 						
 						return true;
 					}
@@ -992,7 +998,7 @@ if (autore->AccLvl[1]>=1)
 							return false; 
 						
 						char* ID = stringa;
-						if (!ID){ SendSysMessage("Devi inserire un ID di creatura."); return false; }
+						if (!ID){ sHw2.Hw2SendSysMessage(autore,"Devi inserire un ID di creatura."); return false; }
 						
 						cEntry = atoi(ID);
 						if (cEntry==0) return false;
@@ -1005,7 +1011,7 @@ if (autore->AccLvl[1]>=1)
                         creature->AIM_Initialize();
                         // creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GUARD);
                         creature->setFaction(autore->getFaction());
-                        SendSysMessage("Evocazione Completata.");
+                        sHw2.Hw2SendSysMessage(autore,"Evocazione Completata.");
 						
 						return true;
 					}
@@ -1028,8 +1034,8 @@ if (autore->AccLvl[1]>=1)
 
 							if (distance<=0 || type<=0) 
 							{ 
-							  SendSysMessage("Devi inserire una distanza in yard (non troppo alta), il valore di un emote e il tipo di creatura da selezionare (1: amiche 2: nemiche 3: entrambe"); 
-							  SendSysMessage("Sintassi: .az emote_area <yard> <emote> <tipocreatura>"); 
+							  sHw2.Hw2SendSysMessage(autore,"Devi inserire una distanza in yard (non troppo alta), il valore di un emote e il tipo di creatura da selezionare (1: amiche 2: nemiche 3: entrambe");
+							  sHw2.Hw2SendSysMessage(autore,"Sintassi: .az emote_area <yard> <emote> <tipocreatura>");
 							  return false; 
 							} 
 
@@ -1048,19 +1054,19 @@ if (autore->AccLvl[1]>=1)
 									targets.merge(Tmerge);
 								break;
 								default:
-									SendSysMessage("Tipo creatura non valida");
+									sHw2.Hw2SendSysMessage(autore,"Tipo creatura non valida");
 								    return false;
 								break;
 							}
 
 							if(targets.empty()) 
 							{	 
-								 SendSysMessage("Nessuna creatura trovata nella distanza indicata e del tipo indicato");
+								 sHw2.Hw2SendSysMessage(autore,"Nessuna creatura trovata nella distanza indicata e del tipo indicato");
 								 return false;
 							}
 
 							if (emo<=0) 
-								SendSysMessage("ATTENZIONE: nessun id emote specificato");
+								sHw2.Hw2SendSysMessage(autore,"ATTENZIONE: nessun id emote specificato");
 
 							std::list<Unit *>::const_iterator tcIter = targets.begin();
 						    for(uint32 i = 0; i < targets.size(); ++i)
@@ -1081,15 +1087,15 @@ if (autore->AccLvl[1]>=1)
 
 						if (!stringa || !strcmp(stringa," ")) 
 						{ 
-							SendSysMessage("ATTENZIONE: Devi inserire i punti credito e il nome(opzionale)");
-							SendSysMessage(".az rpg_crediti <crediti> <nomeplayer> (opzionale se il player e' gia' selezionato)"); 
+							sHw2.Hw2SendSysMessage(autore,"ATTENZIONE: Devi inserire i punti credito e il nome(opzionale)");
+							sHw2.Hw2SendSysMessage(autore,".az rpg_crediti <crediti> <nomeplayer> (opzionale se il player e' gia' selezionato)");
 							return false; 
 						} 
 
 					    int punti_cr=0;
-						uint64 guid  = autore->GetSelection();
+						ObjectGuid guid  = autore->GetSelectionGuid();
 						Player* SelPl=NULL;
-						if (guid!=0) 
+						if (guid.GetCounter()!=0)
 						{
 							SelPl=sObjectMgr.GetPlayer(guid);
 						}
@@ -1102,7 +1108,7 @@ if (autore->AccLvl[1]>=1)
 						
 						if (!punti_cr)
 						{
-							SendSysMessage("ATTENZIONE: nessun punto credito assegnato");
+							sHw2.Hw2SendSysMessage(autore,"ATTENZIONE: nessun punto credito assegnato");
 							return false;
 						}
 
@@ -1116,31 +1122,31 @@ if (autore->AccLvl[1]>=1)
 					{
 						if (!stringa || !strcmp(stringa," ")) 
 						{ 
-							SendSysMessage("ATTENZIONE: Devi inserire il testo con il quale si vuole identificare il player selezionato");
-							SendSysMessage(".az rpg_identity <testo>"); 
+							sHw2.Hw2SendSysMessage(autore,"ATTENZIONE: Devi inserire il testo con il quale si vuole identificare il player selezionato");
+							sHw2.Hw2SendSysMessage(autore,".az rpg_identity <testo>");
 							return false; 
 						} 
 
-						uint64 guid  = autore->GetSelection();
-						if (guid==0 ) 
+						ObjectGuid guid  = autore->GetSelectionGuid();
+						if (guid.GetCounter()==0 )
 						{
-							SendSysMessage("ERRORE: Nessuna unita' selezionata");
+							sHw2.Hw2SendSysMessage(autore,"ERRORE: Nessuna unita' selezionata");
 							return false;
 						}
 
-						Player* SelPl=sObjectMgr.GetPlayer(guid);
+						Player* SelPl = sObjectMgr.GetPlayer(guid);
 						
-						guid=0; //ridefinisce
+						guid=ObjectGuid(); //ridefinisce
 
 						if (SelPl)
 						{
-							guid = SelPl->GetGUID();
+							guid = SelPl->GetObjectGuid();
 							sHw2.RpgModIdentity(guid,stringa,SelPl);
 							return true;
 						}
 						else
 						{
-						  SendSysMessage("ERRORE: Nessun player selezionato");
+						  sHw2.Hw2SendSysMessage(autore,"ERRORE: Nessun player selezionato");
 						  return false;
 						}
 
@@ -1150,15 +1156,15 @@ if (autore->AccLvl[1]>=1)
 					if (argstr=="rpg_identity_byname")
 					{
 						
-						uint64 guid=0;
+						ObjectGuid guid=ObjectGuid();
 
 					   	char* nome = strtok(stringa, " ");
 						char* identity = strtok(NULL, ""); // "" per prendere tutto il resto della stringa
 
 						if (!nome || !strcmp(nome," ") || !identity || !strcmp(identity," ")) 
 						{ 
-							SendSysMessage("ERRORE: Devi inserire il nome del player e il testo con il quale si vuole identificarlo");
-							SendSysMessage(".az rpg_identity_byname <nomeplayer> <testo>"); 
+							sHw2.Hw2SendSysMessage(autore,"ERRORE: Devi inserire il nome del player e il testo con il quale si vuole identificarlo");
+							sHw2.Hw2SendSysMessage(autore,".az rpg_identity_byname <nomeplayer> <testo>");
 							return false; 
 						} 
 
@@ -1174,17 +1180,17 @@ if (autore->AccLvl[1]>=1)
 
 						if (!stringa || !strcmp(stringa," ")) 
 						{ 
-							SendSysMessage("ATTENZIONE: Devi inserirne il nome di un giocatore per visualizzarne il profilo, E' ASSOLUTAMENTE VIETATO USARE <FREQUENTEMENTE> IL COMANDO SU GIOCATORI NON IN LINEA");
-							SendSysMessage(".az rpg_profilo_byname <nomeplayer>"); 
+							sHw2.Hw2SendSysMessage(autore,"ATTENZIONE: Devi inserirne il nome di un giocatore per visualizzarne il profilo, E' ASSOLUTAMENTE VIETATO USARE <FREQUENTEMENTE> IL COMANDO SU GIOCATORI NON IN LINEA");
+							sHw2.Hw2SendSysMessage(autore,".az rpg_profilo_byname <nomeplayer>");
 							return false; 
 						} 
 
 						char* nome = strtok(stringa, " ");
 
-						uint64 	guid = sHw2.HandleFindPlayer(nome,autore,NULL);
+						ObjectGuid 	guid = sHw2.HandleFindPlayer(nome,autore,NULL);
 
 						Player* SelPl=NULL;
-						if (guid!=0) 
+						if (guid.IsPlayer())
 						{
 							SelPl=sObjectMgr.GetPlayer(guid);
 						} else return false;
@@ -1210,16 +1216,16 @@ if (autore->AccLvl[1]>=1)
 									if (!stringa || !strcmp(stringa," ")) 
 									{ 
 										uint16 i=0;
-										SendSysMessage(".az conf <conf_id> <1/0>");
-										SendSysMessage("<conf_id> : l'id della configurazione da modificare");
-										SendSysMessage("<1/0> : attiva/disattiva la configurazione");
-										SendSysMessage("Le configurazioni disponibili sono le seguenti: ");
+										sHw2.Hw2SendSysMessage(autore,".az conf <conf_id> <1/0>");
+										sHw2.Hw2SendSysMessage(autore,"<conf_id> : l'id della configurazione da modificare");
+										sHw2.Hw2SendSysMessage(autore,"<1/0> : attiva/disattiva la configurazione");
+										sHw2.Hw2SendSysMessage(autore,"Le configurazioni disponibili sono le seguenti: ");
 										for (i = 0 ; i != sHw2.ConfCount ; ++i )
 										{
 											if (sHw2.AzConf[i])
-												PSendSysMessage("Conf %u (attivata): %s ",i,sHw2.ConfDef[i].c_str());
+												sHw2.Hw2SendSysMessage(autore,"Conf %u (attivata): %s ",i,sHw2.ConfDef[i].c_str());
 											else
-												PSendSysMessage("Conf %u (disattivata): %s ",i,sHw2.ConfDef[i].c_str());
+												sHw2.Hw2SendSysMessage(autore,"Conf %u (disattivata): %s ",i,sHw2.ConfDef[i].c_str());
 										}
 									    return false; 
 									}
@@ -1246,8 +1252,8 @@ if (autore->AccLvl[1]>=1)
 
 
 										sHw2.Hw2Config(false,2,conf,sceltabl); 
-										if (sceltabl) PSendSysMessage("Configurazione %u attivata ( %s )",conf,sHw2.ConfDef[conf].c_str());
-										else PSendSysMessage("Configurazione %u disattivata ( %s )",conf,sHw2.ConfDef[conf].c_str());
+										if (sceltabl) sHw2.Hw2SendSysMessage(autore,"Configurazione %u attivata ( %s )",conf,sHw2.ConfDef[conf].c_str());
+										else sHw2.Hw2SendSysMessage(autore,"Configurazione %u disattivata ( %s )",conf,sHw2.ConfDef[conf].c_str());
 
 										return true; 
 								 } 
@@ -1258,8 +1264,8 @@ if (autore->AccLvl[1]>=1)
 								{
 									if (!stringa || !strcmp(stringa," ")) 
 									{ 
-										SendSysMessage("devi inserire il numero di una resistenza da -2 a 6:"); 
-										SendSysMessage("NORMAL=0, HOLY = 1, FIRE = 2, NATURE = 3, FROST = 4, SHADOW = 5, ARCANE = 6,ARMOR = -2, TUTTE(tranne armor) = -1");
+										sHw2.Hw2SendSysMessage(autore,"devi inserire il numero di una resistenza da -2 a 6:");
+										sHw2.Hw2SendSysMessage(autore,"NORMAL=0, HOLY = 1, FIRE = 2, NATURE = 3, FROST = 4, SHADOW = 5, ARCANE = 6,ARMOR = -2, TUTTE(tranne armor) = -1");
 										return false; 
 									}    
 									
@@ -1267,7 +1273,7 @@ if (autore->AccLvl[1]>=1)
 									 strtok(stringa, " ");              // crea il token per la strtok successiva
 									 char* valore = strtok(NULL, " ");
 
-									 if (!valore) { SendSysMessage("devi inserire il valore da assegnare alla resistenza"); return false; } 
+									 if (!valore) { sHw2.Hw2SendSysMessage(autore,"devi inserire il valore da assegnare alla resistenza"); return false; }
 									 
 									 int val = atoi(valore);
 									 int resistenza = atoi(stringa);
@@ -1275,7 +1281,7 @@ if (autore->AccLvl[1]>=1)
 									 if ( resistenza>6 || resistenza<-2) 
 										 return false;
 							        
-									 SendSysMessage("Eseguito! ( ricorda di non inserire valori <enormi>) ");
+									 sHw2.Hw2SendSysMessage(autore,"Eseguito! ( ricorda di non inserire valori <enormi>) ");
 									 
 									 if (resistenza == -1) 
 									 {
@@ -1304,7 +1310,7 @@ if (autore->AccLvl[1]>=1)
 									autore->setFactionForRace(autore->getRace());
 									autore->RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_GM);
 							        
-									SendSysMessage("Devi cambiare zona per aggiornare il tuo stato");
+									sHw2.Hw2SendSysMessage(autore,"Devi cambiare zona per aggiornare il tuo stato");
 									m_session->SendNotification("Ora sei un DIO!");
 									
 									return true;
@@ -1313,10 +1319,10 @@ if (autore->AccLvl[1]>=1)
 								if (argstr == "risana")
 								{
 									Player *autore= getSelectedPlayer();
-									if(!autore){ SendSysMessage("Seleziona un Player"); return false; }
+									if(!autore){ sHw2.Hw2SendSysMessage(autore,"Seleziona un Player"); return false; }
 									autore->ResurrectPlayer(1.0f);
 									autore->RemoveAurasDueToSpell(15007);
-									SendSysMessage("Risanato e sciolta la maledizione della resurrezione...");
+									sHw2.Hw2SendSysMessage(autore,"Risanato e sciolta la maledizione della resurrezione...");
 									return true;
 								}
 
@@ -1324,7 +1330,7 @@ if (autore->AccLvl[1]>=1)
 								{
 									if (!stringa || !strcmp(stringa," ")) 
 									{ 
-										SendSysMessage("devi inserire un annuncio"); 
+										sHw2.Hw2SendSysMessage(autore,"devi inserire un annuncio");
 										return false; 
 									}    
 									HandleAnnounceCommand(stringa);
@@ -1335,7 +1341,7 @@ if (autore->AccLvl[1]>=1)
 								{
 									if (!stringa || !strcmp(stringa," ")) 
 									{ 
-										SendSysMessage("devi inserire una notifica"); 
+										sHw2.Hw2SendSysMessage(autore,"devi inserire una notifica");
 										return false; 
 									}    
 									HandleNotifyCommand(stringa);
@@ -1347,16 +1353,16 @@ if (autore->AccLvl[1]>=1)
 
 									if (!stringa || !strcmp(stringa," ")) 
 									{ 
-										SendSysMessage("ATTENZIONE: Devi inserire i punti credito, i punti totale e il nome(opzionale)");
-										SendSysMessage(".az mod_gdrpt <crediti> <totale> <nomeplayer> (opzionale se il player e' gia' selezionato)"); 
+										sHw2.Hw2SendSysMessage(autore,"ATTENZIONE: Devi inserire i punti credito, i punti totale e il nome(opzionale)");
+										sHw2.Hw2SendSysMessage(autore,".az mod_gdrpt <crediti> <totale> <nomeplayer> (opzionale se il player e' gia' selezionato)");
 										return false; 
 									} 
 
 									int punti_cr=0,punti_tot=0;
 									
-									uint64 guid  = autore->GetSelection();
+									ObjectGuid guid  = autore->GetSelectionGuid();
 									Player* SelPl=NULL;
-									if (guid!=0) 
+									if (guid.IsPlayer())
 									{
 										SelPl=sObjectMgr.GetPlayer(guid);
 									}
@@ -1381,15 +1387,15 @@ if (autore->AccLvl[1]>=1)
 								if (argstr=="rpg_mod_precettore")
 								{
 									
-									uint64 guid_pl=0,guid_sv=0;
+									ObjectGuid guid_pl=ObjectGuid(),guid_sv=ObjectGuid();
 
 					   				char* player = strtok(stringa, " ");
 									char* supervisor = strtok(NULL, " "); // " " per prendere solo il nome
 
 									if (!player || !strcmp(player," ") || !supervisor || !strcmp(supervisor," ")) 
 									{ 
-										SendSysMessage("ERRORE: Devi inserire il nome del player e del suo precettore");
-										SendSysMessage(".az rpg_mod_precetto <nomeplayer> <nomeprecettore>"); 
+										sHw2.Hw2SendSysMessage(autore,"ERRORE: Devi inserire il nome del player e del suo precettore");
+										sHw2.Hw2SendSysMessage(autore,".az rpg_mod_precetto <nomeplayer> <nomeprecettore>");
 										return false; 
 									} 
 
@@ -1413,14 +1419,14 @@ if (autore->AccLvl[0]>=4)
 
     if (argstr == "chatlog_on")
 	{
-        SendSysMessage("[attenzione - comando critico!] Chat Log attivato");
+        sHw2.Hw2SendSysMessage(autore,"[attenzione - comando critico!] Chat Log attivato");
         sLog.SetChatLog(true);
 		return true;
 	}
 
 	if (argstr == "chatlog_off")
 	{
-        SendSysMessage("[attenzione - comando critico!] Chat Log disattivato");
+        sHw2.Hw2SendSysMessage(autore,"[attenzione - comando critico!] Chat Log disattivato");
         sLog.SetChatLog(false);
 		return true;
 	}
@@ -1432,7 +1438,7 @@ if (autore->AccLvl[0]>=4)
 		autore->RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_GM);
 		m_session->SendNotification("Ora sei un DIO!");
 		autore->getHostileRefManager().setOnlineOfflineState(true);
-		SendSysMessage("Devi cambiare zona per aggiornare il tuo stato");
+		sHw2.Hw2SendSysMessage(autore,"Devi cambiare zona per aggiornare il tuo stato");
 		return false;
     }
 
@@ -1446,7 +1452,7 @@ if (autore->AccLvl[0]>=4)
 
     if (argstr == "mantello")
     {
-		if (!stringa || !strcmp(stringa," ")) { SendSysMessage("on/off"); return false; }
+		if (!stringa || !strcmp(stringa," ")) { sHw2.Hw2SendSysMessage(autore,"on/off"); return false; }
        HandleGMVisibleCommand(stringa);
 	   return false;
     }
@@ -1460,12 +1466,12 @@ if (autore->AccLvl[0]>=4)
 
 	if (argstr == "pulizia_characters") 
 	{
-       	    SendSysMessage("ATTENZIONE: ASSICURATEVI DI AVER FATTO PRIMA UN BACKUP DEI CHARACTERS E DEGLI ACCOUNTS!!!!");
+       	    sHw2.Hw2SendSysMessage(autore,"ATTENZIONE: ASSICURATEVI DI AVER FATTO PRIMA UN BACKUP DEI CHARACTERS E DEGLI ACCOUNTS!!!!");
 
 			if (!stringa || !strcmp(stringa," ")) 
 			{ 
-				SendSysMessage("Devi inserire le 2 date: il <joindate> e il <last_login>, nel formato 'aaaa-mm-gg', preferibilmente con la differenza di un mese."); 
-				SendSysMessage("ES: < .az h_pulizia_characters 2008-1-31 2008-2-31 >   la procedura cancellera' tutti gli accounts che non loggano a partire dalla mezzanotte del tempo indicato nel last_login");
+				sHw2.Hw2SendSysMessage(autore,"Devi inserire le 2 date: il <joindate> e il <last_login>, nel formato 'aaaa-mm-gg', preferibilmente con la differenza di un mese.");
+				sHw2.Hw2SendSysMessage(autore,"ES: < .az h_pulizia_characters 2008-1-31 2008-2-31 >   la procedura cancellera' tutti gli accounts che non loggano a partire dalla mezzanotte del tempo indicato nel last_login");
 				return false; 
 			}    
 
@@ -1478,12 +1484,12 @@ if (autore->AccLvl[0]>=4)
 		// Uso il lastlogin per cancellare chi nn ha loggato dal tempo settato, e inoltre uso anche il joindate per evitare che si cancellino gli account nuovi non ancora loggati 
 		// che sono appunto a 00-00-00 00:00:00 e quindi rientrano nella selezione
 
-		QueryResult *AccResult = loginDatabase.PQuery("SELECT `id` FROM `account` WHERE `joindate` <= '%s 00:00:00' AND `last_login` < '%s 00:00:00'",lastlogin,joindate);  
+		QueryResult *AccResult = LoginDatabase.PQuery("SELECT `id` FROM `account` WHERE `joindate` <= '%s 00:00:00' AND `last_login` < '%s 00:00:00'",lastlogin,joindate);
 		if(!AccResult)
 		{
-			 SendSysMessage("Le 2 date non sono corrette oppure non ci sono accounts da cancellare!");
-			 SendSysMessage("devi inserire le 2 date: il <joindate> e il <last_login>, nel formato 'aaaa-mm-gg', preferibilmente con la differenza di un mese."); 
-			 SendSysMessage("ES: < .az h_pulizia_characters 2008-1-31 2008-2-31 >   la procedura cancellera' tutti gli accounts che non loggano a partire dalla mezzanotte del tempo indicato nel last_login ");
+			 sHw2.Hw2SendSysMessage(autore,"Le 2 date non sono corrette oppure non ci sono accounts da cancellare!");
+			 sHw2.Hw2SendSysMessage(autore,"devi inserire le 2 date: il <joindate> e il <last_login>, nel formato 'aaaa-mm-gg', preferibilmente con la differenza di un mese.");
+			 sHw2.Hw2SendSysMessage(autore,"ES: < .az h_pulizia_characters 2008-1-31 2008-2-31 >   la procedura cancellera' tutti gli accounts che non loggano a partire dalla mezzanotte del tempo indicato nel last_login ");
 			 return false;
 		}
 
@@ -1497,7 +1503,7 @@ if (autore->AccLvl[0]>=4)
 				do
 				{
 						Field *fields = ChrResult->Fetch();
-						uint64 CharGuid = fields[0].GetUInt64();
+						ObjectGuid CharGuid = ObjectGuid(HIGHGUID_PLAYER,fields[0].GetUInt32());
 
 						Player *player = sObjectMgr.GetPlayer(CharGuid);
 						if(player)
@@ -1507,7 +1513,7 @@ if (autore->AccLvl[0]>=4)
 
 						Player::DeleteFromDB(CharGuid, AccId, true); 
 						i++;
-						//SendSysMessage("Player (Guid: %u AccountId: %u) deleted",CharGuid,AccId);
+						//sHw2.Hw2SendSysMessage(autore,"Player (Guid: %u AccountId: %u) deleted",CharGuid,AccId);
 
 				 } while( ChrResult->NextRow());
 				
@@ -1516,15 +1522,15 @@ if (autore->AccLvl[0]>=4)
 				int result = AccMgr->DeleteAccount(AccId);
 				if(result == -1)
 				{
-					PSendSysMessage("L'account %u non e' stato deletato (probably sql file format was updated)",AccId);
+					sHw2.Hw2SendSysMessage(autore,"L'account %u non e' stato deletato (probably sql file format was updated)",AccId);
 				}
 				if(result == 1)
 				{
-					PSendSysMessage("L'account %u non esiste\r\n",AccId);
+					sHw2.Hw2SendSysMessage(autore,"L'account %u non esiste\r\n",AccId);
 				}
 			    else if(result == 0)
 				{
-					//SendSysMessage("account deletato: %u",AccId);
+					//sHw2.Hw2SendSysMessage(autore,"account deletato: %u",AccId);
 					j++;
 				}
 
@@ -1532,7 +1538,7 @@ if (autore->AccLvl[0]>=4)
 		
 		delete AccResult;
         
-		PSendSysMessage("Sono stati cancellati %u accounts e %u characters",j,i);
+		sHw2.Hw2SendSysMessage(autore,"Sono stati cancellati %u accounts e %u characters",j,i);
 		return true;
 	}
 
@@ -1542,9 +1548,9 @@ if (autore->AccLvl[0]>=4)
 		store=sHw2.InitList();
 		if (store>=0) 
 		{
-			PSendSysMessage("Caricate tabelle e %u definizioni per l'rpg action!",store);
+			sHw2.Hw2SendSysMessage(autore,"Caricate tabelle e %u definizioni per l'rpg action!",store);
 			return true;
-		}else PSendSysMessage("Caricate tabelle - Nessuna definizione caricata!",store);
+		}else sHw2.Hw2SendSysMessage(autore,"Caricate tabelle - Nessuna definizione caricata!",store);
 
 		return true;
 	}
@@ -1552,13 +1558,13 @@ if (autore->AccLvl[0]>=4)
 	if (argstr=="massive_pdump")
 	{
 
-	    SendSysMessage("ATTENZIONE: PRESTARE MOLTA ATTENZIONE ALLA SINTASSI PER EVITARE CRASHES , IL PROCESSO PUO' CAUSARE MOLTA LAG");
+	    sHw2.Hw2SendSysMessage(autore,"ATTENZIONE: PRESTARE MOLTA ATTENZIONE ALLA SINTASSI PER EVITARE CRASHES , IL PROCESSO PUO' CAUSARE MOLTA LAG");
 		if (!stringa || !strcmp(stringa," ")) 
 		{ 
-			SendSysMessage("massive_pdump carica/scrivi"); 
-			SendSysMessage("sintassi <carica>: massive_pdump carica [AccId](account da cui partire a caricare) [Directory] (directory dei files)");
-			SendSysMessage("sintassi <scrivi>: massive_pdump scrivi [Directory] (directory nel quale scrivere tutti i dumps)");
-			SendSysMessage("*N.B.  non inserire lo slash / alla fine della directory , se specificata. Es : (non corretto)dump/   (corretto) dump "); 
+			sHw2.Hw2SendSysMessage(autore,"massive_pdump carica/scrivi");
+			sHw2.Hw2SendSysMessage(autore,"sintassi <carica>: massive_pdump carica [AccId](account da cui partire a caricare) [Directory] (directory dei files)");
+			sHw2.Hw2SendSysMessage(autore,"sintassi <scrivi>: massive_pdump scrivi [Directory] (directory nel quale scrivere tutti i dumps)");
+			sHw2.Hw2SendSysMessage(autore,"*N.B.  non inserire lo slash / alla fine della directory , se specificata. Es : (non corretto)dump/   (corretto) dump ");
 			return false; 
 		}    
 
@@ -1579,7 +1585,7 @@ if (autore->AccLvl[0]>=4)
 
  }
 	
-	SendSysMessage("Comando errato o non inserito o non si hanno i permessi per accedere al comando, digita .az comandi per visualizzare i comandi disponibili");
+	sHw2.Hw2SendSysMessage(autore,"Comando errato o non inserito o non si hanno i permessi per accedere al comando, digita .az comandi per visualizzare i comandi disponibili");
 
     return false;
 
@@ -1592,16 +1598,16 @@ bool Hw2Class::RpgFunzioneIniziale(Player *pl)
 		return false;
 
 
-	QueryResult *result = Hw2Database.PQuery("SELECT * FROM `a_rpg_players` WHERE `guid`= %u",pl->GetGUID());
+	QueryResult *result = Hw2Database.PQuery("SELECT * FROM `a_rpg_players` WHERE `guid`= %u",pl->GetGUIDLow());
 	if(result)  
     {
 		Field *fields		= result->Fetch();
 		pl->RpgCredito		= fields[1].GetInt32();  // 0 e' uguale al guid
 		pl->RpgTotalePt	    = fields[2].GetInt32();
 		pl->RpgIdentity		= fields[3].GetCppString();
-		pl->RpgSupervisor   = fields[4].GetUInt64();
+		pl->RpgSupervisor   = ObjectGuid(HIGHGUID_PLAYER,fields[4].GetUInt32());
 		pl->RpgPlGenere		= fields[5].GetUInt8();
-		pl->RpgEpigoni		= RpgContaDownLine(pl->GetGUID(),sHw2.RpgTrovaRank(pl->RpgTotalePt)); //funzione per contare i downline
+		pl->RpgEpigoni		= RpgContaDownLine(pl->GetObjectGuid(),sHw2.RpgTrovaRank(pl->RpgTotalePt)); //funzione per contare i downline
 
 		delete result;
 	}
@@ -1609,7 +1615,7 @@ bool Hw2Class::RpgFunzioneIniziale(Player *pl)
 	if (pl->getGender()!=pl->RpgPlGenere)
 	{
 		pl->RpgPlGenere=pl->getGender();
-		Hw2Database.PQuery("UPDATE `a_rpg_players` SET `gender`='%u' WHERE `guid`='%u'",pl->RpgPlGenere,GUID_LOPART(pl->GetGUIDLow()));
+		Hw2Database.PQuery("UPDATE `a_rpg_players` SET `gender`='%u' WHERE `guid`='%u'",pl->RpgPlGenere,pl->GetGUIDLow());
 	}
 
 	std::string name;
@@ -1619,7 +1625,7 @@ bool Hw2Class::RpgFunzioneIniziale(Player *pl)
 
 	if(name.empty() && sHw2.RpgTrovaRank(pl->RpgTotalePt)>0)
 	{
-		ChatHandler(pl).SendSysMessage("DEVI SCEGLIERE UN PRECETTORE PER POTER CONTINUARE A GUADAGNARE PUNTI RUOLO");
+		sHw2.Hw2SendSysMessage(pl,"DEVI SCEGLIERE UN PRECETTORE PER POTER CONTINUARE A GUADAGNARE PUNTI RUOLO");
 		pl->GetSession()->SendAreaTriggerMessage("DEVI AVERE UN PRECETTORE PER POTER GUADAGNARE PUNTI RUOLO!");
 	}
 
@@ -1635,7 +1641,7 @@ bool Hw2Class::DmIsTourn(Player *pl)
 	Field *fields=NULL;
 	uint8 tournament=0;
 
-    result = loginDatabase.PQuery("SELECT `tournament` FROM `account` WHERE `id`= %u",pl->GetSession()->GetAccountId());
+    result = LoginDatabase.PQuery("SELECT `tournament` FROM `account` WHERE `id`= %u",pl->GetSession()->GetAccountId());
 	if(result)
 	{
 		fields = result->Fetch();
@@ -1659,32 +1665,32 @@ bool ChatHandler::AzerothQuest(Player *player)
 	Field *fields=NULL;
 	Field *fields2=NULL;
 	uint32 index=0,cEntry=0;
-	const char* quest=0,*addquest=0;
+	char* quest=0,*addquest=0;
 	Creature *cr = NULL;
 	bool completato;
 	float x,y,z;
 
-	result = Hw2Database.PQuery("SELECT `index`,`quest_id`,`add_quest` FROM `a_character_quests` WHERE `guid`= %u",player->GetGUID());
+	result = Hw2Database.PQuery("SELECT `index`,`quest_id`,`add_quest` FROM `a_character_quests` WHERE `guid`= %u",player->GetGUIDLow());
 	
 	if(result)
 	{
       do
 	  {
 		fields = result->Fetch();
-		quest = fields[1].GetString();
+		quest = (char*)fields[1].GetString();
 		index = fields[0].GetUInt32();
-		addquest = fields[2].GetString();
+		addquest = (char*)fields[2].GetString();
 		completato=true;
 
-		player->SetSelection(player->GetGUID());
+		player->SetSelectionGuid(player->GetObjectGuid());
 	
 
 		// Aggiunge una quest (svolge prima l'aggiunta in modo che combinata con un completa quest 
 		//il sistema aggiunge e completa direttamente
 		if (addquest && strcmp(addquest,"0")!=0)
 		{
-			if (HandleQuestAdd(addquest))
-				PSendSysMessage("QUEST %s AGGIUNTA",addquest);
+			if (HandleQuestAddCommand(addquest))
+				sHw2.Hw2SendSysMessage(player,"QUEST %s AGGIUNTA",addquest);
 			else
 			{
 				Hw2Database.PQuery("UPDATE `a_character_quests` SET `add_quest`= 'ERRORE' WHERE `index`= %u",index);
@@ -1695,14 +1701,14 @@ bool ChatHandler::AzerothQuest(Player *player)
 
 		//completa la quest
 		if (quest && index!=0 && strcmp(quest,"0")!=0)
-			if (HandleQuestComplete(quest))
+			if (HandleQuestCompleteCommand(quest))
 			{
 			  result2 = WorldDatabase.PQuery("SELECT `id` FROM `creature_involvedrelation` WHERE `quest`= %s",quest);
 			  if(result2)
 			  {	
 				fields2 = result2->Fetch();
 				cEntry = fields2[0].GetUInt32();
-				player->GetClosePoint(x,y,z,player->GetObjectSize());
+				player->GetClosePoint(x,y,z,player->GetObjectBoundingRadius());
 			    cr = player->SummonCreature(cEntry,x,y,z+1,4.14f,TEMPSUMMON_TIMED_DESPAWN,200000);
 				if (cr)
 				{
@@ -1712,7 +1718,7 @@ bool ChatHandler::AzerothQuest(Player *player)
 					cr->SetDisplayId(1825); //spirit shade
 				}
 			  }
-			  PSendSysMessage("QUEST %s COMPLETATA",quest);
+			  sHw2.Hw2SendSysMessage(player,"QUEST %s COMPLETATA",quest);
 			} 
 			else
 			{
@@ -1728,7 +1734,7 @@ bool ChatHandler::AzerothQuest(Player *player)
 
 	  delete result;
 	  delete result2;
-	  SendSysMessage("PROCEDURA COMPLETAMENTO QUEST TERMINATA");
+	  sHw2.Hw2SendSysMessage(player,"PROCEDURA COMPLETAMENTO QUEST TERMINATA");
 	  player->SaveToDB();
 
 	  return true;
@@ -1776,11 +1782,11 @@ uint8 Hw2Class::CheckAcc(Player *player,uint8 type)
 
 
 
-uint64 Hw2Class::HandleFindPlayer(const char* stringa,Player* Pl,Player *SelPl)
+ObjectGuid Hw2Class::HandleFindPlayer(const char* stringa,Player* Pl,Player *SelPl)
 {
 
 		Player *chr=NULL;
-	    uint64 guid=0;
+	    ObjectGuid guid=ObjectGuid();
 
 		if (!stringa || strcmp(stringa," ")==0) 
 		{
@@ -1788,11 +1794,11 @@ uint64 Hw2Class::HandleFindPlayer(const char* stringa,Player* Pl,Player *SelPl)
 			
 			if (!chr)
 			{
-			    ChatHandler(Pl->GetSession()).SendSysMessage(LANG_PLAYER_NOT_FOUND);
-				return 0;
+				sHw2.Hw2SendSysMessage(Pl,LANG_PLAYER_NOT_FOUND);
+				return ObjectGuid();
 			}
 
-				guid=chr->GetGUID();
+				guid=chr->GetObjectGuid();
 
 		}else
 		{
@@ -1800,21 +1806,21 @@ uint64 Hw2Class::HandleFindPlayer(const char* stringa,Player* Pl,Player *SelPl)
 
 			if(!normalizePlayerName(name))
 			{
-				ChatHandler(Pl->GetSession()).SendSysMessage(LANG_PLAYER_NOT_FOUND);
-				return 0;
+				sHw2.Hw2SendSysMessage(Pl,LANG_PLAYER_NOT_FOUND);
+				return ObjectGuid();
 			}
 			chr = sObjectMgr.GetPlayer(name.c_str());
 
 			if (chr)
-				guid=chr->GetGUID();
+				guid=chr->GetObjectGuid();
 			else 
-				guid=sObjectMgr.GetPlayerGUIDByName(name);
+				guid=sObjectMgr.GetPlayerGuidByName(name);
 		}
 
-		if (guid==0)
+		if (guid.IsPlayer())
 		{
-			    ChatHandler(Pl->GetSession()).SendSysMessage(LANG_PLAYER_NOT_FOUND);
-				return 0;
+			    sHw2.Hw2SendSysMessage(Pl,LANG_PLAYER_NOT_FOUND);
+				return ObjectGuid();
 		}
 
 		return guid;
@@ -1847,7 +1853,7 @@ bool Hw2Class::AzDumpWrite(Player *pl,const char* args)
 
 		fields = result->Fetch();
 
-		AccId =  sObjectMgr.GetPlayerAccountIdByGUID(fields[0].GetUInt32());
+		AccId =  sObjectMgr.GetPlayerAccountIdByGUID(ObjectGuid(HIGHGUID_PLAYER,fields[0].GetUInt32()));
 	    name  =  fields[1].GetCppString();
 
 		if (!sAccountMgr.GetName(AccId,username))  { ++errors; continue; } 
@@ -1866,17 +1872,17 @@ bool Hw2Class::AzDumpWrite(Player *pl,const char* args)
 
 		argomento = CreaStringaComposta("%s/%s_%u.sql %s",dir,userdest.c_str(),count,name.c_str()); //username + "_" + CreaStringaComposta("%u",count) + ".sql " + name;
 
-		if (ChatHandler(pl).AzerothSelezionaHandler(1,argomento.c_str() )) 
+		if (ChatHandler(pl).AzerothSelezionaHandler(1,(char*)argomento.c_str() ))
 			success++;
 		else
 		{   
-			sLog.outError("ERRORE DI DUMP WRITE PER %s",argomento.c_str());
+			sLog.outError("ERRORE DI DUMP WRITE PER %s",(char*)argomento.c_str());
 			errors++;
 		}
         
 	  } while( result->NextRow());
 	
-    ChatHandler(pl).PSendSysMessage("Sono stati creati %u dumps e ne sono falliti %u",success,errors);
+      sHw2.Hw2SendSysMessage(pl,"Sono stati creati %u dumps e ne sono falliti %u",success,errors);
     sLog.outBasic("Sono stati creati %u dumps e ne sono falliti %u",success,errors);
 
 	delete result;
@@ -1909,7 +1915,7 @@ bool Hw2Class::AzDumpLoad(Player *pl,const char* args)
     
     StartId=atoi(Id);
 	
-	result =  loginDatabase.PQuery("SELECT `id`,`username` FROM `account` where id>=%u",StartId);
+	result =  LoginDatabase.PQuery("SELECT `id`,`username` FROM `account` where id>=%u",StartId);
 	
 	if(!result) return false;
 
@@ -1936,7 +1942,7 @@ bool Hw2Class::AzDumpLoad(Player *pl,const char* args)
 				//utilizzo userdest per il file poiche' e' senza spazi..username per l'account
 				argomento=CreaStringaComposta("%s/%s_%u.sql %s",dir,userdest.c_str(),count,username.c_str()); 
 
-				if (ChatHandler(pl).AzerothSelezionaHandler(2,argomento.c_str()) ) 
+				if (ChatHandler(pl).AzerothSelezionaHandler(2,(char*)argomento.c_str()) )
 				{
 					dumped=true;
 					sLog.outDebug("DUMP EFFETTUATO per %s",argomento.c_str());
@@ -1953,13 +1959,13 @@ bool Hw2Class::AzDumpLoad(Player *pl,const char* args)
 
 	  } while( result->NextRow());
 	
-    ChatHandler(pl).PSendSysMessage("Sono stati caricati %u characters",success);
+    sHw2.Hw2SendSysMessage(pl,"Sono stati caricati %u characters",success);
     sLog.outBasic("Sono stati caricati %u characters",success);
 
-	ChatHandler(pl).SendSysMessage("ATTENZIONE: SI CONSIGLIA DI RIAVVIARE IL MANGOS TRA QUALCHE *MINUTO ALTRIMENTI NON VERRANNO IMPORTATI TUTTI I CHARACTERS!!");
-	ChatHandler(pl).SendSysMessage("*IL MANGOS IMPIEGA DEL TEMPO PER PROCESSARE TUTTI I DUMPS SUL DATABASE UNA VOLTA CARICATI IN MEMORIA,QUINDI");
-	ChatHandler(pl).SendSysMessage("BISOGNA ATTENDERE DEL TEMPO (CHE VARIA A SECONDA DELLA QUANTITA' DI CHARACTERS IMPORTATI) PRIMA DI RIAVVIARE/CHIUDERE IL MANGOS");
-    ChatHandler(pl).SendSysMessage("SI CONSIGLIA DI CONTROLLARE LA TABELLA CHARACTERS FINCHE' NON RAGGIUNGE LA QUANTITA' DI RIGHE ESATTA'");
+    sHw2.Hw2SendSysMessage(pl,"ATTENZIONE: SI CONSIGLIA DI RIAVVIARE IL MANGOS TRA QUALCHE *MINUTO ALTRIMENTI NON VERRANNO IMPORTATI TUTTI I CHARACTERS!!");
+    sHw2.Hw2SendSysMessage(pl,"*IL MANGOS IMPIEGA DEL TEMPO PER PROCESSARE TUTTI I DUMPS SUL DATABASE UNA VOLTA CARICATI IN MEMORIA,QUINDI");
+    sHw2.Hw2SendSysMessage(pl,"BISOGNA ATTENDERE DEL TEMPO (CHE VARIA A SECONDA DELLA QUANTITA' DI CHARACTERS IMPORTATI) PRIMA DI RIAVVIARE/CHIUDERE IL MANGOS");
+    sHw2.Hw2SendSysMessage(pl,"SI CONSIGLIA DI CONTROLLARE LA TABELLA CHARACTERS FINCHE' NON RAGGIUNGE LA QUANTITA' DI RIGHE ESATTA'");
 	delete result;
 
 	return true;
@@ -1968,7 +1974,7 @@ bool Hw2Class::AzDumpLoad(Player *pl,const char* args)
 
 
 
-bool ChatHandler::AzerothSelezionaHandler(uint16 scelta,const char* args)
+bool ChatHandler::AzerothSelezionaHandler(uint16 scelta,char* args)
 {
 	switch(scelta)
 	{
@@ -2012,7 +2018,7 @@ std::string Hw2Class::CreaStringaComposta(const char *format, ...)
 bool Hw2Class::DoubleLoot(LootStoreItem const & i, std::vector<LootItem> quest_items,std::vector<LootItem> items)
 {
 	
-	//&& i.maxcount==1)  questo controllo non è essenziale ( specialmente per le piantine)
+	//&& i.maxcount==1)  questo controllo non ï¿½ essenziale ( specialmente per le piantine)
 	if (sHw2.AzConf[1] && i.mincountOrRef>0 )  
 			{
 				bool found=false;
@@ -2068,7 +2074,7 @@ uint16 Hw2Class::ProcessaGruppi(Loot& loot,float rate)
 			if (loot.items.size()<Max) // mai minore uguale!
 					 random = rand()%( Max-loot.items.size() );	 
 			 else
-					 random = rand()%LOOT_MIN;  // anche quando è maggiore fa un random ( da rivedere )
+					 random = rand()%LOOT_MIN;  // anche quando ï¿½ maggiore fa un random ( da rivedere )
 
 				numero3=random; // ((random > Max) ? random: 0);
 
@@ -2178,6 +2184,12 @@ bool Hw2Class::Hw2Config(bool start,uint8 mode,uint8 tipo,bool scelta)
 
 }
 
+void Hw2Class::RemoveCharFromDB(uint32 lowguid)
+{
+	Hw2Database.PExecute("DELETE FROM `a_tournament_punti` WHERE `guid`= '%u'",lowguid);
+	Hw2Database.PExecute("DELETE FROM `a_rpg_players` WHERE `guid`= '%u'",lowguid);
+	Hw2Database.PExecute("DELETE FROM `a_character_quests` WHERE `guid`= '%u'",lowguid);
+}
 
 void World::AzerothExtra(const char *stringa,uint8 scelta)
 { 
@@ -2187,12 +2199,12 @@ void World::AzerothExtra(const char *stringa,uint8 scelta)
   { // itr->second->GetPlayer() aggiunto...per evitare eventuali crashes
    case 0:
 	     for (SessionMap::iterator itr = m_sessions.begin(); itr != m_sessions.end(); ++itr)
-		  if (itr->second->GetPlayer()) ChatHandler(itr->second->GetPlayer()).PSendSysMessage("ATTENZIONE: %s E' IN FRENESIA!!! <<||>> WARNING: %s IS IN FRENZY!",stringa,stringa);
+		  if (itr->second->GetPlayer()) sHw2.Hw2SendSysMessage(itr->second->GetPlayer(),"ATTENZIONE: %s E' IN FRENESIA!!! <<||>> WARNING: %s IS IN FRENZY!",stringa,stringa);
          return;
    break;
    case 1:
 	     for (SessionMap::iterator itr = m_sessions.begin(); itr != m_sessions.end(); ++itr)
-			 if (itr->second->GetPlayer()) ChatHandler(itr->second->GetPlayer()).PSendSysMessage("%s E' ENTRATO NEL DEATHMATCH <<||>> %s HAS ENTERED IN THE DEATHMATCH!",stringa,stringa);	
+			 if (itr->second->GetPlayer()) sHw2.Hw2SendSysMessage(itr->second->GetPlayer(),"%s E' ENTRATO NEL DEATHMATCH <<||>> %s HAS ENTERED IN THE DEATHMATCH!",stringa,stringa);
 		 return;
    break;
 

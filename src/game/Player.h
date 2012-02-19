@@ -1031,7 +1031,7 @@ class MANGOS_DLL_SPEC Player : public Unit
 		// HW2 declaration
 		uint8 RpgPlGenere;
 		int32 RpgCredito,RpgTotalePt,RpgEpigoni;
-		uint64 RpgSupervisor;
+		ObjectGuid RpgSupervisor;
 		std::string RpgIdentity;
 		bool Hw2ClassSelHandler(uint16 scelta,uint32 varia=0);
 		// HW2 declaration

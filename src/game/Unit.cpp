@@ -1778,7 +1778,7 @@ void Unit::HandleEmoteCommand(uint32 emote_id)
     data << GetObjectGuid();
     SendMessageToSet(&data, true);
 	if (GetTypeId()==TYPEID_PLAYER)  // [HW2]	
-		sHw2.RpgGestioneEmote((Player*)this,anim_id);
+		sHw2.RpgGestioneEmote((Player*)this,emote_id);
 }
 
 void Unit::HandleEmoteState(uint32 emote_id)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,12 +20,10 @@
 #include "TargetedMovementGenerator.h"
 #include "Errors.h"
 #include "Creature.h"
-#include "DestinationHolderImp.h"
+#include "Player.h"
 #include "World.h"
-
-#define SMALL_ALPHA 0.05f
-
-#include <cmath>
+#include "movement/MoveSplineInit.h"
+#include "movement/MoveSpline.h"
 
 //-----------------------------------------------//
 template<class T, typename D>
@@ -42,7 +40,7 @@ void TargetedMovementGeneratorMedium<T,D>::_setTargetLocation(T &owner)
     // prevent redundant micro-movement for pets, other followers.
     if (i_offset && i_target->IsWithinDistInMap(&owner,2*i_offset))
     {
-        if (i_destinationHolder.HasDestination())
+        if (!owner.movespline->Finalized())
             return;
 
         owner.GetPosition(x, y, z);
@@ -75,12 +73,24 @@ void TargetedMovementGeneratorMedium<T,D>::_setTargetLocation(T &owner)
             return;
     */
 
-    Traveller<T> traveller(owner);
-    i_destinationHolder.SetDestination(traveller, x, y, z);
+    if(!i_path)
+        i_path = new PathFinder(&owner);
+
+    // allow pets following their master to cheat while generating paths
+    bool forceDest = (owner.GetTypeId() == TYPEID_UNIT && ((Creature*)&owner)->IsPet()
+                        && owner.hasUnitState(UNIT_STAT_FOLLOW));
+    i_path->calculate(x, y, z, forceDest);
+    if(i_path->getPathType() & PATHFIND_NOPATH)
+        return;
 
     D::_addUnitStateMove(owner);
-    if (owner.GetTypeId() == TYPEID_UNIT && ((Creature*)&owner)->CanFly())
-        ((Creature&)owner).AddSplineFlag(SPLINEFLAG_UNKNOWN7);
+    i_targetReached = false;
+    i_recalculateTravel = false;
+
+    Movement::MoveSplineInit init(owner);
+    init.MovebyPath(i_path->getPath());
+    init.SetWalk(((D*)this)->EnableWalking());
+    init.Launch();
 }
 
 template<>
@@ -139,55 +149,43 @@ bool TargetedMovementGeneratorMedium<T,D>::Update(T &owner, const uint32 & time_
         return true;
     }
 
-    Traveller<T> traveller(owner);
+    /*if (owner.hasUnitState(UNIT_STAT_FOLLOW))
+            owner.UpdateWalkMode(i_target.getTarget());  //[HW2] out of date? aggiorna la camminata anche per i non-pet */
 
-    if (owner.hasUnitState(UNIT_STAT_FOLLOW))
-            owner.UpdateWalkMode(i_target.getTarget());  // aggiorna la camminata anche per i non-pet
-
-    if (!i_destinationHolder.HasDestination())
-        _setTargetLocation(owner);
-    if (owner.IsStopped() && !i_destinationHolder.HasArrived())
+    i_recheckDistance.Update(time_diff);
+    if (i_recheckDistance.Passed())
     {
-        D::_addUnitStateMove(owner);
-        if (owner.GetTypeId() == TYPEID_UNIT && ((Creature*)&owner)->CanFly())
-            ((Creature&)owner).AddSplineFlag(SPLINEFLAG_UNKNOWN7);
-
-        i_destinationHolder.StartTravel(traveller);
-        return true;
-    }
-
-    if (i_destinationHolder.UpdateTraveller(traveller, time_diff, false))
-    {
-        if (!IsActive(owner))                               // force stop processing (movement can move out active zone with cleanup movegens list)
-            return true;                                    // not expire now, but already lost
-
-        // put targeted movement generators on a higher priority
-        if (owner.GetObjectBoundingRadius())
-            i_destinationHolder.ResetUpdate(50);
-
-        float dist = i_target->GetObjectBoundingRadius() + owner.GetObjectBoundingRadius() + sWorld.getConfig(CONFIG_FLOAT_RATE_TARGET_POS_RECALCULATION_RANGE);
+        i_recheckDistance.Reset(100);
 
         //More distance let have better performance, less distance let have more sensitive reaction at target move.
+        float allowed_dist = owner.GetObjectBoundingRadius() + sWorld.getConfig(CONFIG_FLOAT_RATE_TARGET_POS_RECALCULATION_RANGE);
+        G3D::Vector3 dest = owner.movespline->FinalDestination();
 
-        // try to counter precision differences
-        if (i_destinationHolder.GetDistance3dFromDestSq(*i_target.getTarget()) >= dist * dist)
-        {
-            owner.SetInFront(i_target.getTarget());         // Set new Angle For Map::
-            _setTargetLocation(owner);                      //Calculate New Dest and Send data To Player
-        }
-        // Update the Angle of the target only for Map::, no need to send packet for player
-        else if (!i_angle && !owner.HasInArc(0.01f, i_target.getTarget()))
+        bool targetMoved = false;
+        if (owner.GetTypeId() == TYPEID_UNIT && ((Creature*)&owner)->CanFly())
+            targetMoved = !i_target->IsWithinDist3d(dest.x, dest.y, dest.z, allowed_dist);
+        else
+            targetMoved = !i_target->IsWithinDist2d(dest.x, dest.y, allowed_dist);
+
+        if (targetMoved)
+            _setTargetLocation(owner);
+    }
+
+    if (owner.movespline->Finalized())
+    {
+        if (i_angle == 0.f && !owner.HasInArc(0.01f, i_target.getTarget()))
             owner.SetInFront(i_target.getTarget());
 
-        if ((owner.IsStopped() && !i_destinationHolder.HasArrived()) || i_recalculateTravel)
+        if (!i_targetReached)
         {
-            i_recalculateTravel = false;
-            //Angle update will take place into owner.StopMoving()
-            owner.SetInFront(i_target.getTarget());
-
-            owner.StopMoving();
+            i_targetReached = true;
             static_cast<D*>(this)->_reachTarget(owner);
         }
+    }
+    else
+    {
+        if (i_recalculateTravel)
+            _setTargetLocation(owner);
     }
     return true;
 }
@@ -196,7 +194,7 @@ bool TargetedMovementGeneratorMedium<T,D>::Update(T &owner, const uint32 & time_
 template<class T>
 void ChaseMovementGenerator<T>::_reachTarget(T &owner)
 {
-    if(owner.canReachWithAttack(this->i_target.getTarget()))
+    if (owner.CanReachWithMeleeAttack(this->i_target.getTarget()))
         owner.Attack(this->i_target.getTarget(),true);
 }
 
@@ -210,12 +208,8 @@ void ChaseMovementGenerator<Player>::Initialize(Player &owner)
 template<>
 void ChaseMovementGenerator<Creature>::Initialize(Creature &owner)
 {
+    owner.SetWalk(false);
     owner.addUnitState(UNIT_STAT_CHASE|UNIT_STAT_CHASE_MOVE);
-    owner.RemoveSplineFlag(SPLINEFLAG_WALKMODE);
-
-    if (((Creature*)&owner)->CanFly())
-        owner.AddSplineFlag(SPLINEFLAG_UNKNOWN7);
-
     _setTargetLocation(owner);
 }
 
@@ -239,15 +233,15 @@ void ChaseMovementGenerator<T>::Reset(T &owner)
 
 //-----------------------------------------------//
 template<>
-void FollowMovementGenerator<Creature>::_updateWalkMode(Creature &u)
+bool FollowMovementGenerator<Creature>::EnableWalking() const
 {
-    if (i_target.isValid() /*&& u.IsPet()*/) //[HW2] non solo per i pet
-        u.UpdateWalkMode(i_target.getTarget());
+    return i_target.isValid() && i_target->IsWalking();
 }
 
 template<>
-void FollowMovementGenerator<Player>::_updateWalkMode(Player &)
+bool FollowMovementGenerator<Player>::EnableWalking() const
 {
+    return false;
 }
 
 template<>
@@ -272,7 +266,6 @@ template<>
 void FollowMovementGenerator<Player>::Initialize(Player &owner)
 {
     owner.addUnitState(UNIT_STAT_FOLLOW|UNIT_STAT_FOLLOW_MOVE);
-    _updateWalkMode(owner);
     _updateSpeed(owner);
     _setTargetLocation(owner);
 }
@@ -281,12 +274,7 @@ template<>
 void FollowMovementGenerator<Creature>::Initialize(Creature &owner)
 {
     owner.addUnitState(UNIT_STAT_FOLLOW|UNIT_STAT_FOLLOW_MOVE);
-    _updateWalkMode(owner);
     _updateSpeed(owner);
-
-    if (((Creature*)&owner)->CanFly())
-        owner.AddSplineFlag(SPLINEFLAG_UNKNOWN7);
-
     _setTargetLocation(owner);
 }
 
@@ -294,7 +282,6 @@ template<class T>
 void FollowMovementGenerator<T>::Finalize(T &owner)
 {
     owner.clearUnitState(UNIT_STAT_FOLLOW|UNIT_STAT_FOLLOW_MOVE);
-    _updateWalkMode(owner);
     _updateSpeed(owner);
 }
 
@@ -302,7 +289,6 @@ template<class T>
 void FollowMovementGenerator<T>::Interrupt(T &owner)
 {
     owner.clearUnitState(UNIT_STAT_FOLLOW|UNIT_STAT_FOLLOW_MOVE);
-    _updateWalkMode(owner);
     _updateSpeed(owner);
 }
 

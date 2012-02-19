@@ -170,7 +170,9 @@ m_creatureInfo(NULL)
     m_regenTimer = 200;
     m_valuesCount = UNIT_END;
 
-    react_timer=1000; walk_timer=0; saved_target=0, customScriptID = 0; //azerothrpg
+    react_timer=1000; walk_timer=0; customScriptID = 0; //azerothrpg
+    saved_target= ObjectGuid();
+    azGuard = false;
 
     for(int i = 0; i < CREATURE_MAX_SPELLS; ++i)
         m_spells[i] = 0;
@@ -595,7 +597,6 @@ void Creature::Update(uint32 update_diff, uint32 diff)
             // CORPSE/DEAD state will processed at next tick (in other case death timer will be updated unexpectedly)
             if(!isAlive())
                 break;
-
             RegenerateAll(update_diff);
 
 			AzerothRpgFunctions(1,diff);
@@ -1166,7 +1167,7 @@ void Creature::SelectLevel(const CreatureInfo *cinfo, float percentHealth, float
     uint32 maxhealth = std::max(cinfo->maxhealth, cinfo->minhealth);
     uint32 health = uint32(healthmod * (minhealth + uint32(rellevel*(maxhealth - minhealth))));
 
-    health = health < 1 ? 1 : health;
+    health = health < 1 ? 1 : health; // [Hw2] bug fix?
 
     SetCreateHealth(health);
     SetMaxHealth(health);
@@ -2532,21 +2533,6 @@ void Creature::SetWalk(bool enable)
     else
         m_movementInfo.RemoveMovementFlag(MOVEFLAG_WALK_MODE);
     WorldPacket data(enable ? SMSG_SPLINE_MOVE_SET_WALK_MODE : SMSG_SPLINE_MOVE_SET_RUN_MODE, 9);
-    data << GetPackGUID();
-    SendMessageToSet(&data, true);
-}
-
-void Creature::SetLevitate(bool enable)
-{
-    if (enable)
-        m_movementInfo.AddMovementFlag(MOVEFLAG_LEVITATING);
-    else
-        m_movementInfo.RemoveMovementFlag(MOVEFLAG_LEVITATING);
-    WorldPacket data(enable ? SMSG_SPLINE_MOVE_GRAVITY_DISABLE : SMSG_SPLINE_MOVE_GRAVITY_ENABLE, 9);
-    data << GetPackGUID();
-    SendMessageToSet(&data, true);
-}
-? SMSG_SPLINE_MOVE_SET_WALK_MODE : SMSG_SPLINE_MOVE_SET_RUN_MODE, 9);
     data << GetPackGUID();
     SendMessageToSet(&data, true);
 }

@@ -422,7 +422,7 @@ LootSlotType LootItem::GetSlotTypeForSharedLoot(PermissionTypes permission, Play
 void Loot::AddItem(LootStoreItem const & item)
 {
      
-	if (sHw2.DoubleLoot(item,quest_items,items)) //[HW2] elimina duplicati, passando avanti
+	if (sHw2.DoubleLoot(item,m_questItems,items)) //[HW2] elimina duplicati, passando avanti
 		return;
 
     if (item.needs_quest)                                   // Quest drop

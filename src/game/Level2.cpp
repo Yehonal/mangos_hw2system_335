@@ -83,7 +83,7 @@ bool ChatHandler::HandleMuteCommand(char* args)
     }
 
     // must have strong lesser security level
-    if (HasLowerSecurity(target, target_guid, true))  // cambiare per sfruttarlo nell' AZ e aggiungere || guid == m_session->GetPlayer()->GetGUID()
+    if (HasLowerSecurity(target, target_guid, true))  // cambiare per sfruttarlo nell' AZ e aggiungere || guid == m_session->GetPlayer()->GetObjectGuid()
         return false;
 
     time_t mutetime = time(NULL) + notspeaktime*60;
@@ -121,7 +121,7 @@ bool ChatHandler::HandleUnmuteCommand(char* args)
     }
 
     // must have strong lesser security level
-    if (HasLowerSecurity(target, target_guid, true))  // cambiare per sfruttarlo nell' AZ e aggiunto || guid == m_session->GetPlayer()->GetGUID()
+    if (HasLowerSecurity(target, target_guid, true))  // cambiare per sfruttarlo nell' AZ e aggiunto || guid == m_session->GetPlayer()->GetObjectGuid()
         return false;
 
     if (target)

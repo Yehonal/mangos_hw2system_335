@@ -11,4 +11,3 @@ cp $SPATH/etc/mangosd.conf.dist $SPATH/etc/mangosd.conf
 cp $SPATH/etc/realmd.conf.dist $SPATH/etc/realmd.conf
 cp $SPATH/etc/scriptdev2.conf.dist $SPATH/etc/scriptdev2.conf
 
-read -p "completed"  nothing

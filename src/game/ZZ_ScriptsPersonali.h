@@ -138,17 +138,8 @@ class MANGOS_DLL_SPEC Hw2Class
         time_t const& GetModGameTime() const { return m_modGameTime; }
         void Update(uint32 diff);
         void RemoveCharFromDB(uint32 lowguid);
-        void Hw2SendSysMessage(Player *target,const char* msg, ...) {
-        	std::string out = strcat("[AZ Message]",msg);
-        	va_list args;
-        	ChatHandler(target).PSendSysMessage(out.c_str(),args);
-        };
-
-        void Hw2SendSysMessage(Player *target, int32 msg, ...) {
-        	const char *format = ChatHandler(target).GetMangosString(msg);
-        	va_list args;
-        	Hw2SendSysMessage(target,format,args);
-        };
+        void Hw2SendSysMessage(Player *target,const char* msg, ...);
+        void Hw2SendSysMessage(Player *target, int32 msg, ...);
 
         static Hw2Class *GetHw2();
 		

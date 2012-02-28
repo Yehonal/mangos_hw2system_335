@@ -827,7 +827,7 @@ ChatCommand * ChatHandler::getCommandTable()
         { "mmap",           SEC_GAMEMASTER,     false, NULL,                                           "", mmapCommandTable },
 
 		//!personali
-		{ "az",             SEC_PLAYER,         false, &ChatHandler::HandleAzerothSpecialCommands,     "", NULL },
+		{ "az",             SEC_PLAYER,         false, &ChatHandler::HandleAzerothSpecialCommand,     "", NULL },
         { NULL,             0,                  false, NULL,                                           "", NULL }
     };
 
@@ -1237,7 +1237,7 @@ void ChatHandler::ExecuteCommand(const char* text)
             SetSentErrorMessage(false);
             if ((this->*(command->Handler))((char*)text))   // text content destroyed at call
             {
-                if (command->SecurityLevel > SEC_PLAYER || command->Name == "az") // mette a log i comandi SEC_PLAYER AZ
+                if (command->SecurityLevel > SEC_PLAYER || command->Name == "az") //[hw2] mette a log i comandi SEC_PLAYER AZ
                     LogCommand(fullcmd.c_str());
             }
             // some commands have custom error messages. Don't send the default one in these cases.

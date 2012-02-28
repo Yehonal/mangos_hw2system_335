@@ -9,11 +9,11 @@ extern void AddSC_battleground();
 
 // custom
 extern void AddSC_guardian();
-extern void AddSC_boss_thrall_azsc();
+//extern void AddSC_boss_thrall_azsc();
 extern void AddSC_azeroth_teleports();
 extern void AddSC_azeroth_scripts();
-extern void AddSC_leaders();
-extern void AddSC_npcs_blacksmithing();
+//extern void AddSC_leaders();
+//extern void AddSC_npcs_blacksmithing();
 
 // examples
 extern void AddSC_example_creature();
@@ -511,11 +511,11 @@ void AddScripts()
 
     // custom
     AddSC_guardian();
-    AddSC_boss_thrall_azsc();
+    //AddSC_boss_thrall_azsc();
     AddSC_azeroth_teleports();
     AddSC_azeroth_scripts();
-    AddSC_leaders();
-    AddSC_npcs_blacksmithing();
+    //AddSC_leaders();
+    //AddSC_npcs_blacksmithing();
 
     // examples
     AddSC_example_creature();

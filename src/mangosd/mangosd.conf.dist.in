@@ -42,7 +42,7 @@ ConfVersion=2010100901
 #	CharacterDatabaseConnections
 #		 Amount of connections to database which will be used for SELECT queries. Maximum 16 connections per database.
 #		 Please, note, for data consistency only one connection for each database is used for transactions and async SELECTs.
-#		 So formula to find out how many connections will be established: X = ¹_connections + 1
+#		 So formula to find out how many connections will be established: X = ï¿½_connections + 1
 #		 Default: 1 connection for SELECT statements
 #
 #    MaxPingTime
@@ -60,10 +60,10 @@ ConfVersion=2010100901
 ###################################################################################################################
 
 RealmID = 1
-DataDir = "."
-LogsDir = ""
+DataDir = "/home/giuseppe/WORKSPACE/works-emu-wow/servers/server_data/mangos_hw2"
+LogsDir = "/home/giuseppe/WORKSPACE/works-emu-wow/servers/server_logs/mangos_hw2"
 LoginDatabaseInfo     = "127.0.0.1;3306;root;root;emu_mangos_realmd_hw2"
-WorldDatabaseInfo     = "127.0.0.1;3306;root;root;emu_mangos_hw2"
+WorldDatabaseInfo     = "127.0.0.1;3306;root;root;emu_mangos_world_hw2"
 CharacterDatabaseInfo = "127.0.0.1;3306;root;root;emu_mangos_characters_hw2"
 Hw2DatabaseInfo       = "127.0.0.1;3306;root;root;emu_hw2db"
 LoginDatabaseConnections = 1
@@ -356,7 +356,7 @@ LogLevel = 1
 LogTime = 0
 LogFile = "Server.log"
 LogTimestamp = 0
-LogFileLevel = 0
+LogFileLevel = 2
 LogFilter_AchievementUpdates = 1
 LogFilter_CreatureMoves = 1
 LogFilter_TransportMoves = 1
@@ -585,7 +585,7 @@ LogColors = ""
 #        Default: 10
 #
 #   BirthdayTime
-#        Set to birthday (date in unix time), By default 28th August 2005, when MaNGOS got it’s name
+#        Set to birthday (date in unix time), By default 28th August 2005, when MaNGOS got itï¿½s name
 #        Default: 1125180000
 #
 #    Instance.IgnoreLevel

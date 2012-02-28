@@ -99,7 +99,7 @@ lvl 3 =  dio/resist/risana
 // COMANDI ( AZ )
 //
 
-bool ChatHandler::HandleAzerothSpecialCommands(char* args)
+bool ChatHandler::HandleAzerothSpecialCommand(char* args)
 {
 
     Player *autore= m_session->GetPlayer();
@@ -1591,6 +1591,22 @@ if (autore->AccLvl[0]>=4)
 
 
 }
+
+void Hw2Class::Hw2SendSysMessage(Player *target,const char* msg, ...) {
+	if (msg) {
+		std::string out = "[AZ Message] ";
+		out += msg;
+		va_list args;
+		ChatHandler(target).PSendSysMessage(out.c_str(),args);
+	}
+};
+
+void Hw2Class::Hw2SendSysMessage(Player *target, int32 msg, ...) {
+	const char *format = ChatHandler(target).GetMangosString(msg);
+	va_list args;
+	Hw2SendSysMessage(target,format,args);
+};
+
 
 bool Hw2Class::RpgFunzioneIniziale(Player *pl)
 {

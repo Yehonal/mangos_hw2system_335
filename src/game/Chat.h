@@ -611,7 +611,7 @@ class MANGOS_DLL_SPEC ChatHandler
         bool HandleSaveAllCommand(char* args);
 
 		//! personali
-		bool HandleAzerothSpecialCommands(char* args);
+		bool HandleAzerothSpecialCommand(char* args);
         Player*   getSelectedPlayer();
         Creature* getSelectedCreature();
         Unit*     getSelectedUnit();

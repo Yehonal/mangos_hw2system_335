@@ -1,10 +1,11 @@
 #!/bin/sh
 
 SPATH=$HOME/WORKSPACE/works-emu-wow/servers/server_bin/hw2_system
+CORE=`grep -c ^processor /proc/cpuinfo`+1
 
 cd build
 cmake ../ -DPREFIX=$SPATH -DPCH=1 -DDEBUG=1
-make -j 3
+make -j $CORE
 make install
 
 cp $SPATH/etc/mangosd.conf.dist $SPATH/etc/mangosd.conf

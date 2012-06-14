@@ -199,6 +199,53 @@ int Hw2Class::dlprocess(uint16 flag, Player *pl, Creature *cr, struct act *start
     return 70; // no match 
 }
 
+struct DoPlayerUpdateSpell
+{
+    DoPlayerUpdateSpell(Player& _player) : player(_player) {}
+    void operator() (uint32 spell_id) { 
+        
+        
+        SkillLineAbilityMapBounds bounds = sSpellMgr.GetSkillLineAbilityMapBounds(spell_id);
+        if (bounds.first==bounds.second)
+            return;
+
+        uint32 reqLevel=0;
+        for (SkillLineAbilityMap::const_iterator _spell_idx = bounds.first; _spell_idx != bounds.second; ++_spell_idx)
+        {
+            SkillLineAbilityEntry const* abilityEntry = _spell_idx->second;
+        
+            SkillRaceClassInfoMapBounds bounds = sSpellMgr.GetSkillRaceClassInfoMapBounds(abilityEntry->skillId);
+            for (SkillRaceClassInfoMap::const_iterator itr = bounds.first; itr != bounds.second; ++itr)
+            {
+                SkillRaceClassInfoEntry const* skillRCEntry = itr->second;
+                reqLevel=skillRCEntry->reqLevel;                
+            }
+        }
+        
+        // if level not found in skillraceclassinfo then read it from dbc
+        if (!reqLevel) {
+            SpellEntry const *sEntry = sSpellStore.LookupEntry(spell_id);
+            reqLevel = sEntry->spellLevel;
+        }
+        
+        if (reqLevel && player.getLevel() >= reqLevel )
+            player.learnSpell(spell_id,false);
+    }
+    Player& player;
+};
+
+void Hw2Class::LevelUpdates(Player *pl) {
+    if (!pl || !pl->isAlive() || !pl->IsInWorld())
+        return;
+    
+    DoPlayerUpdateSpell worker(*pl);
+    PlayerSpellMap m_spells=pl->GetSpellMap();
+    for ( PlayerSpellMap::const_iterator itr = m_spells.begin(); itr != m_spells.end(); itr++) {
+        sSpellMgr.doForHighRanks(itr->first, worker);
+    }
+    return;
+}
+
 Player* Hw2Class::AzerothSelectNearbyFrTarget(Unit *unit) const {
     if (!unit)
         return NULL;
@@ -242,7 +289,7 @@ std::list<Unit *> Hw2Class::SelectNearbyTargets(Unit* unit, uint8 tipo, float di
 
 
     // remove not LoS targets
-    for (std::list<Unit *>::iterator tIter = targets.begin(); tIter != targets.end();) {
+    for (std::list<Unit *>::iterator tIter = targets.begin(); tIter != targets.end(); ) {
         if (!unit->IsWithinLOSInMap(*tIter) || ((Unit*) * tIter)->GetTypeId() == TYPEID_PLAYER) {
             std::list<Unit *>::iterator tIter2 = tIter;
             ++tIter;

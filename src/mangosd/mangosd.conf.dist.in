@@ -14,7 +14,7 @@ ConfVersion=2010100901
 #    DataDir
 #        Data directory setting.
 #        Important: DataDir needs to be quoted, as it is a string which may contain space characters.
-#        Example: "@CMAKE_INSTALL_PREFIX@/share/mangos"
+#        Example: "/home/giuseppe/WORKSPACE/works-emu-wow/servers/server_bin/hw2_system/share/mangos"
 #
 #    LogsDir
 #        Logs directory setting.
@@ -205,7 +205,7 @@ ProcessPriority = 1
 Compression = 6
 PlayerLimit = 100
 SaveRespawnTimeImmediately = 1
-MaxOverspeedPings = 2
+MaxOverspeedPings = 0
 GridUnload = 0
 GridCleanUpDelay = 300000
 MapUpdateInterval = 100
@@ -995,21 +995,21 @@ Corpse.Decay.ELITE = 600
 Corpse.Decay.RAREELITE = 1200
 Corpse.Decay.WORLDBOSS = 3600
 Rate.Corpse.Decay.Looted = 0.0
-Rate.Creature.Normal.Damage = 0.5
+Rate.Creature.Normal.Damage = 0.8
 Rate.Creature.Elite.Elite.Damage = 0.4
-Rate.Creature.Elite.RAREELITE.Damage = 0.3
+Rate.Creature.Elite.RAREELITE.Damage = 0.4
 Rate.Creature.Elite.WORLDBOSS.Damage = 0.2
 Rate.Creature.Elite.RARE.Damage = 0.4
-Rate.Creature.Normal.SpellDamage = 0.5
-Rate.Creature.Elite.Elite.SpellDamage = 0.3
-Rate.Creature.Elite.RAREELITE.SpellDamage = 0.2
+Rate.Creature.Normal.SpellDamage = 0.8
+Rate.Creature.Elite.Elite.SpellDamage = 0.4
+Rate.Creature.Elite.RAREELITE.SpellDamage = 0.4
 Rate.Creature.Elite.WORLDBOSS.SpellDamage = 0.1
-Rate.Creature.Elite.RARE.SpellDamage = 0.3
-Rate.Creature.Normal.HP = 0.5
+Rate.Creature.Elite.RARE.SpellDamage = 0.4
+Rate.Creature.Normal.HP = 0.7
 Rate.Creature.Elite.Elite.HP = 0.4
-Rate.Creature.Elite.RAREELITE.HP = 0.3
+Rate.Creature.Elite.RAREELITE.HP = 0.6
 Rate.Creature.Elite.WORLDBOSS.HP = 0.4
-Rate.Creature.Elite.RARE.HP = 0.4
+Rate.Creature.Elite.RARE.HP = 0.5
 ListenRange.Say = 40
 ListenRange.TextEmote = 40
 ListenRange.Yell = 300
@@ -1382,8 +1382,8 @@ Rate.Drop.Item.Legendary = 2
 Rate.Drop.Item.Artifact = 2
 Rate.Drop.Item.Referenced = 3
 Rate.Drop.Money = 5
-Rate.XP.Kill    = 7
-Rate.XP.Quest   = 6
+Rate.XP.Kill    = 3
+Rate.XP.Quest   = 5
 Rate.XP.Explore = 5
 Rate.Rest.InGame = 2
 Rate.Rest.Offline.InTavernOrCity = 2

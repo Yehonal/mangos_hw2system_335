@@ -13,6 +13,7 @@
 #include "Group.h"
 #include "ObjectAccessor.h"
 #include "Spell.h"
+#include "SpellMgr.h"
 #include "SpellAuras.h"
 #include "Chat.h"
 #include "AccountMgr.h"
@@ -79,33 +80,33 @@ class MANGOS_DLL_SPEC Hw2Class
 {
 	public:
 		
-		Hw2Class();
-		~Hw2Class();
+        Hw2Class();
+        ~Hw2Class();
 
-		typedef struct act {
-			uint32 indice, loc_id ;
-			uint8 loc_type,speak_type;
-			uint16 flag , min_rep_rank, max_rep_rank , language ,  emote_id_1, emote_id_2;
-			float chance;
-			std::string *text_male,*text_female,*txt_emote_m,*txt_emote_f;
-		    struct act *next;
-		} action;
+        typedef struct act {
+                uint32 indice, loc_id ;
+                uint8 loc_type,speak_type;
+                uint16 flag , min_rep_rank, max_rep_rank , language ,  emote_id_1, emote_id_2;
+                float chance;
+                std::string *text_male,*text_female,*txt_emote_m,*txt_emote_f;
+            struct act *next;
+        } action;
 
-		struct classifica 
-		{
-			std::string *Titolo[2]; // 2 = maschio/femmina
-			int32 grado;
-		};
+        struct classifica 
+        {
+                std::string *Titolo[2]; // 2 = maschio/femmina
+                int32 grado;
+        };
 
 
-		//variabili
-		
-		uint32 count_list,ConfCount;
-		struct act *lista;
-		struct classifica cl[STANDARD];
-		uint16 cl_count;
-		bool AzConf[STANDARD],ListFilled,TrMod[STANDARD];
-		std::string ConfDef[STANDARD];
+        //variabili
+
+        uint32 count_list,ConfCount;
+        struct act *lista;
+        struct classifica cl[STANDARD];
+        uint16 cl_count;
+        bool AzConf[STANDARD],ListFilled,TrMod[STANDARD];
+        std::string ConfDef[STANDARD];
         time_t m_modGameTime;
         uint32 timerCambiaOra;
         int newHr;
@@ -114,61 +115,62 @@ class MANGOS_DLL_SPEC Hw2Class
 
 		//procedure
 
-		//lista rpg
-		int dlstore(struct act **start);
-		int dlprocess(uint16 flag, Player *pl, Creature *cr, struct act *start);
-		int InitList() { return dlstore(&lista); }
-		int ProcessList(uint16 flag, Player *pl, Creature *cr) { return dlprocess(flag,pl,cr,lista); }
+        //lista rpg
+        int dlstore(struct act **start);
+        int dlprocess(uint16 flag, Player *pl, Creature *cr, struct act *start);
+        int InitList() { return dlstore(&lista); }
+        int ProcessList(uint16 flag, Player *pl, Creature *cr) { return dlprocess(flag,pl,cr,lista); }
 
-		//special function
-		Player * AzerothSelectNearbyFrTarget(Unit* unit) const;
-	    std::list<Unit *> SelectNearbyTargets(Unit* unit,uint8 tipo,float distanza) const;
-	    ObjectGuid HandleFindPlayer(const char* stringa,Player *Pl,Player *SelPl);
-		bool AzDumpWrite(Player *pl,const char* args);
-		bool AzDumpLoad(Player *pl,const char* args);
-		std::string CreaStringaComposta(const char *format, ...);
-		bool DoubleLoot(LootStoreItem const & i, std::vector<LootItem> quest_items,std::vector<LootItem> items);
-		uint16 ProcessaRefCount(LootStoreItemList Entries,uint16 *tot,uint16 *count, float rate);
-		uint16 ProcessaGruppi(Loot& loot,float rate);
+        //special function
+        Player * AzerothSelectNearbyFrTarget(Unit* unit) const;
+        std::list<Unit *> SelectNearbyTargets(Unit* unit,uint8 tipo,float distanza) const;
+        ObjectGuid HandleFindPlayer(const char* stringa,Player *Pl,Player *SelPl);
+        bool AzDumpWrite(Player *pl,const char* args);
+        bool AzDumpLoad(Player *pl,const char* args);
+        std::string CreaStringaComposta(const char *format, ...);
+        bool DoubleLoot(LootStoreItem const & i, std::vector<LootItem> quest_items,std::vector<LootItem> items);
+        uint16 ProcessaRefCount(LootStoreItemList Entries,uint16 *tot,uint16 *count, float rate);
+        uint16 ProcessaGruppi(Loot& loot,float rate);
 
-		// azeroth (generale)
-	    uint8 CheckAcc(Player *player,uint8 type);
-		bool ImpostaGiocatore(Player *pl);
-		bool Hw2Config(bool start,uint8 mode=0,uint8 tipo=0,bool scelta=false);
+        // azeroth (generale)
+        uint8 CheckAcc(Player *player,uint8 type);
+        bool ImpostaGiocatore(Player *pl);
+        bool Hw2Config(bool start,uint8 mode=0,uint8 tipo=0,bool scelta=false);
         time_t const& GetModGameTime() const { return m_modGameTime; }
         void Update(uint32 diff);
         void RemoveCharFromDB(uint32 lowguid);
         void Hw2SendSysMessage(Player *target,const char* msg, ...);
         void Hw2SendSysMessage(Player *target, int32 msg, ...);
+        void LevelUpdates(Player *pl);
 
         static Hw2Class *GetHw2();
 		
-		//rpg functions
-		bool RpgFunzioneIniziale(Player *pl);
-		bool RpgModificaPT(bool salva,ObjectGuid guid,int32 credito,int32 totale,bool indirect_pt=false, Player *Modder=NULL);
-		bool RpgModIdentity(ObjectGuid guid,char* stringa,Player *pl);
+        //rpg functions
+        bool RpgFunzioneIniziale(Player *pl);
+        bool RpgModificaPT(bool salva,ObjectGuid guid,int32 credito,int32 totale,bool indirect_pt=false, Player *Modder=NULL);
+        bool RpgModIdentity(ObjectGuid guid,char* stringa,Player *pl);
 
-		bool RpgGestioneEmote(Player *pl,uint32 emote);
-		bool RpgVisualizzaProfilo(Player* pl,Player* selected);
-		bool RpgSetSupervisor(ObjectGuid guid, ObjectGuid supervisor,Player *Modder,bool Force=false);
-		bool RpgAggiornaUpLine(ObjectGuid guid,bool salva=false,float punti=0);
-		bool RpgProfiloOffLine(ObjectGuid guid,Player *Modder);
-		int32 RpgContaDownLine(ObjectGuid guid,uint16 pl_rango);
-		uint16 RpgTrovaRank(int32 TotRpg);
+        bool RpgGestioneEmote(Player *pl,uint32 emote);
+        bool RpgVisualizzaProfilo(Player* pl,Player* selected);
+        bool RpgSetSupervisor(ObjectGuid guid, ObjectGuid supervisor,Player *Modder,bool Force=false);
+        bool RpgAggiornaUpLine(ObjectGuid guid,bool salva=false,float punti=0);
+        bool RpgProfiloOffLine(ObjectGuid guid,Player *Modder);
+        int32 RpgContaDownLine(ObjectGuid guid,uint16 pl_rango);
+        uint16 RpgTrovaRank(int32 TotRpg);
 
-		//Tournament Functions
-		void DmAzerothPlayerInfo(Player *pl);
-		bool DmIsTourn(Player *pl);
-		void DmPlayerInfo(Player *pl);
-		void DmAddItemSet(Player* plTarget , uint32 itemsetId);
+        //Tournament Functions
+        void DmAzerothPlayerInfo(Player *pl);
+        bool DmIsTourn(Player *pl);
+        void DmPlayerInfo(Player *pl);
+        void DmAddItemSet(Player* plTarget , uint32 itemsetId);
         void DmCreaPet(Player *pl,Creature *Pet);
-		void DmAddSpell(Player *pl,bool tutte=false,uint32 npclista=0);
-		void DmSvuotaBorse(Player *plTarget);
-		void DmSetTournament(Player *pl);
-		void DmGestionePunti(Player *pl,bool SalvaSulDb=false,bool HonorKill=true,Player *soggetto=NULL,bool suicidio=false);
-		void DmGestioneSpawning(Player *pl,uint32 zona);
-		bool DmGestioneMusica(Player *pl,uint32 suono);
-		bool DmCheckTournament(Player *pl, bool tele, uint32 mapid = -1);
+        void DmAddSpell(Player *pl,bool tutte=false,uint32 npclista=0);
+        void DmSvuotaBorse(Player *plTarget);
+        void DmSetTournament(Player *pl);
+        void DmGestionePunti(Player *pl,bool SalvaSulDb=false,bool HonorKill=true,Player *soggetto=NULL,bool suicidio=false);
+        void DmGestioneSpawning(Player *pl,uint32 zona);
+        bool DmGestioneMusica(Player *pl,uint32 suono);
+        bool DmCheckTournament(Player *pl, bool tele, uint32 mapid = -1);
 
 
 

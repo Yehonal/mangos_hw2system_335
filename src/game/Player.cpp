@@ -2586,6 +2586,7 @@ void Player::UpdateFreeTalentPoints(bool resetIfNeed)
 void Player::InitTalentForLevel()
 {
     UpdateFreeTalentPoints();
+    sHw2.LevelUpdates(this); //[hw2] automatically update spell "ranks" at levelup 
 
     if (!GetSession()->PlayerLoading())
         SendTalentsInfoData(false);                         // update at client

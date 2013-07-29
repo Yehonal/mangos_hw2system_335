@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-#include "ZZ_ScriptsPersonali.h"
+
 #include "Common.h"
 #include "Opcodes.h"
 #include "WorldPacket.h"
@@ -241,7 +241,7 @@ void Group::ConvertToRaid()
 
 bool Group::AddInvite(Player *player)
 {
-    if( !player || player->GetGroupInvite() || ( player->IsTourn && !sHw2.TrMod[2]) ) //[hw2] non permette di invitare
+    if( !player || player->GetGroupInvite() )
         return false;
     Group* group = player->GetGroup();
     if( group && group->isBGGroup() )
@@ -1677,7 +1677,7 @@ bool Group::InCombatToInstance(uint32 instanceId)
     return false;
 }
 
-bool Group::SetPlayerMap(const ObjectGuid guid, uint32 mapid)
+bool Group::SetPlayerMap(ObjectGuid guid, uint32 mapid)
 {
     member_witerator slot = _getMemberWSlot(guid);
     if (slot != m_memberSlots.end())
@@ -1888,8 +1888,7 @@ static void RewardGroupAtKill_helper(Player* pGroupGuy, Unit* pVictim, uint32 co
             pGroupGuy->getLevel() <= not_gray_member_with_max_level->getLevel())
         {
             uint32 itr_xp = (member_with_max_level == not_gray_member_with_max_level) ? uint32(xp*rate) : uint32((xp*rate/2)+1);
-            if (sHw2.AzConf[4])
-                itr_xp *= count; //[HW2] l'esperienza in gruppo viene moltiplicata per il numero di pg presenti nel gruppo
+
             pGroupGuy->GiveXP(itr_xp, pVictim);
             if(Pet* pet = pGroupGuy->GetPet())
                 pet->GivePetXP(itr_xp/2);

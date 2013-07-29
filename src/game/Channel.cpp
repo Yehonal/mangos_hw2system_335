@@ -112,11 +112,11 @@ void Channel::Join(ObjectGuid p, const char *pass)
     JoinNotify(p);
 
     // if no owner first logged will become
-    /*if(!IsConstant() && !m_ownerGuid)
+    if(!IsConstant() && !m_ownerGuid)
     {
         SetOwner(p, (m_players.size() > 1 ? true : false));
         m_players[p].SetModerator(true);
-    }*/
+    }
 }
 
 void Channel::Leave(ObjectGuid p, bool send)

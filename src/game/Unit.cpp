@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-#include "ZZ_ScriptsPersonali.h"
+
 #include "Unit.h"
 #include "Log.h"
 #include "Opcodes.h"
@@ -1777,8 +1777,6 @@ void Unit::HandleEmoteCommand(uint32 emote_id)
     data << uint32(emote_id);
     data << GetObjectGuid();
     SendMessageToSet(&data, true);
-	if (GetTypeId()==TYPEID_PLAYER)  // [HW2]	
-		sHw2.RpgGestioneEmote((Player*)this,emote_id);
 }
 
 void Unit::HandleEmoteState(uint32 emote_id)
@@ -6242,8 +6240,8 @@ uint32 Unit::SpellDamageBonusDone(Unit *pVictim, SpellEntry const *spellProto, u
     int32 DoneTotal = 0;
 
     // Creature damage
-    //[HW2] if( GetTypeId() == TYPEID_UNIT && !((Creature*)this)->IsPet() )
-    //    DoneTotalMod *= ((Creature*)this)->GetSpellDamageMod(((Creature*)this)->GetCreatureInfo()->rank);
+    if( GetTypeId() == TYPEID_UNIT && !((Creature*)this)->IsPet() )
+        DoneTotalMod *= ((Creature*)this)->GetSpellDamageMod(((Creature*)this)->GetCreatureInfo()->rank);
 
     AuraList const& mModDamagePercentDone = GetAurasByType(SPELL_AURA_MOD_DAMAGE_PERCENT_DONE);
     for(AuraList::const_iterator i = mModDamagePercentDone.begin(); i != mModDamagePercentDone.end(); ++i)
@@ -7779,20 +7777,6 @@ void Unit::SetInCombatState(bool PvP, Unit* enemy)
     // only alive units can be in combat
     if (!isAlive())
         return;
-
-	//[HW2] SOUNDS PER L'HYJAL prima del setflag!
-    if (GetTypeId()==TYPEID_PLAYER && ((Player*)this)->IsTourn && PvP)
-	{
-		uint32 suono=6350;
-		   srand(time(NULL));
-		   switch(rand()%4){
-			   case 0: suono=6262; break; //Moment - Battle02
-			   case 1: suono=6350; break; //Moment - Battle06
-			   case 2: suono=6077; break; //Moment - Battle01
-			   case 3: suono=6078; break;
-			   }	   
-		   if(!((Player*)this)->isInCombat() && ((Player*)this)->MusicaTimer==0) { sHw2.DmGestioneMusica(((Player*)this),suono); ((Player*)this)->MusicaTimer=40000;} 
-	} //FINE
 
     if (PvP)
         m_CombatTimer = 5000;
@@ -10061,7 +10045,7 @@ void Unit::SetConfused(bool apply, ObjectGuid casterGuid, uint32 spellID)
         SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CONFUSED);
 
         CastStop(GetObjectGuid() == casterGuid ? spellID : 0);
-		// StopMoving(); // GetMotionMaster()->MoveConfused(); //azerothtournament fix fear problem
+
         GetMotionMaster()->MoveConfused();
     }
     else

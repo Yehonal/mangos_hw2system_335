@@ -14,7 +14,7 @@ ConfVersion=2010100901
 #    DataDir
 #        Data directory setting.
 #        Important: DataDir needs to be quoted, as it is a string which may contain space characters.
-#        Example: "/home/giuseppe/WORKSPACE/works-emu-wow/servers/server_bin/hw2_system/share/mangos"
+#        Example: "@CMAKE_INSTALL_PREFIX@/share/mangos"
 #
 #    LogsDir
 #        Logs directory setting.
@@ -42,7 +42,7 @@ ConfVersion=2010100901
 #	CharacterDatabaseConnections
 #		 Amount of connections to database which will be used for SELECT queries. Maximum 16 connections per database.
 #		 Please, note, for data consistency only one connection for each database is used for transactions and async SELECTs.
-#		 So formula to find out how many connections will be established: X = �_connections + 1
+#		 So formula to find out how many connections will be established: X = ¹_connections + 1
 #		 Default: 1 connection for SELECT statements
 #
 #    MaxPingTime

@@ -127,6 +127,18 @@ struct MANGOS_DLL_DECL guardian1_AI : public ScriptedAI
         m_creature->LoadCreatureAddon(true);
         changeMovement(m_creature);
     }
+    
+    void JustDied(Unit* pKiller)
+    {
+        // remove "guard" script
+        //todo: create a common public function in core to remove guard attributes
+        follower = NULL;
+        target   = NULL;
+        Reset();
+        m_creature->azGuard = false;
+        m_creature->customScriptID = 0;
+        m_creature->AIM_Initialize();
+    }
 
     void EnterEvadeMode()
     {

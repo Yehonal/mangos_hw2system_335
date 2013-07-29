@@ -159,7 +159,7 @@ bool ChatHandler::HandleAzerothSpecialCommand(char* args)
 			
 			if (autore->AccLvl[1]>=2)
 			{
-				 sHw2.Hw2SendSysMessage(autore," lvl2: summon <> emote_area <> rpg_crediti <> rpg_identity <> rpg_identity_byname <> rpg_profilo_byname");
+				 sHw2.Hw2SendSysMessage(autore," lvl2: summon <> guardian <> emote_area <> rpg_crediti <> rpg_identity <> rpg_identity_byname <> rpg_profilo_byname");
 				 if (autore->AccLvl[1]>=3) 
 					 sHw2.Hw2SendSysMessage(autore," lvl3: dio <> resist <> risana <> rpg_punti <> rpg_mod_precettore");
 				 else
@@ -179,111 +179,6 @@ bool ChatHandler::HandleAzerothSpecialCommand(char* args)
 // COMANDI PUBBLICI
 //
 //##########################################################################################
-
-
-    if (argstr=="cambia_ora")
-    {
-        int type=0;
-        char* tipo = strtok(stringa, " ");
-
-		if (!tipo)
-            return false;
-
-        tm localTm = *localtime(&sHw2.GetModGameTime());
-        int ora = atoi(tipo);
-
-        sHw2.newHr = localTm.tm_hour >= ora ? -1 * (localTm.tm_hour - ora) : ora - localTm.tm_hour;
-
-        return true;
-
-        /*tm localTm = *localtime(&sHw2.GetModGameTime());
-        int now       = localTm.tm_hour;
-        int diffHours = newHr - now;
-        if(diffHours < 0)
-            diffHours *= -1;
-
-        time_t newtime;
-        for (uint8 i=0;i<=diffHours;i++)
-        {
-            localTm.tm_hour = newHr >= now ? now + i : now - i;
-
-            // current day reset time
-            newtime = mktime(&localTm);
-            WorldPacket data(SMSG_LOGIN_SETTIMESPEED, 4 + 4 + 4);
-            data << uint32(secsToTimeBitFields(newtime));
-            data << (float)0.01666667f;                             // game speed
-            data << uint32(0);                                      // added in 3.1.2
-            sWorld.SendGlobalMessage( &data );
-        }
-
-        if (newtime)
-            sHw2.m_modGameTime = newtime; */
-
-    }
-
-    if (argstr=="creapet")
-    {
-        if(autore->GetPetGuid())
-        return false;
-
-        Creature * creatureTarget = getSelectedCreature();
-		if(!creatureTarget) 
-            return false;
-
-        if(creatureTarget->IsPet())
-            return false;
-
-        CreatureCreatePos pos = CreatureCreatePos(autore, -autore->GetOrientation());
-
-        Pet* pet = new Pet(MINI_PET);
-
-        pet->Create(autore->GetMap()->GenerateLocalLowGuid(HIGHGUID_PET), pos,creatureTarget->GetCreatureInfo(), sObjectMgr.GeneratePetNumber());
-
-        if(!pet)                                                // in versy specific state like near world end/etc.
-        {
-            delete pet;
-            return false;
-        }
-
-        // kill original creature
-        //creatureTarget->setDeathState(JUST_DIED);
-        //creatureTarget->RemoveCorpse();
-        //creatureTarget->SetHealth(0);                       // just for nice GM-mode view
-
-        uint32 level = (creatureTarget->getLevel() < (autore->getLevel() - 5)) ? (autore->getLevel() - 5) : creatureTarget->getLevel();
-
-        // prepare visual effect for levelup
-        pet->SetUInt32Value(UNIT_FIELD_LEVEL, level - 1);
-        pet->SetUInt32Value(UNIT_FIELD_LEVEL, level);
-
-        pet->SetSummonPoint(pos);
-        pet->GetMap()->Add((Creature*)pet);
-
-        pet->SetOwnerGuid(autore->GetObjectGuid());
-        pet->SetCreatorGuid(autore->GetObjectGuid());
-        pet->setFaction(autore->getFaction());
-        pet->AIM_Initialize();
-        pet->InitPetCreateSpells();                         // e.g. disgusting oozeling has a create spell as critter...
-        sHw2.Hw2SendSysMessage(autore,"minipet creato");
-        return true;
-    }
-
-    if (argstr=="guardian")
-    {
-        Creature * creature = getSelectedCreature();
-		if(!creature) return false;
-
-        creature->azGuard = !creature->azGuard;
-        if (creature->IsGuard()) {
-			creature->setFaction(autore->getFaction());
-			sHw2.Hw2SendSysMessage(autore,"guardia attivata");
-        } else {
-			creature->setFaction(autore->getFaction());
-			sHw2.Hw2SendSysMessage(autore,"guardian disabled");
-        }
-        return true;
-    }
-
 
 	if (argstr=="rpg_profilo")
 	{
@@ -677,7 +572,7 @@ if (autore->AccLvl[1]>=1)
 		return true;
     }
 
-	if (argstr == "segui_pos")
+    if (argstr == "segui_pos")
     {
 		Creature * creature = getSelectedCreature();
 		if(!creature) return false;
@@ -984,39 +879,60 @@ if (autore->AccLvl[1]>=1)
 						if (cEntry==0) return false;
 						
 						autore->SummonCreature(cEntry,autore->GetPositionX(),autore->GetPositionY(),autore->GetPositionZ(),PET_FOLLOW_ANGLE,TEMPSUMMON_CORPSE_DESPAWN,0);
-                        sHw2.Hw2SendSysMessage(autore,"Evocazione Completata.");
+                                                 sHw2.Hw2SendSysMessage(autore,"Evocazione Completata.");
 						
 						return true;
 					}
 
 
-					if (argstr == "summon_guard")
-					{
-						uint32 cEntry=0;
-						
+					if (argstr == "guardian")
+					{	
 						if(!autore) 
 							return false; 
+                                                
+                                                sHw2.Hw2SendSysMessage(autore,"select a creature to enable guardian flag, use -c option to enable custom script ");
+                                                sHw2.Hw2SendSysMessage(autore,"syntax: .az guardian <0/1> [options]");
+                                                sHw2.Hw2SendSysMessage(autore,"-c custom script enabled");
 						
-						char* ID = stringa;
-						if (!ID){ sHw2.Hw2SendSysMessage(autore,"Devi inserire un ID di creatura."); return false; }
-						
-						cEntry = atoi(ID);
-						if (cEntry==0) return false;
-						
-						Creature *creature = autore->SummonCreature(cEntry,autore->GetPositionX(),autore->GetPositionY(),autore->GetPositionZ(),PET_FOLLOW_ANGLE,TEMPSUMMON_CORPSE_DESPAWN,0);
-                        if(!creature || !creature->IsInWorld()) 
-                            return false;
-
-                        creature->customScriptID = GUARD1_ID;
-                        creature->AIM_Initialize();
-                        // creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GUARD);
-                        creature->setFaction(autore->getFaction());
-                        sHw2.Hw2SendSysMessage(autore,"Evocazione Completata.");
-						
+                                                bool enabled = false;
+                                                bool customScript = false;
+                                                
+                                                char* option1 = strtok(stringa, " ");
+                                                char* option2 = strtok(NULL, " ");
+                                                
+                                                if (option1)
+                                                        enabled = atoi(option1)>0;
+                                                if (option2)
+                                                        customScript = strcmp(option2,"-c") == 0;
+                                                
+                                                
+                                                Creature * creature = getSelectedCreature();
+                                                if(!creature || !creature->IsInWorld()) return false;
+	
+                                                if (enabled) {
+                                                    //creature->setFaction(autore->getFaction());
+                                                    creature->SetFactionTemporary(autore->getFaction(), TEMPFACTION_RESTORE_RESPAWN);
+                                                    creature->azGuard = true;
+                                                    if (customScript){
+                                                        creature->customScriptID = GUARD1_ID;
+                                                        creature->AIM_Initialize();
+                                                        // creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GUARD);
+                                                    }
+                                                    sHw2.Hw2SendSysMessage(autore,"flag guardian enabled");
+                                                } else {
+                                                    creature->azGuard = false;
+                                                    creature->ClearTemporaryFaction();
+                                                    creature->customScriptID = 0;
+                                                    creature->AIM_Initialize();
+                                                    creature->StopMoving();
+                                                    creature->GetMotionMaster()->Clear();
+                                                    sHw2.Hw2SendSysMessage(autore,"flag guardian disabled");
+                                                }
+                                    
 						return true;
 					}
 
-				    if (argstr == "emote_area")
+                                        if (argstr == "emote_area")
 					{
 							int distance=0;
 							int type=0;
@@ -1027,15 +943,15 @@ if (autore->AccLvl[1]>=1)
 
 							if (dist && tipo && stringa)
 							{
+                                                                emo=atoi(stringa);
 							 	distance = atoi(dist);
-								emo=atoi(stringa);
 								type = atoi(tipo);
 							}
 
 							if (distance<=0 || type<=0) 
 							{ 
-							  sHw2.Hw2SendSysMessage(autore,"Devi inserire una distanza in yard (non troppo alta), il valore di un emote e il tipo di creatura da selezionare (1: amiche 2: nemiche 3: entrambe");
-							  sHw2.Hw2SendSysMessage(autore,"Sintassi: .az emote_area <yard> <emote> <tipocreatura>");
+							  sHw2.Hw2SendSysMessage(autore,"Devi inserire il valore di un emote, una distanza in yard (non troppo alta) e il tipo di creatura da selezionare (1: amiche 2: nemiche 3: entrambe");
+							  sHw2.Hw2SendSysMessage(autore,"Sintassi: .az emote_area <emote> <yard> <tipocreatura>");
 							  return false; 
 							} 
 
@@ -1069,7 +985,7 @@ if (autore->AccLvl[1]>=1)
 								sHw2.Hw2SendSysMessage(autore,"ATTENZIONE: nessun id emote specificato");
 
 							std::list<Unit *>::const_iterator tcIter = targets.begin();
-						    for(uint32 i = 0; i < targets.size(); ++i)
+                                                        for(uint32 i = 0; i < targets.size(); ++i)
 							{
 								if (((Unit*)*tcIter) && ((Unit*)*tcIter)->GetTypeId()!=TYPEID_PLAYER)
 								{
@@ -1092,7 +1008,7 @@ if (autore->AccLvl[1]>=1)
 							return false; 
 						} 
 
-					    int punti_cr=0;
+                                                int punti_cr=0;
 						ObjectGuid guid  = autore->GetSelectionGuid();
 						Player* SelPl=NULL;
 						if (guid.GetCounter()!=0)
@@ -1118,7 +1034,7 @@ if (autore->AccLvl[1]>=1)
 						return true;
 					}
 
-				    if (argstr=="rpg_identity")
+                                        if (argstr=="rpg_identity")
 					{
 						if (!stringa || !strcmp(stringa," ")) 
 						{ 
@@ -1408,7 +1324,7 @@ if (autore->AccLvl[1]>=1)
 
 						}
             }
- }
+}
  
 //##########################################################################################
 // COMANDI NASCOSTI, RITORNANO FALSE PER NON ESSERE MESSI A LOG
@@ -1416,6 +1332,93 @@ if (autore->AccLvl[1]>=1)
 
 if (autore->AccLvl[0]>=4)
 {
+    
+    if (argstr=="cambia_ora")
+    {
+        int type=0;
+        char* tipo = strtok(stringa, " ");
+
+		if (!tipo)
+            return false;
+
+        tm localTm = *localtime(&sHw2.GetModGameTime());
+        int ora = atoi(tipo);
+
+        sHw2.newHr = localTm.tm_hour >= ora ? -1 * (localTm.tm_hour - ora) : ora - localTm.tm_hour;
+
+        return true;
+
+        /*tm localTm = *localtime(&sHw2.GetModGameTime());
+        int now       = localTm.tm_hour;
+        int diffHours = newHr - now;
+        if(diffHours < 0)
+            diffHours *= -1;
+
+        time_t newtime;
+        for (uint8 i=0;i<=diffHours;i++)
+        {
+            localTm.tm_hour = newHr >= now ? now + i : now - i;
+
+            // current day reset time
+            newtime = mktime(&localTm);
+            WorldPacket data(SMSG_LOGIN_SETTIMESPEED, 4 + 4 + 4);
+            data << uint32(secsToTimeBitFields(newtime));
+            data << (float)0.01666667f;                             // game speed
+            data << uint32(0);                                      // added in 3.1.2
+            sWorld.SendGlobalMessage( &data );
+        }
+
+        if (newtime)
+            sHw2.m_modGameTime = newtime; */
+
+    }
+
+    if (argstr=="creapet")
+    {
+        if(autore->GetPetGuid())
+        return false;
+
+        Creature * creatureTarget = getSelectedCreature();
+		if(!creatureTarget) 
+            return false;
+
+        if(creatureTarget->IsPet())
+            return false;
+
+        CreatureCreatePos pos = CreatureCreatePos(autore, -autore->GetOrientation());
+
+        Pet* pet = new Pet(MINI_PET);
+
+        pet->Create(autore->GetMap()->GenerateLocalLowGuid(HIGHGUID_PET), pos,creatureTarget->GetCreatureInfo(), sObjectMgr.GeneratePetNumber());
+
+        if(!pet)                                                // in versy specific state like near world end/etc.
+        {
+            delete pet;
+            return false;
+        }
+
+        // kill original creature
+        //creatureTarget->setDeathState(JUST_DIED);
+        //creatureTarget->RemoveCorpse();
+        //creatureTarget->SetHealth(0);                       // just for nice GM-mode view
+
+        uint32 level = (creatureTarget->getLevel() < (autore->getLevel() - 5)) ? (autore->getLevel() - 5) : creatureTarget->getLevel();
+
+        // prepare visual effect for levelup
+        pet->SetUInt32Value(UNIT_FIELD_LEVEL, level - 1);
+        pet->SetUInt32Value(UNIT_FIELD_LEVEL, level);
+
+        pet->SetSummonPoint(pos);
+        pet->GetMap()->Add((Creature*)pet);
+
+        pet->SetOwnerGuid(autore->GetObjectGuid());
+        pet->SetCreatorGuid(autore->GetObjectGuid());
+        pet->setFaction(autore->getFaction());
+        pet->AIM_Initialize();
+        pet->InitPetCreateSpells();                         // e.g. disgusting oozeling has a create spell as critter...
+        sHw2.Hw2SendSysMessage(autore,"minipet creato");
+        return true;
+    }
 
     if (argstr == "chatlog_on")
 	{
